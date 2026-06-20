@@ -2,8 +2,8 @@ export const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.
 
 export const razorpayConfig = {
   keyId: import.meta.env.VITE_RAZORPAY_KEY_ID || '',
-  businessName: 'LandsDevelop',
+  businessName: 'HomeFeet',
   logoPath: '/Landsdevelop_logo.png',
   themeColor: '#3399cc',
-  notesAddress: 'LandsDevelop Membership'
+  notesAddress: 'HomeFeet Membership'
 };

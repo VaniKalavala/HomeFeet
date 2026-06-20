@@ -401,7 +401,7 @@ router.get('/resolve-map-link', async (req, res) => {
       timeout: 8000,
       validateStatus: (status) => status >= 200 && status < 400,
       headers: {
-        'User-Agent': 'Mozilla/5.0 LandsDevelop map resolver'
+        'User-Agent': 'Mozilla/5.0 HomeFeet map resolver'
       }
     });
     const resolvedUrl = response.request?.res?.responseUrl || rawUrl;

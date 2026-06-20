@@ -35,7 +35,7 @@ const ContactPage: React.FC = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20" />
         <div className="ld-container relative py-20">
-          <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Contact LandsDevelop</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Contact HomeFeet</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight md:text-6xl">
             Talk to the operations team.
           </h1>
@@ -49,7 +49,7 @@ const ContactPage: React.FC = () => {
         <div className="space-y-4">
           {[
             { icon: Phone, label: 'Phone', value: '+91 90140 11885' },
-            { icon: Mail, label: 'Email', value: 'contact@landsdevelop.com' },
+            { icon: Mail, label: 'Email', value: 'contact@homefeet.in' },
             { icon: MapPin, label: 'Market', value: 'Hyderabad development opportunities' },
             { icon: Building2, label: 'For', value: 'Owners, builders, partners, admins' }
           ].map((item) => {

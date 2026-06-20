@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
 
     res.json(contacts.map((contact) => ({
       name: contact.companyName,
-      domain: normalizeDomain(contact.website) || 'landsdevelop.com',
+      domain: normalizeDomain(contact.website) || 'homefeet.in',
       logo: contact.logoDataUrl,
       city: contact.city,
       website: contact.website || ''

@@ -139,7 +139,7 @@ const Navbar: React.FC = () => {
         <div className="flex h-16 w-full items-center gap-2 px-3 sm:gap-4 sm:px-8">
           <div className="flex shrink-0 items-center gap-4">
             <Link to="/" className="flex min-w-0 items-center gap-2 text-slate-950 sm:gap-3">
-              <img src="/Landsdevelop_logo.png" alt="LandsDevelop" className="h-8 w-8 rounded-md bg-white object-contain sm:h-9 sm:w-9" />
+              <img src="/Landsdevelop_logo.png" alt="HomeFeet" className="h-8 w-8 rounded-md bg-white object-contain sm:h-9 sm:w-9" />
               <p className="whitespace-nowrap text-base font-black tracking-tight sm:text-lg xl:text-xl"><BrandName /></p>
             </Link>
 

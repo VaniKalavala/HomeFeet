@@ -67,7 +67,7 @@ const getClientIpHash = (req) => {
   const rawIp = forwardedFor || req.ip || req.socket?.remoteAddress || 'unknown';
   return crypto
     .createHash('sha256')
-    .update(`${rawIp}|${process.env.VISITOR_HASH_SALT || 'landsdevelop-visitor'}`)
+    .update(`${rawIp}|${process.env.VISITOR_HASH_SALT || 'homefeet-visitor'}`)
     .digest('hex');
 };
 
@@ -191,7 +191,7 @@ app.get('/share/property/:id', async (req, res) => {
     }
 
     const apiOrigin = process.env.API_PUBLIC_ORIGIN || `${req.protocol}://${req.get('host')}`;
-    const frontendOrigin = (process.env.FRONTEND_ORIGIN || 'https://www.landsdevelop.com').replace(/\/$/, '');
+    const frontendOrigin = (process.env.FRONTEND_ORIGIN || 'https://www.homefeet.in').replace(/\/$/, '');
     const propertyUrl = `${frontendOrigin}/property/${property._id}`;
     const imageUrl = absoluteUrl(apiOrigin, property.imageUrl || property.plotDiagramUrl);
     const type = cleanType(property.developmentType);
@@ -216,7 +216,7 @@ app.get('/share/property/:id', async (req, res) => {
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="LandsDevelop" />
+    <meta property="og:site_name" content="HomeFeet" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:image" content="${escapeHtml(imageUrl)}" />
@@ -384,7 +384,7 @@ app.get('/share/property/:id', async (req, res) => {
         </div>
       </section>
       <section class="body">
-        <p class="eyebrow">LandsDevelop Listing</p>
+        <p class="eyebrow">HomeFeet Listing</p>
         <h1>${escapeHtml(title)}</h1>
         <p class="location">${escapeHtml(location || 'Location available')}${landmark ? ` · ${escapeHtml(landmark)}` : ''}</p>
         <div class="grid">
@@ -395,7 +395,7 @@ app.get('/share/property/:id', async (req, res) => {
         </div>
         ${property.description ? `<p class="summary">${escapeHtml(property.description).slice(0, 260)}${property.description.length > 260 ? '...' : ''}</p>` : ''}
         <div class="actions">
-          <span>Shared from <span class="brand">LandsDevelop</span></span>
+          <span>Shared from <span class="brand">HomeFeet</span></span>
           <a class="button" href="${escapeHtml(propertyUrl)}">View full listing</a>
         </div>
       </section>

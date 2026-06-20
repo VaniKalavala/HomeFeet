@@ -159,7 +159,7 @@ const sendOTPViaSMS = async (phone, otp) => {
   const templateId = process.env.SMS_TEMPLATE_ID || '1007877623645681439';
 
   // The DLT-registered template uses {#var#} as the OTP placeholder.
-  const text = `${otp} One time Password(OTP) for phone verification on www.landsdevelop.com real estate platform`;
+  const text = `${otp} One time Password(OTP) for phone verification on www.homefeet.in real estate platform`;
 
   const payload = {
     sender,

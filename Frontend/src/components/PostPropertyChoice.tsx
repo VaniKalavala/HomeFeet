@@ -32,7 +32,7 @@ const PostPropertyChoice = () => {
             Choose how you want to <span className="text-[#0AA6A6]">post</span>.
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-7 text-slate-700 sm:text-base">
-            Use the full form when every detail is ready, or start with a quick summary and let LandsDevelop prepare the property form for review.
+            Use the full form when every detail is ready, or start with a quick summary and let HomeFeet prepare the property form for review.
           </p>
         </div>
 

@@ -89,96 +89,96 @@ type SeoConfig = {
   image?: string;
 };
 
-const SITE_URL = 'https://www.landsdevelop.com';
-const SITE_NAME = 'LandsDevelop';
+const SITE_URL = 'https://www.homefeet.in';
+const SITE_NAME = 'HomeFeet';
 const DEFAULT_IMAGE = '/Landsdevelop_Logo_Name.png';
 const DEFAULT_KEYWORDS =
   'land development marketplace, verified properties, Hyderabad plots, Bengaluru land, Mumbai builders, owner listings, mediator listings, commercial plots, sell plot, buyer requirements';
 
 const DEFAULT_SEO: SeoConfig = {
-  title: 'LandsDevelop | Verified Land Development Marketplace in India',
+  title: 'HomeFeet | Verified Land Development Marketplace in India',
   description:
-    'LandsDevelop helps owners, mediators, builders, buyers, and land seekers share verified land, plot, villa, and commercial property opportunities with admin-reviewed listings.',
+    'HomeFeet helps owners, mediators, builders, buyers, and land seekers share verified land, plot, villa, and commercial property opportunities with admin-reviewed listings.',
   keywords: DEFAULT_KEYWORDS
 };
 
 const seoByPath: Record<string, SeoConfig> = {
   '/': {
-    title: 'LandsDevelop | Verified Land Development Marketplace',
+    title: 'HomeFeet | Verified Land Development Marketplace',
     description:
       'Discover verified owner listings, development opportunities, sell plots, commercial plots, buyer requirements, and builder contacts across Hyderabad, Bengaluru, Mumbai, and India.'
   },
   '/properties': {
-    title: 'Verified Properties, Development Lands & Plots | LandsDevelop',
+    title: 'Verified Properties, Development Lands & Plots | HomeFeet',
     description:
       'Explore verified development lands, sell plots, villas, commercial plots, and buyer requirements with map view, filters, and controlled owner contact access.'
   },
   '/properties-map': {
-    title: 'Properties Map View | LandsDevelop',
+    title: 'Properties Map View | HomeFeet',
     description:
       'View verified land development opportunities, sell plots, buyer requirements, and commercial properties on an interactive city-wise map.'
   },
   '/post-property-options': {
-    title: 'Post Property Options | LandsDevelop',
+    title: 'Post Property Options | HomeFeet',
     description:
       'Choose the full property form or quick property details flow to submit land, plot, villa, or commercial property for admin approval.'
   },
   '/post-property-summary': {
-    title: 'Share Property Details Quickly | LandsDevelop',
+    title: 'Share Property Details Quickly | HomeFeet',
     description:
-      'Paste a property summary, map link, and dimension image so LandsDevelop can prepare a structured property listing for review.'
+      'Paste a property summary, map link, and dimension image so HomeFeet can prepare a structured property listing for review.'
   },
   '/post-property': {
-    title: 'Post a Verified Property | LandsDevelop',
+    title: 'Post a Verified Property | HomeFeet',
     description:
       'Submit land, plot, villa, and commercial property details for admin review and verified listing publication.'
   },
   '/buyer-requirement': {
-    title: 'Buyer Requirement Form | LandsDevelop',
+    title: 'Buyer Requirement Form | HomeFeet',
     description:
       'Share buyer or land seeker requirements by land type, location, city, budget, area, and expected price range.'
   },
   '/membership': {
-    title: 'LandsDevelop Membership Plans',
+    title: 'HomeFeet Membership Plans',
     description:
       'Choose membership access for builders, owners, mediators, buyers, land seekers, and corporate land acquisition teams.'
   },
   '/builder-membership': {
-    title: 'Builder Membership | LandsDevelop',
+    title: 'Builder Membership | HomeFeet',
     description:
       'Builder membership for verified development opportunities, owner conversations, and land acquisition workflows.'
   },
   '/owner-mediator-membership': {
-    title: 'Owner & Mediator Membership | LandsDevelop',
+    title: 'Owner & Mediator Membership | HomeFeet',
     description:
       'Owner and mediator membership for controlled access to complete listing details from other verified property owners and mediators.'
   },
   '/about': {
-    title: 'About LandsDevelop | Verified Land Development Marketplace',
+    title: 'About HomeFeet | Verified Land Development Marketplace',
     description:
-      'Learn about LandsDevelop, a professional platform for verified land development opportunities, moderated listings, and trusted property conversations.'
+      'Learn about HomeFeet, a professional platform for verified land development opportunities, moderated listings, and trusted property conversations.'
   },
   '/testimonials': {
-    title: 'LandsDevelop Testimonials | Marketplace Feedback',
+    title: 'HomeFeet Testimonials | Marketplace Feedback',
     description:
-      'Read city-wise testimonials from builders, owners, mediators, buyers, and land seekers using LandsDevelop.'
+      'Read city-wise testimonials from builders, owners, mediators, buyers, and land seekers using HomeFeet.'
   },
   '/contact': {
-    title: 'Contact LandsDevelop',
+    title: 'Contact HomeFeet',
     description:
-      'Contact LandsDevelop for verified property listings, owner and mediator support, builder contacts, and land development marketplace help.'
+      'Contact HomeFeet for verified property listings, owner and mediator support, builder contacts, and land development marketplace help.'
   },
   '/terms-and-conditions': {
-    title: 'Terms and Conditions | LandsDevelop',
-    description: 'Review the LandsDevelop terms and conditions for using the verified land development marketplace.'
+    title: 'Terms and Conditions | HomeFeet',
+    description: 'Review the HomeFeet terms and conditions for using the verified land development marketplace.'
   },
   '/privacy-policy': {
-    title: 'Privacy Policy | LandsDevelop',
-    description: 'Read how LandsDevelop handles privacy, controlled contact access, and marketplace user information.'
+    title: 'Privacy Policy | HomeFeet',
+    description: 'Read how HomeFeet handles privacy, controlled contact access, and marketplace user information.'
   },
   '/refund-and-cancellation': {
-    title: 'Refund and Cancellation Policy | LandsDevelop',
-    description: 'Review the LandsDevelop refund and cancellation policy for memberships and marketplace services.'
+    title: 'Refund and Cancellation Policy | HomeFeet',
+    description: 'Review the HomeFeet refund and cancellation policy for memberships and marketplace services.'
   }
 };
 
@@ -195,17 +195,17 @@ const privateSeoPaths = [
 const getSeoConfig = (pathname: string): SeoConfig => {
   if (pathname.startsWith('/property/') || pathname.startsWith('/project/')) {
     return {
-      title: 'Property Details | LandsDevelop',
+      title: 'Property Details | HomeFeet',
       description:
-        'View verified property details, development terms, location, area, road access, and controlled owner contact access on LandsDevelop.'
+        'View verified property details, development terms, location, area, road access, and controlled owner contact access on HomeFeet.'
     };
   }
 
   if (privateSeoPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return {
       ...DEFAULT_SEO,
-      title: 'Account Area | LandsDevelop',
-      description: 'Private LandsDevelop account area.',
+      title: 'Account Area | HomeFeet',
+      description: 'Private HomeFeet account area.',
       noIndex: true
     };
   }
@@ -262,10 +262,10 @@ function SEOManager() {
     upsertMeta('name', 'twitter:image', imageUrl);
     upsertLink('canonical', canonicalUrl);
 
-    let jsonLd = document.getElementById('landsdevelop-jsonld') as HTMLScriptElement | null;
+    let jsonLd = document.getElementById('homefeet-jsonld') as HTMLScriptElement | null;
     if (!jsonLd) {
       jsonLd = document.createElement('script');
-      jsonLd.id = 'landsdevelop-jsonld';
+      jsonLd.id = 'homefeet-jsonld';
       jsonLd.type = 'application/ld+json';
       document.head.appendChild(jsonLd);
     }
@@ -1006,7 +1006,7 @@ function HomePage() {
               </h2>
             </div>
             <p className="max-w-xl text-slate-600">
-              LandsDevelop keeps the marketplace curated: owners get protected contact details, builders get searchable development data, and admins get operational control.
+              HomeFeet keeps the marketplace curated: owners get protected contact details, builders get searchable development data, and admins get operational control.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
@@ -1146,7 +1146,7 @@ function HomePage() {
               Land development needs a more <span className="text-[#0AA6A6]">transparent</span> market.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-slate-700">
-              LandsDevelop keeps property posting, builder access, and admin review in one verified workflow so serious land conversations move faster.
+              HomeFeet keeps property posting, builder access, and admin review in one verified workflow so serious land conversations move faster.
             </p>
             <Link to="/about" className="mt-6 inline-flex items-center gap-1 text-sm font-bold text-[#0077CC]">
               Read More <ArrowRight className="h-4 w-4" />
@@ -2593,7 +2593,7 @@ function PropertiesMapPage() {
 
           <div className="border-t border-slate-200 bg-white p-4">
             <div className="mb-3 rounded-lg bg-slate-100 px-4 py-3 text-center text-xs font-medium text-slate-600">
-              Access this property with <span className="font-bold text-slate-950">LandsDevelop Premium</span> <Crown className="ml-1 inline h-4 w-4 text-amber-500" />
+              Access this property with <span className="font-bold text-slate-950">HomeFeet Premium</span> <Crown className="ml-1 inline h-4 w-4 text-amber-500" />
             </div>
             <div className="grid grid-cols-[1fr_1fr] gap-3">
               <Link to={`/property/${selectedProperty._id}`} className="inline-flex h-11 items-center justify-center rounded-full border border-slate-950 px-4 text-sm font-semibold text-slate-950">
@@ -2755,7 +2755,7 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
         image: `${window.location.origin}${razorpayConfig.logoPath}`,
         order_id: orderData.order.id,
         prefill: {
-          name: localStorage.getItem('name') || 'LandsDevelop User',
+          name: localStorage.getItem('name') || 'HomeFeet User',
           email: localStorage.getItem('email') || '',
           contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
         },
@@ -2833,7 +2833,7 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
     <section className="bg-slate-50 pb-24 pt-12">
       <div className="ld-container">
         <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm font-bold tracking-wide text-[#0877C9]">LandsDevelop Membership</p>
+          <p className="text-sm font-bold tracking-wide text-[#0877C9]">HomeFeet Membership</p>
           <h1 className="relative -top-2 mt-1 text-[2.25rem] font-black tracking-tight text-slate-950 sm:text-[2.7rem] md:whitespace-nowrap md:text-[4.3rem]">
             {isBuyerAccessPlan
               ? 'Buyer | Land Seeker Membership'

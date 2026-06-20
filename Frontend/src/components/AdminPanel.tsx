@@ -1992,7 +1992,7 @@ const AdminPanel: React.FC = () => {
                             <button
                               onClick={() => handleReject(
                                 property._id,
-                                'Duplicate listing: this property appears to be already submitted or listed on LandsDevelop. Please update the existing listing instead of creating another one.'
+                                'Duplicate listing: this property appears to be already submitted or listed on HomeFeet. Please update the existing listing instead of creating another one.'
                               )}
                               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
                             >
@@ -2163,7 +2163,7 @@ const AdminPanel: React.FC = () => {
                   <button
                     onClick={() => handleReject(
                       selectedProperty._id,
-                      'Duplicate listing: this property appears to be already submitted or listed on LandsDevelop. Please update the existing listing instead of creating another one.'
+                      'Duplicate listing: this property appears to be already submitted or listed on HomeFeet. Please update the existing listing instead of creating another one.'
                     )}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold"
                   >

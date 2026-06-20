@@ -94,7 +94,7 @@ const UserProfile: React.FC = () => {
               <ShieldCheck className="h-6 w-6" />
             </div>
             <h2 className="text-xl font-black text-slate-950">Privacy Protection</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">LandsDevelop uses controlled contact reveal, admin-reviewed listings, and conversation history to keep high-value property discussions professional.</p>
+            <p className="mt-3 text-sm leading-7 text-slate-600">HomeFeet uses controlled contact reveal, admin-reviewed listings, and conversation history to keep high-value property discussions professional.</p>
           </div>
         </section>
 

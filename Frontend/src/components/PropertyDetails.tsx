@@ -174,7 +174,7 @@ const PropertyDetails: React.FC = () => {
   const location = property?.locality && property?.city
     ? `${property.locality}, ${property.city}`
     : property?.city || property?.location || 'Hyderabad';
-  const shareOrigin = (import.meta.env.VITE_SHARE_ORIGIN || 'https://www.landsdevelop.com').replace(/\/$/, '');
+  const shareOrigin = (import.meta.env.VITE_SHARE_ORIGIN || 'https://www.homefeet.in').replace(/\/$/, '');
   const sharePreviewUrl = property ? `${shareOrigin}/share/property/${property._id}` : '';
   const whatsappShareUrl = property
     ? `https://wa.me/?text=${encodeURIComponent(`${title}\n${sharePreviewUrl}`)}`

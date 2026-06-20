@@ -15,7 +15,7 @@ const defaultTestimonials: Testimonial[] = [
   {
     name: 'Vani Kalavala',
     role: 'Mediator',
-    summary: 'LandsDevelop helped us present land information clearly, with admin-reviewed listings and controlled contact access.',
+    summary: 'HomeFeet helped us present land information clearly, with admin-reviewed listings and controlled contact access.',
     city: 'Hyderabad'
   },
   {
@@ -113,7 +113,7 @@ export default function TestimonialsPage() {
         <div className="ld-container relative py-20">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Testimonials</p>
           <h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight tracking-tight md:text-6xl">
-            Trusted voices from the LandsDevelop marketplace.
+            Trusted voices from the HomeFeet marketplace.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
             City-wise feedback from builders, owners, mediators, buyers, and land seekers.

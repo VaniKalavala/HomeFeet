@@ -8,4 +8,4 @@ Disallow: /interest-shown
 Disallow: /interested-in-your-properties
 Disallow: /user-posted-properties
 
-Sitemap: https://www.landsdevelop.com/sitemap.xml
+Sitemap: https://www.homefeet.in/sitemap.xml

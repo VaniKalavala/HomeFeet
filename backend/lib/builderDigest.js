@@ -74,7 +74,7 @@ const formatListingLine = (property, index) => {
 const buildDigestMessage = (properties, city, publicSiteUrl) => {
   const listingsUrl = `${publicSiteUrl.replace(/\/$/, '')}/properties?city=${encodeURIComponent(city || 'Hyderabad')}`;
   const lines = properties.slice(0, 8).map(formatListingLine);
-  const extra = properties.length > 8 ? `\n+${properties.length - 8} more listings available on LandsDevelop.` : '';
+  const extra = properties.length > 8 ? `\n+${properties.length - 8} more listings available on HomeFeet.` : '';
 
   return {
     listingsUrl,
@@ -155,7 +155,7 @@ const sendTodayBuilderDigest = async ({ city = 'Hyderabad', period = 'manual', f
 
   const normalizedCity = city && city !== 'all' ? city : 'Hyderabad';
   const today = startOfToday();
-  const publicSiteUrl = process.env.PUBLIC_SITE_URL || 'https://www.landsdevelop.com';
+  const publicSiteUrl = process.env.PUBLIC_SITE_URL || 'https://www.homefeet.in';
   const cityFilter = { $regex: `^${escapeRegExp(normalizedCity)}$`, $options: 'i' };
 
   const basePropertyQuery = {

@@ -12,13 +12,13 @@ export default function Footer() {
 
     const loadVisitorCounts = async () => {
       try {
-        const hasTrackedThisSession = sessionStorage.getItem('landsdevelopVisitorTracked') === 'true';
+        const hasTrackedThisSession = sessionStorage.getItem('homefeetVisitorTracked') === 'true';
         const response = await fetch(`${API_BASE}/visitors/${hasTrackedThisSession ? 'stats' : 'track'}`, {
           method: hasTrackedThisSession ? 'GET' : 'POST'
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Unable to load visitor counts');
-        if (!hasTrackedThisSession) sessionStorage.setItem('landsdevelopVisitorTracked', 'true');
+        if (!hasTrackedThisSession) sessionStorage.setItem('homefeetVisitorTracked', 'true');
         if (!cancelled) {
           setVisitorCounts({
             dailyCount: Number(data.dailyCount || 0),
@@ -45,7 +45,7 @@ export default function Footer() {
         <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
           <div>
             <div className="flex items-center gap-3">
-              <img src="/Landsdevelop_logo.png" alt="LandsDevelop" className="h-12 w-12 rounded-lg bg-white p-1" />
+              <img src="/Landsdevelop_logo.png" alt="HomeFeet" className="h-12 w-12 rounded-lg bg-white p-1" />
               <div>
                 <p className="text-2xl font-black"><BrandName /></p>
                 <p className="text-sm text-teal-200">Verified land development marketplace</p>
@@ -92,7 +92,7 @@ export default function Footer() {
             <p className="mb-4 font-bold text-white">Contact</p>
             <div className="space-y-3 text-sm text-slate-300">
               <p className="flex gap-2"><Phone className="h-4 w-4 text-teal-300" /> +91 90140 11885</p>
-              <p className="flex gap-2"><Mail className="h-4 w-4 text-teal-300" /> contact@landsdevelop.com</p>
+              <p className="flex gap-2"><Mail className="h-4 w-4 text-teal-300" /> contact@homefeet.in</p>
               <p className="flex gap-2"><MapPin className="h-4 w-4 text-teal-300" /> 11-13-1181/3 Flat-406, Vaishnovi TNR, Vasavi Colony, RK Puram, Saroon Nagar, Hyderabad-500035</p>
               <p className="flex gap-2"><Building2 className="h-4 w-4 text-teal-300" /> Owner and builder operations</p>
             </div>

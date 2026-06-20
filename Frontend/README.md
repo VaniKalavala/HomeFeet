@@ -1,4 +1,4 @@
-# 🏗️ LandsDevelop
+# 🏗️ HomeFeet
 
 A smart real estate assistant platform to explore development plots and projects.  
 Includes a custom-built chatbot and Supabase-based user authentication system.
