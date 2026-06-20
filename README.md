@@ -1,4 +1,4 @@
-git branch -M main# 🌐 LandsDevelop - Full Stack Property Listing Platform
+git branch -M main# 🌐HomeFeet- Full Stack Property Listing Platform
 
 This is a full-stack web application that allows users to post, browse, and express interest in real estate development properties.
 
@@ -7,7 +7,7 @@ This is a full-stack web application that allows users to post, browse, and expr
 ## 📁 Project Structure
 
 ```
-FINDINGLAND/
+HomeFeet/
 ├── backend/             # Node.js + Express + MongoDB backend
 ├── Frontend/            # React + Tailwind + Vite frontend
 ├── .gitignore
