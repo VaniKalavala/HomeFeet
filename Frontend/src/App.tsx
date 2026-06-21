@@ -338,6 +338,28 @@ const newlyLaunchedProjects = [
   { name: 'Max Estate 360', location: 'Sector 36A, Gurgaon', priceRange: 'Rs. 5.22 Cr Onwards', configuration: '3, 4', sizeRange: '2611 - 3531', builder: 'Max Estates', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80' },
 ];
 
+// TODO: dummy curated picks until real listings carry builder logo/price-range metadata; will be replaced once builder properties are added.
+const housingTopPicks = [
+  {
+    builder: 'GHR Lakshmi Urban Blocks Infra LLP',
+    logo: 'https://www.google.com/s2/favicons?domain=ghrinfra.com&sz=256',
+    projectName: 'The Cascades Neopolis',
+    location: 'Neopolis, Hyderabad',
+    priceRange: 'Rs. 3.9 Cr - 5.55 Cr',
+    configuration: '3.5, 4, 4.5 BHK Apartments',
+    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80'
+  },
+  {
+    builder: 'Pranava Group',
+    logo: 'https://www.google.com/s2/favicons?domain=pranavagroup.com&sz=256',
+    projectName: 'Pranava Sama Lakshmi',
+    location: 'Bachupally, Hyderabad',
+    priceRange: 'Rs. 4.59 Cr - 9.9 Cr',
+    configuration: '4, 5, 6 BHK Villas',
+    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=900&q=80'
+  },
+];
+
 const homeBannerSlides = [
   {
     title: 'Construction site illustration',
@@ -799,6 +821,7 @@ function HomePage() {
   const [selectedHotSellingZone, setSelectedHotSellingZone] = useState('All');
   const hotSellingScrollRef = useRef<HTMLDivElement>(null);
   const newlyLaunchedScrollRef = useRef<HTMLDivElement>(null);
+  const housingPicksScrollRef = useRef<HTMLDivElement>(null);
   const [marketplaceStats, setMarketplaceStats] = useState<MarketplaceStats>({
     builders: 0,
     owners: 0,
@@ -1088,32 +1111,81 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white pb-4 pt-8 md:pb-5 md:pt-10">
+      <section className="bg-white py-12">
         <div className="ld-container">
-          <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+          <div className="mb-6 flex items-center justify-between">
             <div>
-              <p className="ld-eyebrow">Platform Built For Serious Deals</p>
-              <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
-                Better Homes. Quicker Connections. Smarter Deals.
-              </h2>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">Housing's top picks</h2>
+              <p className="mt-1 text-slate-600">Explore top living options with us</p>
             </div>
-            <p className="max-w-xl text-slate-600">
-              HomeFeet keeps the marketplace curated: owners get protected contact details, builders get searchable apartment and commercial space data, and admins get operational control.
-            </p>
+            {housingTopPicks[0] && (
+              <div className="hidden text-center sm:block">
+                <img
+                  src={housingTopPicks[0].image}
+                  alt={housingTopPicks[0].projectName}
+                  className="h-16 w-16 rounded-lg border border-slate-200 object-cover"
+                />
+                <p className="mt-1 max-w-[6rem] truncate text-xs font-semibold text-slate-700">{housingTopPicks[0].projectName}</p>
+              </div>
+            )}
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {workflow.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className="rounded-lg border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:shadow-xl">
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-[#0AA6A6] text-white">
-                    <Icon className="h-6 w-6" />
+
+          <div className="relative">
+            <div
+              ref={housingPicksScrollRef}
+              className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {housingTopPicks.map((pick) => (
+                <div
+                  key={pick.projectName}
+                  className="grid w-[min(90vw,820px)] shrink-0 grid-cols-[280px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-violet-100 via-rose-100 to-amber-50 shadow-sm"
+                >
+                  <div className="flex flex-col justify-between p-5">
+                    <div>
+                      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm">
+                        <img src={pick.logo} alt={pick.builder} className="h-full w-full object-contain p-1.5" />
+                      </div>
+                      <p className="mt-3 text-sm font-black leading-snug text-slate-950">{pick.builder}</p>
+                      <Link to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`} className="text-xs font-bold text-indigo-700 underline">
+                        View Projects
+                      </Link>
+                    </div>
+                    <div className="mt-4">
+                      <p className="font-black text-slate-950">{pick.projectName}</p>
+                      <p className="text-sm text-slate-600">{pick.location}</p>
+                    </div>
+                    <div className="mt-4">
+                      <p className="font-black text-slate-950">{pick.priceRange}</p>
+                      <p className="text-sm text-slate-600">{pick.configuration}</p>
+                    </div>
+                    <Link
+                      to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`}
+                      className="mt-4 inline-flex items-center justify-center rounded-lg bg-indigo-700 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-800"
+                    >
+                      Contact
+                    </Link>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-950">{item.title}</h3>
-                  <p className="mt-3 text-slate-600">{item.text}</p>
+                  <img src={pick.image} alt={pick.projectName} className="h-full w-full object-cover" />
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => housingPicksScrollRef.current?.scrollBy({ left: -480, behavior: 'smooth' })}
+              aria-label="Previous top pick"
+              className="absolute left-0 top-1/2 hidden h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 lg:flex"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => housingPicksScrollRef.current?.scrollBy({ left: 480, behavior: 'smooth' })}
+              aria-label="Next top pick"
+              className="absolute right-0 top-1/2 hidden h-10 w-10 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 lg:flex"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </section>
@@ -1473,10 +1545,39 @@ function HomePage() {
         </div>
       </section>
 
+      <section className="bg-white pb-4 pt-8 md:pb-5 md:pt-10">
+        <div className="ld-container">
+          <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+            <div>
+              <p className="ld-eyebrow">Platform Built For Serious Deals</p>
+              <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
+                Better Homes. Quicker Connections. Smarter Deals.
+              </h2>
+            </div>
+            <p className="max-w-xl text-slate-600">
+              HomeFeet keeps the marketplace curated: owners get protected contact details, builders get searchable apartment and commercial space data, and admins get operational control.
+            </p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {workflow.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="rounded-lg border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:shadow-xl">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-[#0AA6A6] text-white">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-950">{item.title}</h3>
+                  <p className="mt-3 text-slate-600">{item.text}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <section className="bg-white pb-12 pt-8 md:pb-16 md:pt-10">
         <div className="ld-container">
           <div className="mb-7 text-center">
-            <p className="ld-eyebrow justify-center">Top Builders</p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 md:text-4xl">
               Trusted By Leading{' '}
               <span className="bg-gradient-to-r from-[#0AA6A6] to-[#0077CC] bg-clip-text text-transparent">
