@@ -95,15 +95,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
         </div>
 
         <div className="bg-white/85 p-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr_auto]">
-            <div className="relative">
+          <div className="flex items-center gap-2">
+            <div className="relative w-24 shrink-0 sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowCityDropdown((prev) => !prev)}
-                className="ld-input flex w-full items-center justify-between gap-2 whitespace-nowrap font-semibold text-slate-800 md:w-auto md:justify-start"
+                className="ld-input flex w-full items-center justify-between gap-1 whitespace-nowrap px-2 text-sm font-semibold text-slate-800 sm:gap-2 sm:px-4"
               >
-                {city}
-                <ArrowRight className="h-3 w-3 rotate-90" />
+                <span className="truncate">{city}</span>
+                <ArrowRight className="h-3 w-3 shrink-0 rotate-90" />
               </button>
               {showCityDropdown && (
                 <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-2 shadow-2xl">
@@ -122,8 +122,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 </div>
               )}
             </div>
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <div className="relative min-w-0 flex-1">
+              <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:left-4 sm:h-5 sm:w-5" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -131,13 +131,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyPress}
                 placeholder="Try Kokapet, 500032, Gachibowli..."
-                className="ld-input pl-12 pr-12"
+                className="ld-input pl-9 pr-9 text-sm sm:pl-12 sm:pr-12 sm:text-base"
               />
-              <Mic className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <Mic className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:right-4 sm:h-5 sm:w-5" />
             </div>
-            <button onClick={handleSearch} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0AA6A6] px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-slate-400">
-              <Search className="h-5 w-5" />
-              Search
+            <button onClick={handleSearch} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#0AA6A6] px-3 py-2.5 font-semibold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-slate-400 sm:px-5 sm:py-3">
+              <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">Search</span>
             </button>
           </div>
 
