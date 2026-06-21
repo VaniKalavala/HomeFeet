@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import Navbar from './components/Navbar';
+import ResetPassword from './components/ResetPassword';
 import PostProperty from './components/PostProperty';
 import PostPropertyChoice from './components/PostPropertyChoice';
 import BuyerExpectedPropertyForm from './components/BuyerExpectedPropertyForm';
@@ -3008,6 +3009,7 @@ function App() {
           <Route path="/terms-and-conditions" element={<LegalPage type="terms" />} />
           <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
           <Route path="/refund-and-cancellation" element={<LegalPage type="refund" />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/post-property-options" element={<PostPropertyChoice />} />
           <Route path="/buyer-requirement" element={<BuyerExpectedPropertyForm />} />
           <Route path="/post-property-summary" element={<RequireLogin><PropertySummary /></RequireLogin>} />

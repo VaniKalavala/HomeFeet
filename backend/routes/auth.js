@@ -187,6 +187,25 @@ const sendOTPViaSMS = async (phone, otp) => {
   return resp.data;
 };
 
+// ====== Email Sender (Resend) ======
+const sendEmail = async ({ to, subject, html }) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.log(`MOCK EMAIL -> to ${to}, subject "${subject}":\n${html}`);
+    return { mock: true };
+  }
+
+  const fromAddress = process.env.RESEND_FROM_EMAIL || 'HomeFeet <onboarding@resend.dev>';
+
+  const resp = await axios.post(
+    'https://api.resend.com/emails',
+    { from: fromAddress, to, subject, html },
+    { headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+  );
+
+  return resp.data;
+};
+
 // ====== Routes ======
 
 // Send OTP
@@ -428,6 +447,92 @@ router.post('/login-email', async (req, res) => {
   } catch (err) {
     console.error('Login email error:', err);
     res.status(500).json({ message: 'Login failed' });
+  }
+});
+
+// Request a password reset link (sent via email)
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Please enter your email address' });
+    }
+
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for that email, a password reset link has been sent.'
+    };
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // Don't reveal whether the email exists
+      return res.json(genericResponse);
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    user.passwordResetTokenHash = tokenHash;
+    user.passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    const resetOrigin = (process.env.FRONTEND_ORIGIN || 'https://www.homefeet.in').replace(/\/$/, '');
+    const resetUrl = `${resetOrigin}/reset-password?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+
+    await sendEmail({
+      to: normalizedEmail,
+      subject: 'Reset your HomeFeet password',
+      html: `
+        <p>Hi ${user.firstName || ''},</p>
+        <p>We received a request to reset your HomeFeet account password. Click the link below to set a new password. This link expires in 1 hour.</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+      `
+    });
+
+    res.json(genericResponse);
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ message: 'Failed to process password reset request' });
+  }
+});
+
+// Reset password using the token emailed via /forgot-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !token || !newPassword) {
+      return res.status(400).json({ message: 'Email, token, and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() }
+    }).select('+passwordResetTokenHash +passwordResetExpiresAt');
+
+    if (!user) {
+      return res.status(400).json({ message: 'This reset link is invalid or has expired' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    res.json({ success: true, message: 'Password has been reset. Please login with your new password.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ message: 'Failed to reset password' });
   }
 });
 

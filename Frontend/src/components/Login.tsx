@@ -12,7 +12,8 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
   const navigate = useNavigate();
   const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
-  const [emailMode, setEmailMode] = useState<'login' | 'register'>('login');
+  const [emailMode, setEmailMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [step, setStep] = useState<'phone' | 'otp' | 'details'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -115,6 +116,30 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
       afterAuthSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestPasswordReset = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to send reset link');
+
+      setForgotPasswordSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset link');
     } finally {
       setLoading(false);
     }
@@ -266,7 +291,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
           {authMethod === 'phone' && step === 'phone' && 'Welcome'}
           {authMethod === 'phone' && step === 'otp' && 'Verify OTP'}
           {authMethod === 'phone' && step === 'details' && 'Complete Profile'}
-          {authMethod === 'email' && (emailMode === 'login' ? 'Welcome Back' : 'Create Account')}
+          {authMethod === 'email' && (emailMode === 'login' ? 'Welcome Back' : emailMode === 'register' ? 'Create Account' : 'Reset Password')}
         </h2>
         <p className="text-sm text-gray-600 mt-2">
           {authMethod === 'phone' && step === 'phone' && 'Enter your phone number to continue'}
@@ -274,6 +299,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
           {authMethod === 'phone' && step === 'details' && 'Tell us a bit about yourself'}
           {authMethod === 'email' && emailMode === 'login' && 'Login with your email and password'}
           {authMethod === 'email' && emailMode === 'register' && 'Register with your email and password'}
+          {authMethod === 'email' && emailMode === 'forgot' && (forgotPasswordSent ? 'Check your email for a reset link' : 'Enter your email to receive a reset link')}
         </p>
       </div>
 
@@ -299,8 +325,48 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
         </button>
       </div>
 
-      {/* Email Login/Register */}
-      {authMethod === 'email' && (
+      {/* Email Login/Register/Forgot Password */}
+      {authMethod === 'email' && emailMode === 'forgot' && (
+        <div className="space-y-4">
+          {forgotPasswordSent ? (
+            <p className="rounded-lg bg-teal-50 p-4 text-sm text-teal-800">
+              If an account exists for that email, a password reset link has been sent. Please check your inbox (and spam folder).
+            </p>
+          ) : (
+            <>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+                <input
+                  type="email"
+                  placeholder="Email Address *"
+                  className="pl-10 w-full py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              {error && <p className="text-red-600 text-sm">{error}</p>}
+              <button
+                onClick={requestPasswordReset}
+                disabled={loading}
+                className="bg-teal-600 text-white w-full py-3 rounded-lg hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </>
+          )}
+          <p className="text-center text-sm text-gray-600">
+            <button
+              type="button"
+              onClick={() => { setEmailMode('login'); setForgotPasswordSent(false); setError(null); }}
+              className="font-semibold text-teal-700 hover:text-teal-900"
+            >
+              Back to Login
+            </button>
+          </p>
+        </div>
+      )}
+
+      {authMethod === 'email' && emailMode !== 'forgot' && (
         <div className="space-y-4">
           {emailMode === 'register' && (
             <div className="grid grid-cols-2 gap-4">
@@ -390,6 +456,18 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
                 </div>
               )}
             </>
+          )}
+
+          {emailMode === 'login' && (
+            <p className="text-right">
+              <button
+                type="button"
+                onClick={() => { setEmailMode('forgot'); setForgotPasswordSent(false); setError(null); }}
+                className="text-sm font-semibold text-teal-700 hover:text-teal-900"
+              >
+                Forgot Password?
+              </button>
+            </p>
           )}
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
