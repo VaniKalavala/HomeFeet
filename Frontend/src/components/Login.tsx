@@ -1,7 +1,7 @@
 // src/components/Login.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, User, Mail, Building2, ShieldCheck } from 'lucide-react';
+import { Phone, User, Mail, Building2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { API_BASE } from '../lib/api';
 
 interface LoginProps {
@@ -14,6 +14,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
   const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
   const [emailMode, setEmailMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'phone' | 'otp' | 'details'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -404,13 +405,23 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
             />
           </div>
 
-          <input
-            type="password"
-            placeholder="Password *"
-            className="w-full py-2 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password *"
+              className="w-full py-2 px-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
 
           {emailMode === 'register' && (
             <>
