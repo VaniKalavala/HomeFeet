@@ -200,6 +200,15 @@ const PropertyDetails: React.FC = () => {
 
   const isApartmentListing = String(property?.developmentType || '').toLowerCase() === 'apartment';
 
+  const categoryDetails = property ? [
+    { label: 'Category', value: property.propertyCategory ? cleanType(property.propertyCategory) : '' },
+    { label: 'Property Type', value: cleanType(property.developmentType) },
+    { label: 'Configuration', value: property.bedrooms },
+    { label: 'Bathrooms', value: property.bathrooms },
+    { label: 'Total Area', value: property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '' },
+    { label: 'Facing', value: property.facing },
+  ].filter((item) => item.value) : [];
+
   const details = property ? [
     { label: 'Project Name', value: property.projectName },
     { label: 'Company Name', value: property.companyName },
@@ -451,6 +460,20 @@ const PropertyDetails: React.FC = () => {
                 )}
               </div>
               {property.landmark && <p className="mt-2 text-sm text-slate-500">Near {property.landmark}</p>}
+
+              {categoryDetails.length > 0 && (
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Property Category</p>
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {categoryDetails.map((item) => (
+                      <div key={item.label}>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                        <p className="mt-1 font-black text-slate-950">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {(property.advance || property.goodwill) && (
                 <div className="mt-5 grid gap-3 rounded-lg bg-teal-50 p-4 sm:grid-cols-2">
