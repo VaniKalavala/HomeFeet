@@ -132,7 +132,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 </button>
               </div>
               {showCityDropdown && (
-                <div className="absolute bottom-full left-0 z-30 mb-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
                   <p className="px-4 pt-2 text-xs font-bold uppercase tracking-wide text-teal-700">
                     {cityQuery && cityQuery !== city ? 'Matching Cities' : 'Top Cities'}
                   </p>
