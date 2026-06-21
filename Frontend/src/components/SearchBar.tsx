@@ -95,12 +95,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
         </div>
 
         <div className="bg-white/85 p-4">
-          <div className="flex items-stretch overflow-hidden rounded-lg border border-slate-300 focus-within:border-teal-600 focus-within:ring-4 focus-within:ring-teal-100">
+          <div className="flex items-stretch rounded-lg border border-slate-300 focus-within:border-teal-600 focus-within:ring-4 focus-within:ring-teal-100">
             <div className="relative w-24 shrink-0 border-r border-slate-300 sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowCityDropdown((prev) => !prev)}
-                className="flex h-full w-full items-center justify-between gap-1 whitespace-nowrap bg-white px-2 text-sm font-semibold text-slate-800 sm:gap-2 sm:px-4"
+                className="flex h-full w-full items-center justify-between gap-1 whitespace-nowrap rounded-l-lg bg-white px-2 text-sm font-semibold text-slate-800 sm:gap-2 sm:px-4"
               >
                 <span className="truncate">{city}</span>
                 <ArrowRight className="h-3 w-3 shrink-0 rotate-90" />
@@ -138,7 +138,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
               />
               <Mic className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:right-4 sm:h-5 sm:w-5" />
             </div>
-            <button onClick={handleSearch} className="inline-flex shrink-0 items-center justify-center gap-2 bg-[#0AA6A6] px-3 py-2.5 font-semibold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-slate-400 sm:px-5 sm:py-3">
+            <button onClick={handleSearch} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-r-lg bg-[#0AA6A6] px-3 py-2.5 font-semibold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-slate-400 sm:px-5 sm:py-3">
               <Search className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="hidden sm:inline">Search</span>
             </button>
