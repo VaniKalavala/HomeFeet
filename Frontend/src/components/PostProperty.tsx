@@ -160,6 +160,48 @@ type CropModalState = {
 
 type ParcelShape = 'random' | 'square' | 'rectangle' | 'skewed' | 'natural';
 
+const cleanLabel = (value: string) =>
+  value.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
+const buildAutoDescription = (formData: Record<string, any>, isApartment: boolean) => {
+  const sentences: string[] = [];
+  const typeLabel = formData.developmentType ? cleanLabel(formData.developmentType) : 'Property';
+  const place = [formData.locality, formData.city].filter(Boolean).join(', ');
+
+  let intro = `${typeLabel} listing`;
+  if (place) intro += ` in ${place}`;
+  if (isApartment && formData.bedrooms) intro += ` with ${formData.bedrooms} configuration`;
+  sentences.push(`${intro}.`);
+
+  if (isApartment) {
+    const apartmentBits: string[] = [];
+    if (formData.bathrooms) apartmentBits.push(`${formData.bathrooms} bathroom${Number(formData.bathrooms) > 1 ? 's' : ''}`);
+    if (formData.flatSize) apartmentBits.push(`${formData.flatSize} Sq Ft built-up area`);
+    if (formData.floorNumber) apartmentBits.push(`located on floor ${formData.floorNumber}${formData.totalFloors ? ` of ${formData.totalFloors}` : ''}`);
+    if (formData.flatFacing) apartmentBits.push(`${formData.flatFacing}-facing`);
+    if (formData.furnishingStatus) apartmentBits.push(formData.furnishingStatus.toLowerCase());
+    if (formData.possessionStatus) apartmentBits.push(formData.possessionStatus.toLowerCase());
+    if (apartmentBits.length) sentences.push(`${apartmentBits.join(', ')}.`.replace(/^./, (char) => char.toUpperCase()));
+  } else {
+    const plotBits: string[] = [];
+    if (formData.totalArea) plotBits.push(`${formData.totalArea} ${formData.areaUnit || ''}`.trim());
+    if (formData.facing) plotBits.push(`${formData.facing}-facing`);
+    if (plotBits.length) sentences.push(`Plot size of ${plotBits.join(', ')}.`);
+  }
+
+  const priceBits: string[] = [];
+  if (formData.totalBudget) priceBits.push(`total budget of Rs. ${Number(formData.totalBudget).toLocaleString('en-IN')}`);
+  if (formData.squareFeetPrice) priceBits.push(`Rs. ${Number(formData.squareFeetPrice).toLocaleString('en-IN')} per Sq Ft`);
+  if (formData.squareYardPrice) priceBits.push(`Rs. ${Number(formData.squareYardPrice).toLocaleString('en-IN')} per Sq Yard`);
+  if (priceBits.length) sentences.push(`Priced at ${priceBits.join(', ')}.`);
+
+  if (Array.isArray(formData.selectedAmenities) && formData.selectedAmenities.length) {
+    sentences.push(`Amenities include ${formData.selectedAmenities.join(', ')}.`);
+  }
+
+  return sentences.join(' ');
+};
+
 const PostProperty = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -255,6 +297,7 @@ const PostProperty = () => {
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const mapInitializedRef = useRef(false);
+  const autoDescriptionRef = useRef('');
   const localityInputRef = useRef<HTMLInputElement>(null);
   const societyInputRef = useRef<HTMLInputElement>(null);
   const mapLinkInputRef = useRef<HTMLInputElement>(null);
@@ -2027,6 +2070,21 @@ const PostProperty = () => {
   const normalizedDevelopmentType = formData.developmentType.trim().toLowerCase();
   const apartmentLikeTypes = ['apartment', 'standalone', 'high-rise', 'group-house'];
   const isApartment = apartmentLikeTypes.includes(normalizedDevelopmentType);
+
+  useEffect(() => {
+    const generated = buildAutoDescription(formData, isApartment);
+    if (formData.description === autoDescriptionRef.current && generated !== formData.description) {
+      autoDescriptionRef.current = generated;
+      setFormData((prev) => ({ ...prev, description: generated }));
+    }
+  }, [
+    formData.developmentType, formData.bedrooms, formData.bathrooms, formData.flatSize, formData.flatFacing,
+    formData.floorNumber, formData.totalFloors, formData.furnishingStatus, formData.possessionStatus,
+    formData.totalArea, formData.areaUnit, formData.facing, formData.locality, formData.city,
+    formData.totalBudget, formData.squareFeetPrice, formData.squareYardPrice, formData.selectedAmenities,
+    isApartment
+  ]);
+
   const requiresPlotBoundaryDetails =
     !isApartment &&
     !isLargeAcreListing() &&
@@ -2684,13 +2742,16 @@ const PostProperty = () => {
           />
         </div>
       )}
-      <textarea
-        name="description"
-        onChange={handleChange}
-        value={formData.description}
-        placeholder="Property Description (Optional)"
-        className="w-full border p-2 rounded h-24"
-      />
+      <div>
+        <textarea
+          name="description"
+          onChange={handleChange}
+          value={formData.description}
+          placeholder="Property Description (Optional)"
+          className="w-full border p-2 rounded h-24"
+        />
+        <p className="mt-1 text-xs text-slate-500">Auto-filled from the details above. Edit it any time to customize.</p>
+      </div>
       <div>
         <p className="mb-2 text-sm font-semibold text-slate-800">Amenities Details</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
