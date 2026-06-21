@@ -2478,13 +2478,12 @@ function PropertiesMapPage() {
                 Reset
               </button>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
                 { label: 'All', value: 'All' },
-                { label: 'For Developers', value: 'development' },
                 { label: 'Buyer', value: 'buy' },
-                { label: 'Sell Plot', value: 'sell' },
-                { label: 'Commercial Plot', value: 'commercial' },
+                { label: 'Sale Flats', value: 'sell' },
+                { label: 'Commercial Space', value: 'commercial' },
               ].map((option) => {
                 const active = activeMapFilters.listingIntent === option.value;
                 return (
