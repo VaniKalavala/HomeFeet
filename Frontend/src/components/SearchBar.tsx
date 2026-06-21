@@ -353,7 +353,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
             <button
               type="button"
               onClick={() => navigate(buildLocationUrl(searchQuery.trim()))}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-amber-300"
             >
               {propertyCount === null ? 'View Properties' : `View ${propertyCount} Properties`}
             </button>

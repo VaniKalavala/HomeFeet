@@ -815,6 +815,12 @@ const PropertiesListingPage: React.FC = () => {
   const getPropertySortPrice = (property: Property) =>
     Number(property.totalBudget || property.squareYardPrice || property.goodwill || 0) || 0;
 
+  const recentProperties = React.useMemo(() => (
+    [...properties]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6)
+  ), [properties]);
+
   const visibleProperties = React.useMemo(() => {
     const normalizedPropertyNumber = propertyNumberQuery.toLowerCase().replace(/[^a-z0-9]/g, '');
     const matched = normalizedPropertyNumber
@@ -1431,10 +1437,10 @@ const PropertiesListingPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#eef4fb] p-1.5 sm:p-3">
         <div className={`mx-auto grid max-w-[1580px] gap-2.5 lg:gap-4 ${
-          isDeveloperView ? 'lg:grid-cols-[1fr_500px]' : 'lg:grid-cols-[minmax(0,1fr)]'
+          isDeveloperView ? 'lg:grid-cols-[1fr_500px_280px]' : 'lg:grid-cols-[minmax(0,1fr)]'
         }`}>
           <div className={`grid grid-cols-2 gap-1.5 sm:gap-4 ${
-            isDeveloperView ? 'lg:col-span-2' : ''
+            isDeveloperView ? 'lg:col-span-3' : ''
           } xl:grid-cols-4`}>
             {statCards.map((stat, index) => (
               <div key={stat.label} className="rounded-lg bg-white px-3 py-1 shadow-sm sm:rounded-xl sm:px-4 sm:py-1.5">
@@ -1456,7 +1462,7 @@ const PropertiesListingPage: React.FC = () => {
           </div>
 
           <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm ${
-            isDeveloperView ? 'lg:col-span-2' : ''
+            isDeveloperView ? 'lg:col-span-3' : ''
           }`}>
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -1554,6 +1560,48 @@ const PropertiesListingPage: React.FC = () => {
                 </div>
               )}
             </main>
+          )}
+
+          {isDeveloperView && (
+            <aside className="order-4 hidden max-h-[700px] flex-col overflow-y-auto rounded-xl bg-white/60 p-2.5 lg:order-none lg:flex">
+              <h2 className="mb-2.5 shrink-0 text-sm font-semibold text-slate-950">Recent Properties</h2>
+              <div className="space-y-2.5">
+                {recentProperties.length === 0 && (
+                  <p className="text-xs text-slate-500">No recent properties yet.</p>
+                )}
+                {recentProperties.map((property) => (
+                  <button
+                    key={property._id}
+                    type="button"
+                    onClick={() => requireLoginForDetails(property)}
+                    className="block w-full overflow-hidden rounded-lg border border-slate-100 bg-white text-left shadow-sm transition hover:shadow-md"
+                  >
+                    <div className="h-24 w-full overflow-hidden bg-slate-100">
+                      <img
+                        src={getCardImageSrc(property)}
+                        alt={propertyTitle(property)}
+                        className={`h-full w-full ${isGeneratedDiagramPreview(property) || isBuyerAvatarFallback(property) ? 'bg-white object-contain p-2' : 'object-cover'}`}
+                        onError={(e) => {
+                          e.currentTarget.src = getCardFallbackImage(property);
+                          e.currentTarget.className = 'h-full w-full object-cover';
+                        }}
+                      />
+                    </div>
+                    <div className="p-2">
+                      <p className="line-clamp-1 text-[12px] font-semibold capitalize leading-4 text-slate-950">
+                        {propertyTitle(property)}
+                      </p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">
+                        {getDisplayLocality(property)}, {property.city}
+                      </p>
+                      <p className="mt-0.5 text-[12px] font-bold text-teal-700">
+                        {property.totalBudget ? formatPrice(property.totalBudget) : property.squareYardPrice ? `${formatPrice(property.squareYardPrice)}/Sq Yd` : 'Price on request'}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </aside>
           )}
 
           <aside className={`order-1 flex h-auto min-h-[360px] flex-col overflow-hidden rounded-xl bg-white/40 p-2.5 sm:p-3 lg:order-none ${
