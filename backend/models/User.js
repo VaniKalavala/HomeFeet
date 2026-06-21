@@ -2,37 +2,46 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  phone: { 
-    type: String, 
-    required: true, 
+  phone: {
+    type: String,
+    default: null,
     unique: true,
+    sparse: true, // Allows multiple null values (email-registered accounts have no phone)
     validate: {
       validator: function(v) {
-        return /^\d{10}$/.test(v);
+        return !v || /^\d{10}$/.test(v);
       },
       message: 'Phone number must be 10 digits'
     }
   },
-  firstName: { 
-    type: String, 
+  firstName: {
+    type: String,
     required: true,
     trim: true
   },
-  lastName: { 
-    type: String, 
+  lastName: {
+    type: String,
     default: '',
     trim: true
   },
-  email: { 
-    type: String, 
+  email: {
+    type: String,
     default: null,
+    unique: true,
     sparse: true, // Allows multiple null values
+    lowercase: true,
+    trim: true,
     validate: {
       validator: function(v) {
         return !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
       },
       message: 'Invalid email format'
     }
+  },
+  password: {
+    type: String,
+    default: null,
+    select: false
   },
   isVerified: {
     type: Boolean,

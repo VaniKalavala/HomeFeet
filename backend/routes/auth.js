@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const crypto = require('crypto');
 const multer = require('multer');
+const bcrypt = require('bcrypt');
 const { keyId, keySecret, razorpayApi, isRazorpayConfigured } = require('../config/razorpay.config');
 
 const User = require('../models/User');
@@ -336,6 +337,97 @@ router.post('/complete-signup', async (req, res) => {
   } catch (err) {
     console.error('Complete signup error:', err);
     res.status(500).json({ message: 'Signup failed' });
+  }
+});
+
+// Register with Email + Password (optional alternative to phone OTP)
+router.post('/register-email', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, accountType, builderCompanyName, builderReraId } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    if (!firstName || !['owner', 'mediator', 'builder'].includes(accountType)) {
+      return res.status(400).json({ message: 'First name and account type are required' });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'An account with this email already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      email: normalizedEmail,
+      password: passwordHash,
+      firstName: firstName.trim(),
+      lastName: lastName?.trim() || '',
+      accountType,
+      builderVerificationStatus: accountType === 'builder' ? 'pending' : 'not_required',
+      builderCompanyName: builderCompanyName?.trim() || '',
+      builderReraId: builderReraId?.trim() || '',
+      isVerified: true
+    });
+
+    await newUser.save();
+
+    const token = jwt.sign(
+      { id: newUser._id, email: newUser.email },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: publicUser(newUser)
+    });
+  } catch (err) {
+    console.error('Register email error:', err);
+    res.status(500).json({ message: 'Signup failed' });
+  }
+});
+
+// Login with Email + Password (optional alternative to phone OTP)
+router.post('/login-email', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    if (!user || !user.password) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password);
+    if (!passwordMatches) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: publicUser(user)
+    });
+  } catch (err) {
+    console.error('Login email error:', err);
+    res.status(500).json({ message: 'Login failed' });
   }
 });
 
