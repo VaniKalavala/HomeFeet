@@ -4,9 +4,8 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   phone: {
     type: String,
-    default: null,
     unique: true,
-    sparse: true, // Allows multiple null values (email-registered accounts have no phone)
+    sparse: true, // Field must be omitted (not set to null) for sparse to skip indexing it
     validate: {
       validator: function(v) {
         return !v || /^\d{10}$/.test(v);
@@ -26,9 +25,8 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    default: null,
     unique: true,
-    sparse: true, // Allows multiple null values
+    sparse: true, // Field must be omitted (not set to null) for sparse to skip indexing it
     lowercase: true,
     trim: true,
     validate: {

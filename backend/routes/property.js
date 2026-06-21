@@ -153,7 +153,7 @@ const resolveListingOwnerForAdminUpload = async (req, adminUser) => {
     phone: assistedPhone,
     firstName: assistedFirstName || fallbackFirstName,
     lastName: assistedLastName || fallbackLastName,
-    email: assistedEmail || null,
+    email: assistedEmail || undefined,
     accountType: assistedAccountType,
     builderVerificationStatus: 'not_required',
     isVerified: true

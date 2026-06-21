@@ -309,7 +309,7 @@ router.post('/complete-signup', async (req, res) => {
       phone,
       firstName: firstName.trim(),
       lastName: lastName?.trim() || '',
-      email: email?.trim() || null,
+      email: email?.trim() || undefined,
       accountType,
       builderVerificationStatus: accountType === 'builder' ? 'pending' : 'not_required',
       builderCompanyName: builderCompanyName?.trim() || '',

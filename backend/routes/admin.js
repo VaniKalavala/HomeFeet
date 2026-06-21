@@ -798,7 +798,7 @@ router.post('/builder-contacts/:id/create-login', isAdmin, async (req, res) => {
         phone,
         firstName,
         lastName,
-        email: contact.email || null,
+        email: contact.email || undefined,
         accountType: 'builder',
         isVerified: true,
         builderVerificationStatus: 'pending',
