@@ -112,7 +112,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
 
         <div className="bg-white/85 p-4">
           <div className="flex items-stretch rounded-lg border border-slate-300 focus-within:border-teal-600 focus-within:ring-4 focus-within:ring-teal-100">
-            <div ref={cityContainerRef} className="relative w-24 shrink-0 border-r border-slate-300 sm:w-auto">
+            <div ref={cityContainerRef} className="relative min-w-0 flex-1 border-r border-slate-300">
               <div className="flex h-full w-full items-center gap-1 rounded-l-lg bg-white px-2 sm:gap-2 sm:px-4">
                 <input
                   ref={cityInputRef}
@@ -120,7 +120,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                   value={cityQuery}
                   onFocus={() => { setShowCityDropdown(true); cityInputRef.current?.select(); }}
                   onChange={(e) => { setCityQuery(e.target.value); setShowCityDropdown(true); }}
-                  className="w-14 min-w-0 bg-transparent text-sm font-semibold text-slate-800 outline-none sm:w-24"
+                  className="w-full min-w-0 bg-transparent text-sm font-semibold text-slate-800 outline-none"
                   placeholder="City"
                 />
                 <button
@@ -155,7 +155,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 </div>
               )}
             </div>
-            <div className="relative min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1 border-r border-slate-300">
               <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:left-4 sm:h-5 sm:w-5" />
               <input
                 ref={searchInputRef}
@@ -168,7 +168,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
               />
               <Mic className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:right-4 sm:h-5 sm:w-5" />
             </div>
-            <button onClick={handleSearch} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-r-lg bg-[#0AA6A6] px-3 py-2.5 font-semibold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-slate-400 sm:px-5 sm:py-3">
+            <button onClick={handleSearch} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-r-lg bg-[#0AA6A6] px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-slate-400 sm:px-8 sm:py-3">
               <Search className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="hidden sm:inline">Search</span>
             </button>
