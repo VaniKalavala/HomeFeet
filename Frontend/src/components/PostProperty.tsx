@@ -2705,6 +2705,31 @@ const PostProperty = () => {
       )}
       </section>
 
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="mb-2 text-sm font-semibold text-slate-800">Amenities Details</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {AMENITY_OPTIONS.map(({ label: amenity, icon: AmenityIcon }) => (
+            <label
+              key={amenity}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                formData.selectedAmenities.includes(amenity)
+                  ? 'border-teal-600 bg-teal-50 text-teal-800'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={formData.selectedAmenities.includes(amenity)}
+                onChange={() => toggleAmenity(amenity)}
+                className="h-4 w-4 accent-teal-700"
+              />
+              <AmenityIcon className="h-4 w-4 text-teal-700" />
+              {amenity}
+            </label>
+          ))}
+        </div>
+      </section>
+
       <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-center gap-3">
         <Ruler className="h-6 w-6 text-teal-700" />
@@ -2818,30 +2843,6 @@ const PostProperty = () => {
           className="w-full border p-2 rounded h-24"
         />
         <p className="mt-1 text-xs text-slate-500">Auto-filled from the details above. Edit it any time to customize.</p>
-      </div>
-      <div>
-        <p className="mb-2 text-sm font-semibold text-slate-800">Amenities Details</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {AMENITY_OPTIONS.map(({ label: amenity, icon: AmenityIcon }) => (
-            <label
-              key={amenity}
-              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                formData.selectedAmenities.includes(amenity)
-                  ? 'border-teal-600 bg-teal-50 text-teal-800'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={formData.selectedAmenities.includes(amenity)}
-                onChange={() => toggleAmenity(amenity)}
-                className="h-4 w-4 accent-teal-700"
-              />
-              <AmenityIcon className="h-4 w-4 text-teal-700" />
-              {amenity}
-            </label>
-          ))}
-        </div>
       </div>
       </section>
       </>
