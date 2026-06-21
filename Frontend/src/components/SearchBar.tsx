@@ -78,11 +78,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 key={tab.label}
                 type="button"
                 onClick={() => handleTabClick(index)}
-                className={`relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition ${
+                className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition sm:gap-2 sm:px-4 sm:py-3 sm:text-sm ${
                   active ? 'bg-slate-800/90 text-white' : 'text-slate-300 hover:bg-slate-900/80 hover:text-white'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {tab.label}
                 {tab.badge && (
                   <span className="absolute -top-1 right-1 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-slate-950">
@@ -95,12 +95,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
         </div>
 
         <div className="bg-white/85 p-4">
-          <div className="grid gap-3 md:grid-cols-[auto_1fr_auto]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr_auto]">
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowCityDropdown((prev) => !prev)}
-                className="ld-input flex items-center gap-2 whitespace-nowrap font-semibold text-slate-800"
+                className="ld-input flex w-full items-center justify-between gap-2 whitespace-nowrap font-semibold text-slate-800 md:w-auto md:justify-start"
               >
                 {city}
                 <ArrowRight className="h-3 w-3 rotate-90" />
