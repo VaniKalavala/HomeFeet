@@ -933,7 +933,7 @@ function HomePage() {
 
   return (
     <div className="overflow-hidden bg-slate-50">
-      <section className="relative min-h-[calc(100vh-5rem)] overflow-hidden text-white">
+      <section className="relative min-h-[calc(100vh-60px)] overflow-hidden text-white">
         {homeBannerSlides.map((slide, index) => (
           <img
             key={slide.title}
@@ -945,7 +945,7 @@ function HomePage() {
           />
         ))}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-900/15" />
-        <div className="ld-container relative z-10 flex min-h-[calc(100vh-5rem)] flex-col justify-center gap-8 py-14">
+        <div className="ld-container relative z-10 flex min-h-[calc(100vh-60px)] flex-col justify-center gap-8 py-14">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
               <Sparkles className="h-4 w-4 text-amber-300" />
@@ -2346,7 +2346,7 @@ function PropertiesMapPage() {
   }, [filteredProperties, markersReady, selectedCity]);
 
   return (
-    <section className="relative h-[calc(100vh-88px)] min-h-[760px] overflow-hidden bg-slate-900">
+    <section className="relative h-[calc(100vh-68px)] min-h-[760px] overflow-hidden bg-slate-900">
       <div ref={mapRef} className="absolute inset-0 h-full w-full" />
       {mapError && (
         <div className="absolute inset-0 z-[5] flex items-center justify-center bg-slate-900">

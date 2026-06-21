@@ -135,7 +135,7 @@ const Navbar: React.FC = () => {
   return (
     <>
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-        <div className="flex h-16 w-full items-center gap-2 px-3 sm:gap-4 sm:px-8">
+        <div className="flex h-11 w-full items-center gap-2 px-3 sm:gap-4 sm:px-8">
           <div className="flex shrink-0 items-center gap-4">
             <Link to="/" className="flex min-w-0 items-center gap-2 text-slate-950 sm:gap-3">
               <img src="/HomeFeet_logo.png" alt="HomeFeet" className="h-8 w-8 rounded-md bg-white object-contain sm:h-9 sm:w-9" />
