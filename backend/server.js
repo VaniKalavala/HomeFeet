@@ -27,6 +27,10 @@ require('./models/BuilderDigestLog');
 require('./models/Testimonial');
 
 app.use(cors());
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
+  next();
+});
 app.use(express.json({ limit: '2mb' }));
 app.set('trust proxy', true);
 app.use('/uploads', express.static('uploads'));
