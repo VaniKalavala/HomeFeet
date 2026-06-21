@@ -106,19 +106,22 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 <ArrowRight className="h-3 w-3 shrink-0 rotate-90" />
               </button>
               {showCityDropdown && (
-                <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-2 shadow-2xl">
-                  {metroCities.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => selectCity(option)}
-                      className={`block w-full px-4 py-2 text-left text-sm font-semibold hover:bg-slate-50 ${
-                        city === option ? 'text-teal-700' : 'text-slate-700'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
+                <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+                  <p className="px-4 pt-2 text-xs font-bold uppercase tracking-wide text-teal-700">Top Cities</p>
+                  <div className="max-h-56 overflow-y-auto py-1">
+                    {metroCities.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => selectCity(option)}
+                        className={`block w-full px-4 py-2 text-left text-sm font-semibold hover:bg-slate-50 ${
+                          city === option ? 'text-teal-700' : 'text-slate-700'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
