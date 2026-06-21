@@ -1431,10 +1431,10 @@ const PropertiesListingPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#eef4fb] p-1.5 sm:p-3">
         <div className={`mx-auto grid max-w-[1580px] gap-2.5 lg:gap-4 ${
-          isDeveloperView ? 'lg:grid-cols-[360px_1fr_500px]' : 'lg:grid-cols-[360px_minmax(0,1fr)]'
+          isDeveloperView ? 'lg:grid-cols-[1fr_500px]' : 'lg:grid-cols-[minmax(0,1fr)]'
         }`}>
           <div className={`grid grid-cols-2 gap-1.5 sm:gap-4 ${
-            isDeveloperView ? 'lg:col-span-3' : 'lg:col-span-2'
+            isDeveloperView ? 'lg:col-span-2' : ''
           } xl:grid-cols-4`}>
             {statCards.map((stat, index) => (
               <div key={stat.label} className="rounded-lg bg-white px-3 py-1.5 shadow-sm sm:rounded-xl sm:px-5 sm:py-3">
@@ -1456,7 +1456,7 @@ const PropertiesListingPage: React.FC = () => {
           </div>
 
           <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm ${
-            isDeveloperView ? 'lg:col-span-3' : 'lg:col-span-2'
+            isDeveloperView ? 'lg:col-span-2' : ''
           }`}>
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -1523,176 +1523,6 @@ const PropertiesListingPage: React.FC = () => {
               </label>
             </div>
           </div>
-
-          <aside className="order-2 rounded-xl bg-white/60 p-2.5 lg:order-none">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-slate-950">Property Type</h2>
-              <button
-                type="button"
-                onClick={() => setShowPropertyTypes((prev) => !prev)}
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm lg:hidden"
-                aria-expanded={showPropertyTypes}
-              >
-                {showPropertyTypes ? 'Hide' : 'Show'}
-                <ChevronDown className={`h-4 w-4 transition ${showPropertyTypes ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-            <div className={`${showPropertyTypes ? 'grid' : 'hidden'} mt-2.5 grid-cols-2 gap-2.5 lg:grid`}>
-              {visibleTypeFilters.map((item) => {
-                const Icon = item.icon;
-                const active = filters.developmentType === item.value || filters.zoningClassification === item.value;
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => handleFilterChange('developmentType', item.value)}
-                    className={`flex items-center gap-2 rounded-lg px-4 py-3.5 text-left text-sm shadow-sm transition ${
-                      active ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-teal-50'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-slate-950">Quick Property Search</h2>
-              <button
-                type="button"
-                onClick={() => setShowQuickSearch((prev) => !prev)}
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm lg:hidden"
-                aria-expanded={showQuickSearch}
-              >
-                {showQuickSearch ? 'Hide' : 'Show'}
-                <ChevronDown className={`h-4 w-4 transition ${showQuickSearch ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-            <div className={`${showQuickSearch ? 'block' : 'hidden'} mt-2.5 space-y-4 rounded-xl bg-white p-3.5 shadow-sm lg:block`}>
-              {listingIntent === 'sell' && (
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-950">Price Range</h3>
-                    <button onClick={clearFilters} className="text-xs font-semibold text-teal-700">Reset</button>
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-800">
-                    Price Range: {formatPrice(String(priceRangeMinValue))} to {formatPrice(String(priceRangeMaxValue))}
-                  </p>
-                  <div className="mt-3">
-                    <div className="ld-range-field">
-                      <div className="ld-range-track" />
-                      <div
-                        className="ld-range-fill"
-                        style={{
-                          left: `${priceRangeMinPercent}%`,
-                          right: `${100 - priceRangeMaxPercent}%`
-                        }}
-                      />
-                      <input
-                        type="range"
-                        min={PRICE_RANGE_MIN}
-                        max={PRICE_RANGE_MAX}
-                        step={PRICE_RANGE_STEP}
-                        value={priceRangeMinValue}
-                        onChange={(e) => handleBudgetSliderChange('minGoodwill', e.target.value)}
-                        className="ld-range-input ld-range-input--min"
-                        aria-label="Minimum price"
-                      />
-                      <input
-                        type="range"
-                        min={PRICE_RANGE_MIN}
-                        max={PRICE_RANGE_MAX}
-                        step={PRICE_RANGE_STEP}
-                        value={priceRangeMaxValue}
-                        onChange={(e) => handleBudgetSliderChange('maxGoodwill', e.target.value)}
-                        className="ld-range-input ld-range-input--max"
-                        aria-label="Maximum price"
-                      />
-                    </div>
-                    <div className="mt-1 flex justify-between text-xs font-semibold text-slate-500">
-                      <span>10 Lakh</span>
-                      <span>100 Cr</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Area Range (Sq Yards)</label>
-                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                  <input type="number" value={filters.minArea} onChange={(e) => handleFilterChange('minArea', e.target.value)} placeholder="Min" className="min-w-0 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                  <span className="text-slate-500">-</span>
-                  <input type="number" value={filters.maxArea} onChange={(e) => handleFilterChange('maxArea', e.target.value)} placeholder="Max" className="min-w-0 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                </div>
-              </div>
-              {listingIntent !== 'sell' && (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">{listingIntent === 'buy' ? 'Budget Range (Rs)' : 'Goodwill Range (₹)'}</label>
-                  <p className="mb-2 text-sm font-semibold text-slate-800">
-                    {formatPrice(String(priceRangeMinValue))} to {formatPrice(String(priceRangeMaxValue))}
-                  </p>
-                  <div className="ld-range-field">
-                    <div className="ld-range-track" />
-                    <div
-                      className="ld-range-fill"
-                      style={{
-                        left: `${priceRangeMinPercent}%`,
-                        right: `${100 - priceRangeMaxPercent}%`
-                      }}
-                    />
-                    <input
-                      type="range"
-                      min={PRICE_RANGE_MIN}
-                      max={PRICE_RANGE_MAX}
-                      step={PRICE_RANGE_STEP}
-                      value={priceRangeMinValue}
-                      onChange={(e) => handleBudgetSliderChange('minGoodwill', e.target.value)}
-                      className="ld-range-input ld-range-input--min"
-                      aria-label="Minimum goodwill"
-                    />
-                    <input
-                      type="range"
-                      min={PRICE_RANGE_MIN}
-                      max={PRICE_RANGE_MAX}
-                      step={PRICE_RANGE_STEP}
-                      value={priceRangeMaxValue}
-                      onChange={(e) => handleBudgetSliderChange('maxGoodwill', e.target.value)}
-                      className="ld-range-input ld-range-input--max"
-                      aria-label="Maximum goodwill"
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-between text-xs font-semibold text-slate-500">
-                    <span>10 Lakh</span>
-                    <span>100 Cr</span>
-                  </div>
-                </div>
-              )}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Facing</label>
-                <select value={filters.facing} onChange={(e) => handleFilterChange('facing', e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                  {facings.map((facing) => <option key={facing} value={facing}>{facing}</option>)}
-                </select>
-              </div>
-              {listingIntent === 'development' && (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Development Ratio (Owner : Builder)</label>
-                  <select value={filters.ratio} onChange={(e) => handleFilterChange('ratio', e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                    {ratios.map((ratio) => <option key={ratio} value={ratio}>{ratio === 'All' ? 'All Ratios' : ratio}</option>)}
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Zoning</label>
-                <select value={filters.zoningClassification} onChange={(e) => handleFilterChange('zoningClassification', e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                  {zoningOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Max Owner Share (%)</label>
-                <input type="number" value={filters.maxOwnerShare} onChange={(e) => handleFilterChange('maxOwnerShare', e.target.value)} placeholder="40" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-              </div>
-            </div>
-          </aside>
 
           {isDeveloperView && (
             <main className="order-1 relative min-h-[420px] overflow-hidden rounded-2xl bg-white shadow-sm sm:min-h-[560px] lg:order-none lg:min-h-[700px]">
