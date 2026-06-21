@@ -16,7 +16,7 @@ const ProjectDetails: React.FC = () => {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const res = await fetch(`https://homefeet25.onrender.com/api/properties/${id}`);
+        const res = await fetch(`https://homefeet.onrender.com/api/properties/${id}`);
         const data = await res.json();
         if (res.ok) {
           setProject(data.project);
@@ -35,7 +35,7 @@ const ProjectDetails: React.FC = () => {
     const email = localStorage.getItem('email');
     if (!email || !project?._id) return alert('Please login first');
 
-    await fetch('https://homefeet25.onrender.com/api/interests', {
+    await fetch('https://homefeet.onrender.com/api/interests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -80,7 +80,7 @@ const ProjectDetails: React.FC = () => {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="relative h-[500px]">
             <img
-              src={`https://homefeet25.onrender.com${project.imageUrl}`}
+              src={`https://homefeet.onrender.com${project.imageUrl}`}
               alt={project.title}
               className="w-full h-full object-cover"
             />

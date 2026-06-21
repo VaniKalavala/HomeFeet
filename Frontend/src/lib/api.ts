@@ -1,4 +1,4 @@
-export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'https://homefeet25.onrender.com';
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'https://homefeet.onrender.com';
 export const API_BASE = `${API_ORIGIN}/api`;
 
 export const api = async (path: string, options: RequestInit = {}) => {
