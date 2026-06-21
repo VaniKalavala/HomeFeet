@@ -3238,7 +3238,7 @@ const PostProperty = () => {
           <button
             type="button"
             onClick={() => setCurrentStep((step) => step + 1)}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-8 py-4 font-semibold text-slate-950 shadow-lg hover:bg-amber-300"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-8 py-4 font-semibold text-white shadow-lg hover:bg-teal-800"
           >
             Next
           </button>
