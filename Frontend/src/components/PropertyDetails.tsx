@@ -3,22 +3,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   BadgeCheck,
-  Bath,
-  BedDouble,
-  Building2,
   Check,
-  Compass,
   IndianRupee,
   Lock,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
-  Ruler,
   Share2,
   ShieldCheck,
-  Tag,
-  Users
+  Tag
 } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import LoginModal from './LoginModal';
@@ -206,18 +200,15 @@ const PropertyDetails: React.FC = () => {
 
   const isApartmentListing = String(property?.developmentType || '').toLowerCase() === 'apartment';
 
-  const metrics = property ? [
-    { icon: Ruler, label: 'Total Area', value: property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '' },
-    { icon: IndianRupee, label: 'Square Yard Price', value: formatMoney(property.squareYardPrice) },
-    { icon: BedDouble, label: 'Bedrooms', value: property.bedrooms },
-    { icon: Bath, label: 'Bathrooms', value: property.bathrooms },
-    { icon: Users, label: developerRatioLabel, value: isApartmentListing ? '' : property.developerRatio },
-    { icon: Compass, label: 'Facing', value: property.facing },
-    { icon: IndianRupee, label: 'Goodwill', value: formatMoney(property.goodwill) },
-  ].filter((item) => item.value) : [];
-
   const details = property ? [
+    { label: 'Total Area', value: property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '' },
+    { label: 'Square Yard Price', value: formatMoney(property.squareYardPrice) },
+    { label: 'Bedrooms', value: property.bedrooms },
+    { label: 'Bathrooms', value: property.bathrooms },
+    { label: developerRatioLabel, value: isApartmentListing ? '' : property.developerRatio },
+    { label: 'Facing', value: property.facing },
     { label: 'Flat Size', value: property.flatSize ? `${property.flatSize} Sq Ft` : '' },
+    { label: 'Flat Facing', value: property.flatFacing },
     { label: 'Floor', value: property.floorNumber ? `${property.floorNumber}${property.totalFloors ? ` of ${property.totalFloors}` : ''}` : '' },
     { label: 'Furnishing', value: property.furnishingStatus },
     { label: 'Possession Status', value: property.possessionStatus },
@@ -458,19 +449,6 @@ const PropertyDetails: React.FC = () => {
                 )}
               </div>
               {property.landmark && <p className="mt-2 text-sm text-slate-500">Near {property.landmark}</p>}
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {metrics.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <Icon className="mb-3 h-5 w-5 text-teal-700" />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
-                      <p className="mt-1 font-black text-slate-950">{item.value}</p>
-                    </div>
-                  );
-                })}
-              </div>
 
               {(property.advance || property.goodwill) && (
                 <div className="mt-5 grid gap-3 rounded-lg bg-teal-50 p-4 sm:grid-cols-2">

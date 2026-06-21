@@ -27,6 +27,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  flatFacing: {
+    type: String,
+    default: ''
+  },
   // Plot dimensions for all four sides (in feet)
   northSideLength: { 
     type: String, 

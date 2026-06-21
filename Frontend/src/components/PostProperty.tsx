@@ -181,6 +181,7 @@ const PostProperty = () => {
     eastSideLength: '',
     westSideLength: '',
     facing: '',
+    flatFacing: '',
     roadFacingDirection: '',
     roadSize: '',
     frontageWidth: '',
@@ -293,6 +294,7 @@ const PostProperty = () => {
       eastSideLength: prefill.eastSideLength || prev.eastSideLength,
       westSideLength: prefill.westSideLength || prev.westSideLength,
       facing: prefill.facing || prev.facing,
+      flatFacing: prefill.flatFacing || prev.flatFacing,
       roadFacingDirection: prefill.roadFacingDirection || prev.roadFacingDirection,
       roadSize: prefill.roadSize || prev.roadSize,
       frontageWidth: prefill.frontageWidth || prev.frontageWidth,
@@ -505,6 +507,7 @@ const PostProperty = () => {
           eastSideLength: property.eastSideLength || '',
           westSideLength: property.westSideLength || '',
           facing: property.facing || '',
+          flatFacing: property.flatFacing || '',
           roadFacingDirection: property.roadFacingDirection || '',
           roadSize: property.roadSize || '',
           frontageWidth: property.frontageWidth || '',
@@ -1885,6 +1888,7 @@ const PostProperty = () => {
     data.append('eastSideLength', formData.eastSideLength);
     data.append('westSideLength', formData.westSideLength);
     data.append('facing', formData.facing);
+    data.append('flatFacing', formData.flatFacing);
     data.append('roadFacingDirection', formData.roadFacingDirection);
     data.append('roadSize', formData.roadSize);
     data.append('frontageWidth', formData.frontageWidth);
@@ -2324,37 +2328,33 @@ const PostProperty = () => {
         )}
       </select>
 
-      {!isApartment && (
-        <>
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              name="totalArea"
-              value={formData.totalArea}
-              onChange={handleChange}
-              placeholder="Total Area *"
-              className="border p-2 rounded"
-              type="number"
-              min="0"
-              step="any"
-              required
-            />
-            <select
-              name="areaUnit"
-              onChange={handleChange}
-              value={formData.areaUnit}
-              className="border p-2 rounded"
-            >
-              <option value="Sq Yards">Sq Yards</option>
-              <option value="Sq Ft">Square Feet</option>
-              <option value="Acres">Acres</option>
-            </select>
-          </div>
-          {formData.areaUnit === 'Sq Ft' && (
-            <p className="-mt-2 rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
-              Square feet will be converted to square yards before saving. Plot dimensions below should be entered in feet.
-            </p>
-          )}
-        </>
+      <div className="grid grid-cols-2 gap-4">
+        <input
+          name="totalArea"
+          value={formData.totalArea}
+          onChange={handleChange}
+          placeholder="Plot Size *"
+          className="border p-2 rounded"
+          type="number"
+          min="0"
+          step="any"
+          required
+        />
+        <select
+          name="areaUnit"
+          onChange={handleChange}
+          value={formData.areaUnit}
+          className="border p-2 rounded"
+        >
+          <option value="Sq Yards">Sq Yards</option>
+          <option value="Sq Ft">Square Feet</option>
+          <option value="Acres">Acres</option>
+        </select>
+      </div>
+      {formData.areaUnit === 'Sq Ft' && (
+        <p className="-mt-2 rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
+          Square feet will be converted to square yards before saving. Plot dimensions below should be entered in feet.
+        </p>
       )}
 
       {showDimensions && (
@@ -2405,45 +2405,20 @@ const PostProperty = () => {
         </div>
       )}
 
-      {!isApartment && (
-        <select
-          name="facing"
-          onChange={handleChange}
-          value={formData.facing}
-          className="w-full border p-2 rounded"
-        >
-          <option value="">Facing</option>
-          {facings.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-      )}
+      <select
+        name="facing"
+        onChange={handleChange}
+        value={formData.facing}
+        className="w-full border p-2 rounded"
+      >
+        <option value="">Plot Facing</option>
+        {facings.map(f => <option key={f} value={f}>{f}</option>)}
+      </select>
 
       {isApartment && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-teal-600">Apartment Details</h3>
           <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-            <div className="flex gap-2">
-              <input
-                name="totalArea"
-                value={formData.totalArea}
-                onChange={handleChange}
-                placeholder="Plot Size *"
-                className="w-full min-w-0 rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
-                type="number"
-                min="0"
-                step="any"
-                required
-              />
-              <select
-                name="areaUnit"
-                onChange={handleChange}
-                value={formData.areaUnit}
-                className="w-32 shrink-0 rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="Sq Yards">Sq Yards</option>
-                <option value="Sq Ft">Square Feet</option>
-                <option value="Acres">Acres</option>
-              </select>
-            </div>
             <input
               name="flatSize"
               value={formData.flatSize}
@@ -2455,12 +2430,12 @@ const PostProperty = () => {
               step="any"
             />
             <select
-              name="facing"
+              name="flatFacing"
               onChange={handleChange}
-              value={formData.facing}
+              value={formData.flatFacing}
               className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
             >
-              <option value="">Facing</option>
+              <option value="">Flat Facing</option>
               {flatFacingOptions.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
             <select
