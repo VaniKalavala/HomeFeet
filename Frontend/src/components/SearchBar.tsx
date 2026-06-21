@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Briefcase, Building2, Home, MapPin, Mic, Search, Tag } from 'lucide-react';
+import { ArrowRight, Briefcase, Building2, ChevronDown, Home, MapPin, Mic, Search, Tag } from 'lucide-react';
 
 interface SearchBarProps {
   compact?: boolean;
@@ -103,7 +103,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 className="flex h-full w-full items-center justify-between gap-1 whitespace-nowrap rounded-l-lg bg-white px-2 text-sm font-semibold text-slate-800 sm:gap-2 sm:px-4"
               >
                 <span className="truncate">{city}</span>
-                <ArrowRight className="h-3 w-3 shrink-0 rotate-90" />
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showCityDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showCityDropdown && (
                 <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">

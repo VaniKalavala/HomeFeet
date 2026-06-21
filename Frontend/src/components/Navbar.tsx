@@ -207,7 +207,7 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-center 2xl:flex">
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-6 2xl:flex">
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
