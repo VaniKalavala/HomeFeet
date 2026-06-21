@@ -2311,33 +2311,37 @@ const PostProperty = () => {
         )}
       </select>
 
-      <div className="grid grid-cols-2 gap-4">
-        <input 
-          name="totalArea" 
-          value={formData.totalArea} 
-          onChange={handleChange} 
-          placeholder="Total Area *" 
-          className="border p-2 rounded" 
-          type="number"
-          min="0"
-          step="any"
-          required 
-        />
-        <select 
-          name="areaUnit" 
-          onChange={handleChange} 
-          value={formData.areaUnit} 
-          className="border p-2 rounded"
-        >
-          <option value="Sq Yards">Sq Yards</option>
-          <option value="Sq Ft">Square Feet</option>
-          <option value="Acres">Acres</option>
-        </select>
-      </div>
-      {formData.areaUnit === 'Sq Ft' && (
-        <p className="-mt-2 rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
-          Square feet will be converted to square yards before saving. Plot dimensions below should be entered in feet.
-        </p>
+      {!isApartment && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <input
+              name="totalArea"
+              value={formData.totalArea}
+              onChange={handleChange}
+              placeholder="Total Area *"
+              className="border p-2 rounded"
+              type="number"
+              min="0"
+              step="any"
+              required
+            />
+            <select
+              name="areaUnit"
+              onChange={handleChange}
+              value={formData.areaUnit}
+              className="border p-2 rounded"
+            >
+              <option value="Sq Yards">Sq Yards</option>
+              <option value="Sq Ft">Square Feet</option>
+              <option value="Acres">Acres</option>
+            </select>
+          </div>
+          {formData.areaUnit === 'Sq Ft' && (
+            <p className="-mt-2 rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
+              Square feet will be converted to square yards before saving. Plot dimensions below should be entered in feet.
+            </p>
+          )}
+        </>
       )}
 
       {showDimensions && (
@@ -2388,20 +2392,54 @@ const PostProperty = () => {
         </div>
       )}
 
-      <select
-        name="facing"
-        onChange={handleChange}
-        value={formData.facing}
-        className="w-full border p-2 rounded"
-      >
-        <option value="">Facing</option>
-        {facings.map(f => <option key={f} value={f}>{f}</option>)}
-      </select>
+      {!isApartment && (
+        <select
+          name="facing"
+          onChange={handleChange}
+          value={formData.facing}
+          className="w-full border p-2 rounded"
+        >
+          <option value="">Facing</option>
+          {facings.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+      )}
 
       {isApartment && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-teal-600">Apartment Details</h3>
           <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+            <div className="flex gap-2">
+              <input
+                name="totalArea"
+                value={formData.totalArea}
+                onChange={handleChange}
+                placeholder="Flat Size *"
+                className="w-full min-w-0 rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+                type="number"
+                min="0"
+                step="any"
+                required
+              />
+              <select
+                name="areaUnit"
+                onChange={handleChange}
+                value={formData.areaUnit}
+                className="w-32 shrink-0 rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="Sq Yards">Sq Yards</option>
+                <option value="Sq Ft">Square Feet</option>
+                <option value="Acres">Acres</option>
+              </select>
+            </div>
+            <select
+              name="facing"
+              onChange={handleChange}
+              value={formData.facing}
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="">Facing</option>
+              {facings.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
             <select
               name="bedrooms"
               value={formData.bedrooms}
