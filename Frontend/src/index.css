@@ -209,6 +209,15 @@ button, input, select, textarea {
     @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
   }
 
+  .ld-scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .ld-scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   .ld-panel {
     @apply rounded-lg border border-slate-200 bg-white shadow-sm;
   }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Briefcase, Building2, ChevronDown, Home, MapPin, Mic, Search, Tag } from 'lucide-react';
 
@@ -26,8 +26,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(0);
   const [city, setCity] = useState(() => localStorage.getItem('selectedCity') || 'Hyderabad');
+  const [cityQuery, setCityQuery] = useState(city);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const cityContainerRef = useRef<HTMLDivElement>(null);
+  const filteredCities = metroCities.filter((option) => option.toLowerCase().includes(cityQuery.toLowerCase()));
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityContainerRef.current && !cityContainerRef.current.contains(event.target as Node)) {
+        setShowCityDropdown(false);
+        setCityQuery(city);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [city]);
 
   const buildLocationUrl = (location: string) => {
     const tab = SEARCH_TABS[activeTab];
@@ -62,6 +77,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
 
   const selectCity = (value: string) => {
     setCity(value);
+    setCityQuery(value);
     localStorage.setItem('selectedCity', value);
     setShowCityDropdown(false);
   };
@@ -69,7 +85,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
   return (
     <div className={compact ? 'w-full' : 'mx-auto max-w-5xl'}>
       <div className="overflow-hidden rounded-lg shadow-xl shadow-slate-950/10 backdrop-blur-md">
-        <div className="flex overflow-x-auto whitespace-nowrap bg-slate-950/80">
+        <div className="flex overflow-x-auto whitespace-nowrap bg-slate-950/80 ld-scrollbar-hide">
           {SEARCH_TABS.map((tab, index) => {
             const Icon = tab.icon;
             const active = index === activeTab && tab.label !== 'Post Property';
@@ -96,20 +112,32 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
 
         <div className="bg-white/85 p-4">
           <div className="flex items-stretch rounded-lg border border-slate-300 focus-within:border-teal-600 focus-within:ring-4 focus-within:ring-teal-100">
-            <div className="relative w-24 shrink-0 border-r border-slate-300 sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setShowCityDropdown((prev) => !prev)}
-                className="flex h-full w-full items-center justify-between gap-1 whitespace-nowrap rounded-l-lg bg-white px-2 text-sm font-semibold text-slate-800 sm:gap-2 sm:px-4"
-              >
-                <span className="truncate">{city}</span>
-                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showCityDropdown ? 'rotate-180' : ''}`} />
-              </button>
+            <div ref={cityContainerRef} className="relative w-24 shrink-0 border-r border-slate-300 sm:w-auto">
+              <div className="flex h-full w-full items-center gap-1 rounded-l-lg bg-white px-2 sm:gap-2 sm:px-4">
+                <input
+                  ref={cityInputRef}
+                  type="text"
+                  value={cityQuery}
+                  onFocus={() => { setShowCityDropdown(true); cityInputRef.current?.select(); }}
+                  onChange={(e) => { setCityQuery(e.target.value); setShowCityDropdown(true); }}
+                  className="w-14 min-w-0 bg-transparent text-sm font-semibold text-slate-800 outline-none sm:w-24"
+                  placeholder="City"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCityDropdown((prev) => !prev)}
+                  aria-label="Toggle city list"
+                >
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${showCityDropdown ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
               {showCityDropdown && (
                 <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
-                  <p className="px-4 pt-2 text-xs font-bold uppercase tracking-wide text-teal-700">Top Cities</p>
+                  <p className="px-4 pt-2 text-xs font-bold uppercase tracking-wide text-teal-700">
+                    {cityQuery && cityQuery !== city ? 'Matching Cities' : 'Top Cities'}
+                  </p>
                   <div className="max-h-56 overflow-y-auto py-1">
-                    {metroCities.map((option) => (
+                    {filteredCities.length ? filteredCities.map((option) => (
                       <button
                         key={option}
                         type="button"
@@ -120,7 +148,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                       >
                         {option}
                       </button>
-                    ))}
+                    )) : (
+                      <p className="px-4 py-2 text-sm text-slate-500">No cities found</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -144,7 +174,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
             </button>
           </div>
 
-          <div className="mt-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap ld-scrollbar-hide">
             <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Trending Searches:</span>
             {popularLocations.map((location) => (
               <button
