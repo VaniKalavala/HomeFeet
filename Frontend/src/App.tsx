@@ -1258,15 +1258,6 @@ function HomePage() {
                   </div>
                 ))}
               </div>
-
-              <button
-                type="button"
-                onClick={() => navigate(`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`)}
-                aria-label="View all developers"
-                className="absolute right-0 top-1/2 hidden h-10 w-10 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full bg-slate-800 text-white shadow-lg hover:bg-slate-950 lg:flex"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
             </div>
 
             <Link to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`} className="mt-7 inline-flex items-center gap-1 text-sm font-bold text-slate-950 hover:text-teal-700">
