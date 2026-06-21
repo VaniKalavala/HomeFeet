@@ -2443,8 +2443,7 @@ function PropertiesMapPage() {
             <Filter className="h-4 w-4" /> Filters
           </button>
         {[
-            { label: 'Plots', key: 'plots' as const },
-            { label: 'Owner Listed', key: 'ownerListed' as const },
+            { label: 'Flats', key: 'plots' as const },
             { label: 'Last Month', key: 'lastMonth' as const },
             { label: 'Last Week', key: 'lastWeek' as const },
           ].map((filter) => {
