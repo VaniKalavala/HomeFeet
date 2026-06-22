@@ -161,6 +161,7 @@ const PropertiesListingPage: React.FC = () => {
   // Filter states
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [propertyNumberQuery, setPropertyNumberQuery] = useState('');
+  const [mapLocationQuery, setMapLocationQuery] = useState('');
   const [filters, setFilters] = useState({
     developmentType: getUrlDevelopmentType(searchParams),
     minArea: searchParams.get('minArea') || '',
@@ -1242,7 +1243,11 @@ const PropertiesListingPage: React.FC = () => {
         developerMapInstanceRef.current.setZoom(cityCenter.zoom);
       };
 
-      visibleProperties.forEach((property) => {
+      const mapProperties = mapLocationQuery.trim()
+        ? visibleProperties.filter((property) => propertyMatchesSearch(property, mapLocationQuery))
+        : visibleProperties;
+
+      mapProperties.forEach((property) => {
         const coords = getPropertyMapCoordinates(property);
         if (!coords) {
           geocodePropertyForMap(property, google);
@@ -1299,10 +1304,11 @@ const PropertiesListingPage: React.FC = () => {
         developerMapInstanceRef.current.setCenter(bounds.getCenter());
         developerMapInstanceRef.current.setZoom(14);
       }
-      if (markerCount === 0 && activeSearchTerm) {
+      const mapSearchTerm = mapLocationQuery.trim() || activeSearchTerm;
+      if (markerCount === 0 && mapSearchTerm) {
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode(
-          { address: `${activeSearchTerm}, ${currentMapCity}, India` },
+          { address: `${mapSearchTerm}, ${currentMapCity}, India` },
           (results: any, status: string) => {
             if (status !== 'OK' || !results?.[0]?.geometry) {
               focusOnSelectedCity();
@@ -1313,7 +1319,7 @@ const PropertiesListingPage: React.FC = () => {
           }
         );
       }
-      if (markerCount === 0 && !activeSearchTerm) focusOnSelectedCity();
+      if (markerCount === 0 && !mapSearchTerm) focusOnSelectedCity();
     };
 
     if (!window.google?.maps) {
@@ -1339,7 +1345,7 @@ const PropertiesListingPage: React.FC = () => {
     }
 
     renderDeveloperMap();
-  }, [activeSearchTerm, currentMapCity, focusedPropertyId, geocodeTick, isDeveloperView, visibleProperties]);
+  }, [activeSearchTerm, currentMapCity, focusedPropertyId, geocodeTick, isDeveloperView, visibleProperties, mapLocationQuery]);
 
   const statCards = [
     { label: 'Total Properties', value: properties.length || 0 },
@@ -1556,7 +1562,21 @@ const PropertiesListingPage: React.FC = () => {
           </div>
 
           {isDeveloperView && (
-            <main className="order-2 relative min-h-[420px] overflow-hidden rounded-2xl bg-white shadow-sm sm:min-h-[560px] lg:min-h-[700px]">
+            <div className="order-2 flex flex-col gap-2.5">
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <h2 className="text-sm font-semibold text-slate-950">Properties Marked on Map</h2>
+                <div className="relative mt-2">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={mapLocationQuery}
+                    onChange={(e) => setMapLocationQuery(e.target.value)}
+                    placeholder="Search Location"
+                    className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  />
+                </div>
+              </div>
+            <main className="relative min-h-[420px] overflow-hidden rounded-2xl bg-white shadow-sm sm:min-h-[560px] lg:min-h-[700px]">
               <div className="absolute left-3 right-3 top-3 z-10 flex rounded-xl border border-white/70 bg-white/95 p-1 shadow-lg backdrop-blur lg:hidden">
                 {developerIntentTabs.map((tab) => {
                   const active = listingIntent === tab.value && currentPropertyType === tab.propertyType;
@@ -1585,6 +1605,7 @@ const PropertiesListingPage: React.FC = () => {
                 </div>
               )}
             </main>
+            </div>
           )}
 
           {isDeveloperView && (
