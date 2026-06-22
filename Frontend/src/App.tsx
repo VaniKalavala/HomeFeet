@@ -1095,7 +1095,7 @@ function HomePage() {
           />
         ))}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-900/15" />
-        <div className="ld-container relative z-10 flex min-h-[calc(100vh-60px)] -translate-y-[15%] flex-col justify-center gap-8 pb-14 pt-6">
+        <div className="ld-container relative z-10 flex min-h-[calc(100vh-60px)] -translate-y-[10%] flex-col justify-center gap-8 pb-14 pt-6">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
               <Sparkles className="h-4 w-4 text-amber-300" />
