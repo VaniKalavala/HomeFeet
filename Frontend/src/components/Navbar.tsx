@@ -207,13 +207,13 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-6 2xl:flex">
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-[1.35rem] 2xl:flex">
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 className={() =>
-                  `whitespace-nowrap border-r border-slate-200 px-7 py-1 text-base font-semibold leading-none transition last:border-r-0 ${
+                  `whitespace-nowrap border-r border-slate-200 px-[1.575rem] py-1 text-base font-semibold leading-none transition last:border-r-0 ${
                     isNavLinkActive(link) ? 'text-teal-700' : 'text-slate-500 hover:text-teal-700'
                   }`
                 }
