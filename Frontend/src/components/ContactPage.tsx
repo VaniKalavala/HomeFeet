@@ -48,7 +48,7 @@ const ContactPage: React.FC = () => {
       <div className="ld-container grid gap-8 py-14 lg:grid-cols-[0.82fr_1.18fr]">
         <div className="space-y-4">
           {[
-            { icon: Phone, label: 'Phone', value: '+91 90140 11885' },
+            { icon: Phone, label: 'Phone', value: '+91 80190 08351' },
             { icon: Mail, label: 'Email', value: 'contact@homefeet.in' },
             { icon: MapPin, label: 'Market', value: 'Hyderabad apartment & commercial space opportunities' },
             { icon: Building2, label: 'For', value: 'Owners, builders, buyers, partners, admins' }

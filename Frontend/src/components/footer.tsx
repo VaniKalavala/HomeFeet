@@ -92,7 +92,7 @@ export default function Footer() {
           <div>
             <p className="mb-4 font-bold text-white">Contact</p>
             <div className="space-y-3 text-sm text-slate-300">
-              <p className="flex gap-2"><Phone className="h-4 w-4 text-teal-300" /> +91 90140 11885</p>
+              <p className="flex gap-2"><Phone className="h-4 w-4 text-teal-300" /> +91 80190 08351</p>
               <p className="flex gap-2"><Mail className="h-4 w-4 text-teal-300" /> contact@homefeet.in</p>
               <p className="flex gap-2"><MapPin className="h-4 w-4 text-teal-300" /> 11-13-1181/3 Flat-406, Vaishnovi TNR, Vasavi Colony, RK Puram, Saroon Nagar, Hyderabad-500035</p>
               <p className="flex gap-2"><Building2 className="h-4 w-4 text-teal-300" /> Owner and builder operations</p>

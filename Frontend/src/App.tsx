@@ -319,7 +319,7 @@ function SEOManager() {
           contactPoint: [
             {
               '@type': 'ContactPoint',
-              telephone: '+91 90140 11885',
+              telephone: '+91 80190 08351',
               contactType: 'customer support',
               areaServed: 'IN',
               availableLanguage: ['English', 'Telugu', 'Hindi']
