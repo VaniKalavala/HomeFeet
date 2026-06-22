@@ -163,7 +163,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
   };
 
   return (
-    <div className={compact ? 'w-full' : 'mx-auto max-w-5xl'}>
+    <div className={`relative z-20 ${compact ? 'w-full' : 'mx-auto max-w-5xl'}`}>
       <div className="rounded-lg shadow-xl shadow-slate-950/10 backdrop-blur-md">
         <div className="flex overflow-x-auto whitespace-nowrap rounded-t-lg bg-slate-950/80 ld-scrollbar-hide">
           {SEARCH_TABS.map((tab, index) => {
@@ -212,7 +212,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 </button>
               </div>
               {showCityDropdown && (
-                <div className="absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
                   <p className="px-4 pt-2 text-xs font-bold uppercase tracking-wide text-teal-700">
                     {cityQuery && cityQuery !== city ? 'Matching Cities' : 'Top Cities'}
                   </p>
@@ -275,7 +275,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openFilter === 'budget' ? 'rotate-180' : ''}`} />
                 </button>
                 {openFilter === 'budget' && (
-                  <div className="absolute left-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
+                  <div className="absolute left-0 top-full z-40 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
                     <button type="button" onClick={() => { setBudgetFilter(''); setOpenFilter(null); }} className="block w-full px-4 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50">Any Budget</button>
                     {BUDGET_RANGES.map((range) => (
                       <button
@@ -304,7 +304,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openFilter === 'type' ? 'rotate-180' : ''}`} />
                 </button>
                 {openFilter === 'type' && (
-                  <div className="absolute left-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
+                  <div className="absolute left-0 top-full z-40 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
                     <button type="button" onClick={() => { setPropertyTypeFilter(''); setOpenFilter(null); }} className="block w-full px-4 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50">Any Type</button>
                     {propertyTypeOptions.map((option) => (
                       <button
@@ -333,7 +333,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openFilter === 'status' ? 'rotate-180' : ''}`} />
                 </button>
                 {openFilter === 'status' && (
-                  <div className="absolute left-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
+                  <div className="absolute left-0 top-full z-40 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
                     <button type="button" onClick={() => { setStatusFilter(''); setOpenFilter(null); }} className="block w-full px-4 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50">Any Status</button>
                     {PROJECT_STATUS_OPTIONS.map((option) => (
                       <button
