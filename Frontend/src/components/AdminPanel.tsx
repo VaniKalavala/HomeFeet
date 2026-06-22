@@ -11,6 +11,7 @@ interface Property {
   listingIntent?: string;
   totalArea: string;
   areaUnit: string;
+  flatSize?: string;
   state?: string;
   city: string;
   locality: string;
@@ -1935,7 +1936,7 @@ const AdminPanel: React.FC = () => {
                         {getStatusBadge(property.status)}
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-3 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-3 text-sm">
                         <div>
                           <span className="text-gray-600">Category:</span>
                           <span className={`ml-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-black ${getPropertyCategoryClass(getPropertyCategory(property))}`}>
@@ -1950,6 +1951,12 @@ const AdminPanel: React.FC = () => {
                           <span className="text-gray-600">Area:</span>
                           <span className="ml-1 font-semibold">{property.totalArea} {property.areaUnit}</span>
                         </div>
+                        {property.flatSize && (
+                          <div>
+                            <span className="text-gray-600">Flat Size:</span>
+                            <span className="ml-1 font-semibold">{property.flatSize} Sq Ft</span>
+                          </div>
+                        )}
                         <div>
                           <span className="text-gray-600">Phone:</span>
                           <span className="ml-1 font-semibold">{property.phone}</span>

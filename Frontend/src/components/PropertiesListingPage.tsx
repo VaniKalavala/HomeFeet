@@ -189,7 +189,7 @@ const PropertiesListingPage: React.FC = () => {
   const ratios = ['All', '50:50', '60:40', '70:30', '80:20'];
   const facings = ['All', 'North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'];
   const cities = ['All', ...METRO_CITIES];
-  const bhkOptions = ['All', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '4+ BHK'];
+  const bhkOptions = ['All', '1 BHK', '2 BHK', '2.5 BHK', '3 BHK', '4 BHK', '4+ BHK'];
   const possessionOptions = ['All', 'Ready to Move', 'Under Construction'];
   const budgetPresets = [
     { label: 'Budget', min: '', max: '' },
@@ -578,12 +578,11 @@ const PropertiesListingPage: React.FC = () => {
       setSelectedCity(value);
       localStorage.setItem('selectedCity', value);
     }
-    
-    // Auto-apply filters on change
-    setTimeout(() => {
-      const params = buildPropertySearchParams(newFilters, searchQuery, showDeveloperLayout);
-      setSearchParams(params);
-    }, 100);
+
+    // Apply filters immediately; a debounced update here can race with other
+    // filter changes (e.g. the Budget select) and overwrite them with a stale snapshot.
+    const params = buildPropertySearchParams(newFilters, searchQuery, showDeveloperLayout);
+    setSearchParams(params);
   };
 
   const handleBudgetSliderChange = (key: 'minGoodwill' | 'maxGoodwill', value: string) => {

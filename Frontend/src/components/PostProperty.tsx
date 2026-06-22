@@ -2066,7 +2066,7 @@ const PostProperty = () => {
   const ratios = ['50:50', '60:40', '70:30', '80:20'];
   const zoningOptions = ['Residential', 'Commercial', 'Mixed Use', 'Agricultural', 'Industrial'];
   const plotBoundaryTypes = ['standalone', 'high-rise', 'group-house'];
-  const bedroomOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '4+ BHK'];
+  const bedroomOptions = ['1 BHK', '2 BHK', '2.5 BHK', '3 BHK', '4 BHK', '4+ BHK'];
   const bathroomOptions = ['1', '2', '3', '4', '4+'];
   const furnishingOptions = ['Unfurnished', 'Semi-Furnished', 'Fully-Furnished'];
   const possessionOptions = ['Ready to Move', 'Under Construction'];
