@@ -46,6 +46,7 @@ import BrandName from './components/BrandName';
 import LegalPage from './components/LegalPage';
 import TestimonialsPage from './components/TestimonialsPage';
 import SubscriptionPlansPage from './components/SubscriptionPlansPage';
+import ComparisonPage from './components/ComparisonPage';
 import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from './config/razorpay.config';
 import { API_BASE, API_ORIGIN } from './lib/api';
 
@@ -189,6 +190,15 @@ const seoByPath: Record<string, SeoConfig> = {
     title: 'Subscription Plans | HomeFeet',
     description:
       'Choose the right HomeFeet access plan for builders, owners, mediators, buyers, and corporates with controlled property posting and contact access.'
+  },
+  '/compare': {
+    title: 'HomeFeet vs Housing.com, 99acres, MagicBricks, CommonFloor, NoBroker, Square Yards',
+    description:
+      'Compare HomeFeet to Housing.com, 99acres, MagicBricks, CommonFloor, NoBroker, and Square Yards. See why admin-reviewed listings and controlled owner contact access make HomeFeet a focused alternative for apartments and commercial space.',
+    keywords:
+      'HomeFeet vs Housing.com, HomeFeet vs 99acres, HomeFeet vs MagicBricks, HomeFeet vs CommonFloor, HomeFeet vs NoBroker, HomeFeet vs Square Yards, ' +
+      'Housing.com alternative, 99acres alternative, MagicBricks alternative, CommonFloor alternative, NoBroker alternative, Square Yards alternative, ' +
+      'best real estate portal India, verified real estate listings, real estate portal comparison'
   },
   '/contact': {
     title: 'Contact HomeFeet',
@@ -3438,6 +3448,7 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/testimonials" element={<TestimonialsPage />} />
           <Route path="/subscription-plans" element={<SubscriptionPlansPage />} />
+          <Route path="/compare" element={<ComparisonPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/terms-and-conditions" element={<LegalPage type="terms" />} />
           <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
