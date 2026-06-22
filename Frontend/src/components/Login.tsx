@@ -11,7 +11,7 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
   const navigate = useNavigate();
-  const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
+  const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('email');
   const [emailMode, setEmailMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -308,21 +308,21 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
       <div className="flex overflow-hidden rounded-lg border border-gray-200">
         <button
           type="button"
-          onClick={() => { setAuthMethod('phone'); setError(null); }}
-          className={`flex-1 py-2.5 text-sm font-semibold transition ${
-            authMethod === 'phone' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Mobile Number
-        </button>
-        <button
-          type="button"
           onClick={() => { setAuthMethod('email'); setError(null); }}
           className={`flex-1 py-2.5 text-sm font-semibold transition ${
             authMethod === 'email' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
           Email ID
+        </button>
+        <button
+          type="button"
+          onClick={() => { setAuthMethod('phone'); setError(null); }}
+          className={`flex-1 py-2.5 text-sm font-semibold transition ${
+            authMethod === 'phone' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Mobile Number
         </button>
       </div>
 
