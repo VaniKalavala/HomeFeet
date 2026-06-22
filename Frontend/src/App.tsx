@@ -1437,7 +1437,7 @@ function HomePage() {
         <div className="ld-container">
           <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70 md:p-8">
             <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-4xl">Hot Selling Real Estate Projects in {selectedCity}</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 w-full text-sm leading-6 text-slate-600">
               In search of the most talked-about homes? Our list of hot-selling projects in {selectedCity} features properties with modern architecture, future-ready features, and exceptional ROI potential. All of them are known to be located in rapidly developing areas; these homes are selling out quickly.
             </p>
 
