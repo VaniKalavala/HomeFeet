@@ -164,8 +164,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
 
   return (
     <div className={compact ? 'w-full' : 'mx-auto max-w-5xl'}>
-      <div className="overflow-hidden rounded-lg shadow-xl shadow-slate-950/10 backdrop-blur-md">
-        <div className="flex overflow-x-auto whitespace-nowrap bg-slate-950/80 ld-scrollbar-hide">
+      <div className="rounded-lg shadow-xl shadow-slate-950/10 backdrop-blur-md">
+        <div className="flex overflow-x-auto whitespace-nowrap rounded-t-lg bg-slate-950/80 ld-scrollbar-hide">
           {SEARCH_TABS.map((tab, index) => {
             const Icon = tab.icon;
             const active = index === activeTab && tab.label !== 'Post Property';
@@ -212,7 +212,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ compact = false, popularLocations
                 </button>
               </div>
               {showCityDropdown && (
-                <div className="absolute left-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
                   <p className="px-4 pt-2 text-xs font-bold uppercase tracking-wide text-teal-700">
                     {cityQuery && cityQuery !== city ? 'Matching Cities' : 'Top Cities'}
                   </p>
