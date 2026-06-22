@@ -303,7 +303,11 @@ const PropertiesListingPage: React.FC = () => {
       maxGoodwill: searchParams.get('maxGoodwill') || '',
       city: searchParams.get('city') || (showDashboardLayout ? selectedCity || getStoredSelectedCity() : 'All'),
       zoningClassification: searchParams.get('zoningClassification') || 'All',
-      maxOwnerShare: searchParams.get('maxOwnerShare') || ''
+      maxOwnerShare: searchParams.get('maxOwnerShare') || '',
+      bedrooms: searchParams.get('bedrooms') || 'All',
+      possessionStatus: searchParams.get('possessionStatus') || 'All',
+      minBudget: searchParams.get('minBudget') || '',
+      maxBudget: searchParams.get('maxBudget') || ''
     });
   }, [searchParams, showDashboardLayout, selectedCity]);
 
