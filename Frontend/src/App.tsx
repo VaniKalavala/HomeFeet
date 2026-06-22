@@ -1043,6 +1043,11 @@ function HomePage() {
     setExclusiveImageIndex(0);
   };
 
+  const panExclusiveImage = (direction: 1 | -1) => {
+    if (!exclusiveGalleryImages.length) return;
+    setExclusiveImageIndex((current) => (current + direction + exclusiveGalleryImages.length) % exclusiveGalleryImages.length);
+  };
+
   const visibleHotSellingProjects = selectedHotSellingZone === 'All'
     ? hotSellingProjects
     : hotSellingProjects.filter((project) => project.zone === selectedHotSellingZone);
@@ -1333,13 +1338,36 @@ function HomePage() {
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-lg bg-slate-200">
+                <div className="relative overflow-hidden rounded-lg bg-slate-200">
                   <img
                     src={exclusiveGalleryImages[exclusiveImageIndex] ? `${API_ORIGIN}${exclusiveGalleryImages[exclusiveImageIndex]}` : fallbackExclusiveProjectImage}
                     alt={activeExclusiveProject.projectName || 'Exclusive project'}
                     className="h-72 w-full object-cover md:h-96"
                     onError={(e) => { e.currentTarget.src = fallbackExclusiveProjectImage; }}
                   />
+                  {exclusiveGalleryImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => panExclusiveImage(-1)}
+                        aria-label="Previous photo"
+                        className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-lg hover:bg-white"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => panExclusiveImage(1)}
+                        aria-label="Next photo"
+                        className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-lg hover:bg-white"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                      <span className="absolute bottom-3 right-3 rounded-full bg-slate-950/70 px-2.5 py-1 text-xs font-semibold text-white">
+                        {exclusiveImageIndex + 1} / {exclusiveGalleryImages.length}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
