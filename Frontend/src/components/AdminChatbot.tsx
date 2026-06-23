@@ -78,7 +78,7 @@ const getBotReply = (message: string) => {
 };
 
 export default function AdminChatbot() {
-  const isAdmin = isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'));
+  const isAdmin = isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([

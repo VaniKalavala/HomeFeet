@@ -15,8 +15,16 @@ const ADMIN_PHONES = (process.env.ADMIN_PHONES || '9014011885,7416995503')
   .map((phone) => phone.trim())
   .filter(Boolean);
 
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'ashokreddy@inventorheads.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+const isAdminEmailMatch = (user) =>
+  ADMIN_EMAILS.includes(String(user?.email || '').toLowerCase());
+
 const isAdminUser = (user) =>
-  Boolean(user && (user.accountType === 'admin' || ADMIN_PHONES.includes(user.phone)));
+  Boolean(user && (user.accountType === 'admin' || ADMIN_PHONES.includes(user.phone) || isAdminEmailMatch(user)));
 
 const normalizePhone = (value = '') =>
   String(value || '').replace(/\D/g, '').slice(-10);
@@ -174,7 +182,8 @@ const isOwnerOrAdmin = (user, property) =>
     user.phone === property.phone ||
     user._id?.toString() === String(property.userId || '') ||
     user.accountType === 'admin' ||
-    ADMIN_PHONES.includes(user.phone)
+    ADMIN_PHONES.includes(user.phone) ||
+    isAdminEmailMatch(user)
   ));
 
 const unlockBuilderContact = async (user, interest) => {
@@ -747,7 +756,7 @@ router.put('/properties/:id', handlePropertyUpload, async (req, res) => {
     }
 
     const files = req.files || {};
-    const isAdminUser = user.accountType === 'admin' || ADMIN_PHONES.includes(user.phone);
+    const isAdminUser = user.accountType === 'admin' || ADMIN_PHONES.includes(user.phone) || isAdminEmailMatch(user);
 
     const updates = {
       ...req.body

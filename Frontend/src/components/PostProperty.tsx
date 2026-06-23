@@ -209,7 +209,7 @@ const PostProperty = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isEditMode = Boolean(id);
-  const isAdminUser = checkIsAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'));
+  const isAdminUser = checkIsAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
   const isAdminEditMode = isEditMode && searchParams.get('admin') === 'true' && isAdminUser;
   const canUseAssistedUpload = isAdminUser && !isEditMode;
   const [formData, setFormData] = useState({

@@ -245,7 +245,7 @@ const Navbar: React.FC = () => {
                         {label}
                       </button>
                     ))}
-                    {isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType')) && (
+                    {isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email')) && (
                       <button onClick={() => { setShowDropdown(false); navigate('/admin'); }} className="block w-full px-4 py-2.5 text-left text-sm font-semibold text-teal-700 hover:bg-teal-50">
                         Admin Panel
                       </button>
@@ -325,7 +325,7 @@ const Navbar: React.FC = () => {
                       {label}
                     </button>
                   ))}
-                  {isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType')) && (
+                  {isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email')) && (
                     <button
                       onClick={() => {
                         setMobileOpen(false);

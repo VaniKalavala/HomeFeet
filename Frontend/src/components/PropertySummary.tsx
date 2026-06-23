@@ -1702,7 +1702,7 @@ const createPlotDiagramFromSummary = async (details: ReturnType<typeof parseSumm
 
 const PropertySummary = () => {
   const navigate = useNavigate();
-  const isAdminUser = checkIsAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'));
+  const isAdminUser = checkIsAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);

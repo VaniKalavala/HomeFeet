@@ -180,8 +180,9 @@ const AdminPanel: React.FC = () => {
     // Check if user is admin
     const phone = localStorage.getItem('phone');
     const accountType = localStorage.getItem('accountType');
+    const email = localStorage.getItem('email');
 
-    if (!isAdminUser(phone, accountType)) {
+    if (!isAdminUser(phone, accountType, email)) {
       alert('Access denied. Admin only.');
       navigate('/');
       return;

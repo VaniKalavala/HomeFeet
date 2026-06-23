@@ -22,6 +22,11 @@ const ADMIN_PHONES = (process.env.ADMIN_PHONES || '9014011885,7416995503')
   .map((phone) => phone.trim())
   .filter(Boolean);
 
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'ashokreddy@inventorheads.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
 const membershipMonths = {
   '3_months': 3,
   '6_months': 6,
@@ -39,7 +44,7 @@ const isAdmin = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
     const user = await User.findById(decoded.id);
 
-    if (!user || !(user.accountType === 'admin' || ADMIN_PHONES.includes(user.phone))) {
+    if (!user || !(user.accountType === 'admin' || ADMIN_PHONES.includes(user.phone) || ADMIN_EMAILS.includes(String(user.email || '').toLowerCase()))) {
       return res.status(403).json({ error: 'Access denied. Admin only.' });
     }
 
