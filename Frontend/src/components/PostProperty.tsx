@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import {
   ArrowLeft,
   ArrowUpDown,
+  Bike,
   Building2,
   Car,
   CircleDot,
@@ -1366,7 +1367,9 @@ const PostProperty = () => {
   }, [formData.images]);
 
   const AMENITY_OPTIONS = [
-    { label: 'Parking', icon: Car },
+    { label: 'Single Parking', icon: Car },
+    { label: 'Double Parking', icon: Car },
+    { label: 'Bike Parking', icon: Bike },
     { label: 'Lift', icon: ArrowUpDown },
     { label: 'Power Backup', icon: Zap },
     { label: 'Security', icon: Shield },

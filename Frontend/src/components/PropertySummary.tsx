@@ -152,7 +152,9 @@ const extractTotalBudget = (text: string) =>
   ]);
 
 const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
-  [/\bparking\b/i, 'Parking'],
+  [/\bdouble\s*parking\b/i, 'Double Parking'],
+  [/\bbike\s*parking\b|\btwo[- ]?wheeler\s*parking\b/i, 'Bike Parking'],
+  [/\bsingle\s*parking\b|\bparking\b/i, 'Single Parking'],
   [/\blifts?\b|\belevators?\b/i, 'Lift'],
   [/\bpower\s*back\s*-?up\b|\bgenerator\b/i, 'Power Backup'],
   [/\bsecurity\b|\bcctv\b/i, 'Security'],
