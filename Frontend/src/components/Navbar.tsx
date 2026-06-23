@@ -54,6 +54,7 @@ const Navbar: React.FC = () => {
     { to: `/properties?view=developers&listingIntent=buy&city=${selectedCityParam}`, label: 'Buyer', intent: 'buy' },
     { to: `/properties?view=developers&listingIntent=sell&city=${selectedCityParam}`, label: 'Sale Flats', intent: 'sell' },
     { to: `/properties?view=developers&listingIntent=sell&propertyType=commercial-plot&city=${selectedCityParam}`, label: 'Commercial Space', intent: 'sell', propertyType: 'commercial-plot' },
+    { to: `/properties?view=marketplace&city=${selectedCityParam}`, label: 'Find an Agent' },
     { to: '/properties-map', label: 'Properties Map-View' },
   ];
   const accountLinks = [
@@ -207,13 +208,13 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-[1.35rem] 2xl:flex">
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-[1rem] 2xl:flex">
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 className={() =>
-                  `whitespace-nowrap border-r border-slate-200 px-[1.575rem] py-1 text-base font-semibold leading-none transition last:border-r-0 ${
+                  `whitespace-nowrap border-r border-slate-200 px-[1.1rem] py-1 text-[15px] font-semibold leading-none transition last:border-r-0 ${
                     isNavLinkActive(link) ? 'text-teal-700' : 'text-slate-500 hover:text-teal-700'
                   }`
                 }

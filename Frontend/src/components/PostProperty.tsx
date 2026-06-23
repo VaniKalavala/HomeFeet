@@ -2961,7 +2961,7 @@ const PostProperty = () => {
             {formData.floorPlan && <p className="mt-2 text-sm font-semibold text-teal-700">Selected: {formData.floorPlan.name}</p>}
           </label>
           <label className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-            <span className="mb-2 flex items-center gap-2 font-semibold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Property Form</span>
+            <span className="mb-2 flex items-center gap-2 font-semibold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Property Brochure</span>
             {isEditMode && existingMedia.propertyFormUrl && !formData.propertyForm && (
               <p className="mb-3 rounded-lg bg-white p-3 text-sm text-slate-600">Current property form is saved. Upload a new one only if you want to replace it.</p>
             )}
