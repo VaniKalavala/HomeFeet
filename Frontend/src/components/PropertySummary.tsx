@@ -103,6 +103,95 @@ const extractAreaFromSummary = (summary: string) => {
 const extractChoice = (text: string, choices: string[]) =>
   choices.find((choice) => new RegExp(`\\b${choice.replace('-', '[- ]?')}\\b`, 'i').test(text)) || '';
 
+const extractBedrooms = (text: string) => {
+  const match = text.match(/\b(\d(?:\.\d)?)\s*\+?\s*bhk\b/i) || text.match(/\b(\d(?:\.\d)?)\s*\+?\s*bed\s*rooms?\b/i);
+  if (!match) return '';
+  if (/\b4\s*\+\s*bhk\b/i.test(text)) return '4+ BHK';
+  const num = Number(match[1]);
+  if (!Number.isFinite(num)) return '';
+  if (num >= 5) return '4+ BHK';
+  if ([1, 2, 2.5, 3, 4].includes(num)) return `${num} BHK`;
+  return `${Math.round(num)} BHK`;
+};
+
+const extractBathrooms = (text: string) =>
+  extractNumber(text, [
+    /\b(\d+)\s*(?:bathrooms?|baths?|toilets?)\b/i
+  ]);
+
+const extractFloorDetails = (text: string) => {
+  const ofPattern = text.match(/\bfloor\s*[:\-]?\s*(\d+)\s*(?:of|\/|out of)\s*(\d+)\b/i)
+    || text.match(/\b(\d+)(?:st|nd|rd|th)?\s*floor\s*(?:of|out of)\s*(\d+)\b/i);
+  if (ofPattern) return { floorNumber: ofPattern[1], totalFloors: ofPattern[2] };
+  const gPlus = text.match(/\bg\s*\+\s*(\d+)\b/i);
+  const floorOnly = text.match(/\b(\d+)(?:st|nd|rd|th)?\s*floor\b/i);
+  const totalOnly = text.match(/\btotal\s*(?:of\s*)?(\d+)\s*floors?\b/i);
+  return {
+    floorNumber: floorOnly?.[1] || '',
+    totalFloors: totalOnly?.[1] || (gPlus ? String(Number(gPlus[1]) + 1) : '')
+  };
+};
+
+const extractFurnishingStatus = (text: string) =>
+  /\bsemi[- ]?furnished\b/i.test(text) ? 'Semi-Furnished'
+    : /\bfully[- ]?furnished\b/i.test(text) ? 'Fully-Furnished'
+    : /\bunfurnished\b/i.test(text) ? 'Unfurnished'
+    : '';
+
+const extractPossessionStatus = (text: string) =>
+  /\bready\s*to\s*move\b/i.test(text) ? 'Ready to Move'
+    : /\bunder\s*construction\b/i.test(text) ? 'Under Construction'
+    : '';
+
+const extractFlatSize = (text: string) =>
+  extractNumber(text, [
+    /\bflat\s*size\s*[:\-]?\s*([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)?/i,
+    /\b([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)\s*flat\b/i,
+    /\bbuilt[- ]?up\s*area\s*[:\-]?\s*([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)?/i,
+    /\bcarpet\s*area\s*[:\-]?\s*([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)?/i
+  ]);
+
+const extractProjectName = (text: string) =>
+  text.match(/\bproject\s*name\s*[:\-]?\s*([^\n,.]+)/i)?.[1]?.trim()
+  || text.match(/\bproject\s*[:\-]\s*([^\n,.]+)/i)?.[1]?.trim()
+  || '';
+
+const extractCompanyName = (text: string) =>
+  text.match(/\b(?:builder|developer|company)\s*(?:name)?\s*[:\-]\s*([^\n,.]+)/i)?.[1]?.trim()
+  || text.match(/\bby\s+([A-Z][A-Za-z0-9&.'\s]*?(?:builders?|constructions?|infra|developers?|group|llp|pvt\.?\s*ltd\.?))\b/i)?.[1]?.trim()
+  || '';
+
+const extractSquareFeetPrice = (text: string) =>
+  extractAmount(text, [
+    /(?:rs\.?|₹|inr)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?\s*(?:per\s*sq\.?\s*ft|\/\s*sq\.?\s*ft|psf)/i,
+    /([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?\s*(?:per\s*sq\.?\s*ft|\/\s*sq\.?\s*ft|psf)/i
+  ]);
+
+const extractTotalBudget = (text: string) =>
+  extractAmount(text, [
+    /\btotal\s*budget\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
+    /\bexpected\s*price\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
+    /\btotal\s*price\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i
+  ]);
+
+const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
+  [/\bparking\b/i, 'Parking'],
+  [/\blifts?\b|\belevators?\b/i, 'Lift'],
+  [/\bpower\s*back\s*-?up\b|\bgenerator\b/i, 'Power Backup'],
+  [/\bsecurity\b|\bcctv\b/i, 'Security'],
+  [/\bgym\b|\bfitness\s*center\b/i, 'Gym'],
+  [/\bclub\s*house\b/i, 'Clubhouse'],
+  [/\bwater\s*supply\b/i, 'Water Supply'],
+  [/\bparks?\b|\bgarden\b/i, 'Park'],
+  [/\bswimming\s*pool\b|\bpool\b/i, 'Swimming Pool'],
+  [/\bbadminton\b/i, 'Badminton Court'],
+  [/\bcricket\b/i, 'Cricket Court'],
+  [/\bfood\s*court\b/i, 'Food Court'],
+];
+
+const extractAmenitiesFromSummary = (text: string) =>
+  AMENITY_KEYWORD_MAP.filter(([pattern]) => pattern.test(text)).map(([, label]) => label);
+
 const extractSideLengthFromSummary = (summary: string, side: string) => {
   const pattern = new RegExp(`\\b${side}\\s*(?:side|length|width)?(?:\\s*\\(?\\s*(?:ft|feet)\\s*\\)?)?\\s*[.:\\-]?\\s*([\\d,.]+)(?![\\d,.\\/])(?:\\s*(?:ft|feet))?(?!\\s*roads?\\b)`, 'gi');
   const matches = Array.from(summary.matchAll(pattern))
@@ -952,15 +1041,27 @@ const parseSummary = (summary: string) => {
         ? 'gp-layout'
         : /farm\s*plots?\s+development|farm\s*plots?\b|plotted\s+development/i.test(normalizedSummary)
           ? 'plotted'
-          : /high[- ]?rise|hi[- ]?rise/i.test(normalizedSummary)
+          : /farm\s*house(?:s)?\b|farmhouse(?:s)?\b/i.test(normalizedSummary)
+            ? 'farm-house'
+          : /group\s*house(?:s|ing)?\b/i.test(normalizedSummary)
+            ? 'group-house'
+          : /high[- ]?rise|hi[- ]?rise|sky\s*rise/i.test(normalizedSummary)
             ? 'high-rise'
+          : /residential\s*house\b|independent\s*house\b/i.test(normalizedSummary)
+            ? 'residential-house'
           : /villa\s+development|development\s+site|villas?\b/i.test(normalizedSummary)
           ? 'villa'
+          : /\bapartments?\b|\bflats?\b/i.test(normalizedSummary)
+            ? 'apartment'
+          : /\bstandalone\s*(?:building|house)?\b/i.test(normalizedSummary)
+            ? 'standalone'
         : usesAcreArea && /\b(?:land|plot|acres?|outright|purchase|sale|sell|buy)\b/i.test(normalizedSummary)
           ? 'land'
         : /commercial\s+(?:plot|land)|plot\s+for\s+sale|land\s+for\s+sale/i.test(normalizedSummary)
           ? 'open-plot'
-          : extractChoice(text, ['standalone', 'high-rise', 'villa', 'plotted', 'open-plot', 'land', 'hmda-layout', 'gp-layout', 'dtcp-layout']) || 'standalone';
+          : extractChoice(text, ['apartment', 'standalone', 'high-rise', 'group-house', 'residential-house', 'villa', 'farm-house', 'plotted', 'open-plot', 'land', 'hmda-layout', 'gp-layout', 'dtcp-layout']) || 'standalone';
+  const apartmentLikeTypes = ['apartment', 'standalone', 'high-rise', 'group-house'];
+  const isApartmentLikeSummary = apartmentLikeTypes.includes(developmentType);
   const areaUnit = usesAcreArea ? 'Acres' : usesSqFtArea ? 'Sq Ft' : 'Sq Yards';
   const locationFields = extractLocationFields(normalizedSummary);
   const totalArea = extractAreaFromSummary(normalizedSummary);
@@ -1025,6 +1126,18 @@ const parseSummary = (summary: string) => {
       /advance\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
       /(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?\s*(?:refundable\s*)?(?:security\s*)?advance\b/i
     ]);
+  const bedrooms = extractBedrooms(normalizedSummary);
+  const bathrooms = extractBathrooms(normalizedSummary);
+  const floorDetails = extractFloorDetails(normalizedSummary);
+  const furnishingStatus = extractFurnishingStatus(normalizedSummary);
+  const possessionStatus = extractPossessionStatus(normalizedSummary);
+  const flatSize = extractFlatSize(normalizedSummary);
+  const flatFacing = isApartmentLikeSummary ? extractChoice(normalizeDirection(finalFacing), ['North', 'South', 'East', 'West']) : '';
+  const projectName = extractProjectName(normalizedSummary) || ventureName;
+  const companyName = extractCompanyName(normalizedSummary);
+  const squareFeetPrice = extractSquareFeetPrice(normalizedSummary);
+  const totalBudget = extractTotalBudget(normalizedSummary) || askingPrice || marketPrice;
+  const selectedAmenities = extractAmenitiesFromSummary(normalizedSummary);
 
   return {
     listingIntent: hasDevelopmentTerms ? 'development' : /\b(?:sell|sale|selling|outright|per\s*acres?|card\s*value)\b/i.test(normalizedSummary) ? 'sell' : 'development',
@@ -1058,6 +1171,19 @@ const parseSummary = (summary: string) => {
     extraCharges,
     ...contactDetails,
     zoningClassification: finalZoningClassification,
+    bedrooms,
+    bathrooms,
+    floorNumber: floorDetails.floorNumber,
+    totalFloors: floorDetails.totalFloors,
+    furnishingStatus,
+    possessionStatus,
+    flatSize,
+    flatFacing,
+    projectName,
+    companyName,
+    squareFeetPrice,
+    totalBudget,
+    selectedAmenities,
     description: summary.trim()
   };
 };
@@ -1082,7 +1208,29 @@ const buildSimplePropertyDescription = (details: ReturnType<typeof parseSummary>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
   const location = [details.locality, details.city, details.district, details.state].filter(Boolean).join(', ');
-  const intro = `${details.totalArea ? `${details.totalArea} ${details.areaUnit}` : 'Property'} ${propertyType.toLowerCase()} ${details.listingIntent === 'sell' ? 'for sale' : 'available'}${location ? ` at ${location}` : ''}`;
+  const isApartmentLike = APARTMENT_LIKE_TYPES.includes(details.developmentType);
+  const sizeLabel = isApartmentLike && details.flatSize ? `${details.flatSize} Sq Ft` : details.totalArea ? `${details.totalArea} ${details.areaUnit}` : 'Property';
+  const configLabel = isApartmentLike && details.bedrooms ? ` ${details.bedrooms}` : '';
+  const intro = `${sizeLabel}${configLabel} ${propertyType.toLowerCase()} ${details.listingIntent === 'sell' ? 'for sale' : 'available'}${location ? ` at ${location}` : ''}`;
+  const flatDetails = isApartmentLike
+    ? [
+        details.bathrooms ? `${details.bathrooms} bathrooms` : '',
+        details.floorNumber ? `floor ${details.floorNumber}${details.totalFloors ? ` of ${details.totalFloors}` : ''}` : '',
+        details.flatFacing ? `${details.flatFacing}-facing` : '',
+        details.furnishingStatus || '',
+        details.possessionStatus || ''
+      ].filter(Boolean).join(', ')
+    : '';
+  const flatPrice = isApartmentLike
+    ? (details.totalBudget
+      ? `Total budget is Rs. ${Number(details.totalBudget).toLocaleString('en-IN')}`
+      : details.squareFeetPrice
+        ? `Priced at Rs. ${Number(details.squareFeetPrice).toLocaleString('en-IN')} per Sq Ft`
+        : '')
+    : '';
+  const amenitiesLine = isApartmentLike && details.selectedAmenities?.length
+    ? `Amenities include ${details.selectedAmenities.join(', ')}`
+    : '';
   const approval = details.approvalType ? `It is part of an ${details.approvalType}` : '';
   const venture = details.ventureName ? `${approval ? ' in ' : 'It is in '}${details.ventureName}${details.blockName ? `, ${details.blockName}` : ''}` : '';
   const plot = details.plotNumber ? `Plot number ${details.plotNumber}` : '';
@@ -1108,10 +1256,12 @@ const buildSimplePropertyDescription = (details: ReturnType<typeof parseSummary>
   const sentences = [
     intro,
     [approval, venture].filter(Boolean).join(''),
+    flatDetails,
     [plot, facing, road].filter(Boolean).join(', '),
     size,
     landmark,
-    [price, market, charges].filter(Boolean).join('. '),
+    [price, market, charges, flatPrice].filter(Boolean).join('. '),
+    amenitiesLine,
     terms
   ].filter(Boolean);
   return sentences.length ? `${sentences.join('. ')}.` : fallbackNote;
@@ -1413,9 +1563,12 @@ const resolveLocationDetailsWithGoogle = async (
   return resolved;
 };
 
+const APARTMENT_LIKE_TYPES = ['apartment', 'standalone', 'high-rise', 'group-house'];
+
 const getMissingPropertyFormFields = (details: ReturnType<typeof parseSummary>, hasPlotDiagram: boolean) => {
   const missing: string[] = [];
   const isLargeLand = isLargeAcreLand(details);
+  const isApartmentLike = APARTMENT_LIKE_TYPES.includes(details.developmentType);
   const hasValue = (value?: string) => Boolean(String(value || '').trim());
   const hasPositiveNumber = (value?: string) => {
     const parsed = Number(String(value || '').replace(/,/g, ''));
@@ -1428,11 +1581,11 @@ const getMissingPropertyFormFields = (details: ReturnType<typeof parseSummary>, 
   if (!hasValue(details.listingIntent)) add('Post Property For');
   if (!hasValue(details.developmentType)) add(details.listingIntent === 'development' ? 'Development Type' : 'Property Type');
   if (!hasPositiveNumber(details.totalArea)) add('Total Area');
-  if (!isLargeLand && !hasValue(details.facing)) add('Facing');
-  if (!isLargeLand && !hasValue(details.roadFacingDirection)) add('Road Facing Direction');
-  if (!isLargeLand && !hasPositiveNumber(details.roadSize)) add('Road Size');
-  if (!isLargeLand && !hasPositiveNumber(details.frontageWidth)) add('Frontage Width');
-  if (!isLargeLand && !hasValue(details.zoningClassification)) add('Zoning Classification');
+  if (!isLargeLand && !isApartmentLike && !hasValue(details.facing)) add('Facing');
+  if (!isLargeLand && !isApartmentLike && !hasValue(details.roadFacingDirection)) add('Road Facing Direction');
+  if (!isLargeLand && !isApartmentLike && !hasPositiveNumber(details.roadSize)) add('Road Size');
+  if (!isLargeLand && !isApartmentLike && !hasPositiveNumber(details.frontageWidth)) add('Frontage Width');
+  if (!isLargeLand && !isApartmentLike && !hasValue(details.zoningClassification)) add('Zoning Classification');
   if (!/^\d{6}$/.test(details.pincode || '')) add('Pincode');
   if (!hasValue(details.state)) add('State');
   if (!hasValue(details.city)) add('City');
@@ -1443,11 +1596,16 @@ const getMissingPropertyFormFields = (details: ReturnType<typeof parseSummary>, 
     add('Development Ratio (Owner : Builder)');
   }
 
-  if (details.listingIntent !== 'development' && !hasPositiveNumber(details.squareYardPrice)) {
+  if (isApartmentLike) {
+    if (!hasValue(details.bedrooms)) add('Bedrooms (BHK)');
+    if (details.listingIntent !== 'development' && !hasPositiveNumber(details.squareFeetPrice) && !hasPositiveNumber(details.totalBudget)) {
+      add(details.listingIntent === 'buy' ? 'Budget per Sq Ft' : 'Square Feet Price');
+    }
+  } else if (details.listingIntent !== 'development' && !hasPositiveNumber(details.squareYardPrice)) {
     add(details.listingIntent === 'buy' ? 'Budget per Sq Yard' : isLargeAcreLand(details) ? 'Per Acre Price' : 'Square Yard Price');
   }
 
-  if (details.developmentType !== 'high-rise' && !hasPlotDiagram && !isLargeAcreLand(details)) {
+  if (!isApartmentLike && details.developmentType !== 'high-rise' && !hasPlotDiagram && !isLargeAcreLand(details)) {
     if (!hasPositiveNumber(details.northSideLength)) add('North Side Length');
     if (!hasPositiveNumber(details.southSideLength)) add('South Side Length');
     if (!hasPositiveNumber(details.eastSideLength)) add('East Side Length');
@@ -1885,7 +2043,19 @@ const PropertySummary = () => {
       data.append('squareYardPrice', propertyDetails.squareYardPrice);
       data.append('purchaseTimeline', '');
       data.append('description', propertyDetails.description);
-      data.append('selectedAmenities', JSON.stringify([]));
+      data.append('bedrooms', propertyDetails.bedrooms || '');
+      data.append('bathrooms', propertyDetails.bathrooms || '');
+      data.append('floorNumber', propertyDetails.floorNumber || '');
+      data.append('totalFloors', propertyDetails.totalFloors || '');
+      data.append('furnishingStatus', propertyDetails.furnishingStatus || '');
+      data.append('possessionStatus', propertyDetails.possessionStatus || '');
+      data.append('flatSize', propertyDetails.flatSize || '');
+      data.append('flatFacing', propertyDetails.flatFacing || '');
+      data.append('projectName', propertyDetails.projectName || '');
+      data.append('companyName', propertyDetails.companyName || '');
+      data.append('squareFeetPrice', propertyDetails.squareFeetPrice || '');
+      data.append('totalBudget', propertyDetails.totalBudget || '');
+      data.append('selectedAmenities', JSON.stringify(propertyDetails.selectedAmenities || []));
 
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);

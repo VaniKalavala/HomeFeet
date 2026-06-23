@@ -374,6 +374,9 @@ const PostProperty = () => {
       squareFeetPrice: prefill.squareFeetPrice || prev.squareFeetPrice,
       totalBudget: prefill.totalBudget || prev.totalBudget,
       description: prefill.description || prev.description,
+      selectedAmenities: Array.isArray(prefill.selectedAmenities) && prefill.selectedAmenities.length
+        ? prefill.selectedAmenities
+        : prev.selectedAmenities,
       contactPhone: prefillContactPhone || prev.contactPhone,
       contactEmail: prefillContactEmail || prev.contactEmail,
       plotDiagram: routeState?.plotDiagramFile || prev.plotDiagram
