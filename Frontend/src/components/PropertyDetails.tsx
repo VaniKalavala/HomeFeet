@@ -201,6 +201,8 @@ const PropertyDetails: React.FC = () => {
   const developerRatioLabel = isKarnatakaListing ? 'JV Ratio (Owner:Builder)' : 'Development Ratio (Owner : Builder)';
 
   const isApartmentListing = String(property?.developmentType || '').toLowerCase() === 'apartment';
+  const apartmentLikeTypes = ['apartment', 'standalone', 'high-rise', 'group-house'];
+  const isApartmentLikeListing = apartmentLikeTypes.includes(String(property?.developmentType || '').toLowerCase());
 
   const categoryDetails = property ? [
     { label: 'Category', value: property.propertyCategory ? cleanType(property.propertyCategory) : '' },
@@ -212,13 +214,13 @@ const PropertyDetails: React.FC = () => {
   const details = property ? [
     { label: 'Project Name', value: property.projectName },
     { label: 'Company Name', value: property.companyName },
-    { label: 'Total Area', value: property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '' },
+    { label: 'Total Area', value: isApartmentLikeListing ? '' : (property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '') },
     { label: 'Square Feet Price', value: formatMoney(property.squareFeetPrice) },
     { label: 'Total Budget', value: formatMoney(property.totalBudget) },
     { label: 'Bedrooms', value: property.bedrooms },
     { label: 'Bathrooms', value: property.bathrooms },
     { label: developerRatioLabel, value: isApartmentListing ? '' : property.developerRatio },
-    { label: 'Facing', value: property.facing },
+    { label: 'Facing', value: isApartmentLikeListing ? '' : property.facing },
     { label: 'Flat Size', value: property.flatSize ? `${property.flatSize} Sq Ft` : '' },
     { label: 'Flat Facing', value: property.flatFacing },
     { label: 'Floor', value: property.floorNumber ? `${property.floorNumber}${property.totalFloors ? ` of ${property.totalFloors}` : ''}` : '' },
