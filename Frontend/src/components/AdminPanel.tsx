@@ -1059,7 +1059,7 @@ const AdminPanel: React.FC = () => {
             <h2 className="text-lg font-semibold">Filters</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -1363,7 +1363,7 @@ const AdminPanel: React.FC = () => {
               </div>
             )}
 
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <select
                 value={builderContactForm.city}
                 onChange={(event) => setBuilderContactForm(prev => ({ ...prev, city: event.target.value }))}

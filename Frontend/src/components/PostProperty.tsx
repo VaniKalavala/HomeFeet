@@ -2650,7 +2650,7 @@ const PostProperty = () => {
 
       {!isApartment && (
         <>
-          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <select
               onChange={e => setFormData(prev => ({ ...prev, roadSize: e.target.value }))}
               className="w-full border p-2 rounded"
@@ -2773,7 +2773,7 @@ const PostProperty = () => {
         type="number"
       />
       {formData.listingIntent === 'development' && (
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <select
             name="partlySale"
             value={formData.partlySale}
