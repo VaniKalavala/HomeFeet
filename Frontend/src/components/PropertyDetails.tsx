@@ -713,18 +713,8 @@ const PropertyDetails: React.FC = () => {
 
             {property.floorPlanUrl && (
               <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-100 p-6 pb-4">
+                <div className="border-b border-slate-100 p-6 pb-4">
                   <h2 className="text-xl font-black text-slate-950">{title} Floor Plans and Pricing</h2>
-                  <a
-                    href={`${API_ORIGIN}${property.floorPlanUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                    className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-800 transition hover:bg-teal-100"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </a>
                 </div>
 
                 <div className="p-6">
@@ -754,7 +744,15 @@ const PropertyDetails: React.FC = () => {
                         className="w-full rounded-lg border border-slate-200 object-contain"
                       />
                     ) : (
-                      <p className="text-sm text-slate-600">Floor plan document uploaded. Use the Download button above to view it.</p>
+                      <a
+                        href={`${API_ORIGIN}${property.floorPlanUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-700 hover:text-teal-900"
+                      >
+                        <Download className="h-4 w-4" />
+                        View floor plan document
+                      </a>
                     )}
                   </div>
 
