@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
+import { housingTopPicks } from '../lib/housingTopPicks';
 import LoginModal from './LoginModal';
 
 declare global {
@@ -1602,6 +1603,37 @@ const PropertiesListingPage: React.FC = () => {
                 </div>
               )}
             </main>
+
+            <div className="rounded-xl bg-white/40 p-2.5 sm:p-3">
+              <h2 className="text-base font-semibold text-slate-950">HomeFeet's Happening Projects</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Explore top living options with us</p>
+              <div className="mt-3 flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {housingTopPicks.map((pick) => (
+                  <div
+                    key={pick.projectName}
+                    className="w-64 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm"
+                  >
+                    <img src={pick.image} alt={pick.projectName} className="h-32 w-full object-cover" />
+                    <div className="p-3">
+                      <div className="flex items-center gap-2">
+                        <img src={pick.logo} alt={pick.builder} className="h-6 w-6 shrink-0 rounded bg-slate-50 object-contain" />
+                        <p className="line-clamp-1 text-xs font-bold text-slate-950">{pick.builder}</p>
+                      </div>
+                      <p className="mt-2 text-sm font-black text-slate-950">{pick.projectName}</p>
+                      <p className="text-xs text-slate-600">{pick.location}</p>
+                      <p className="mt-1.5 text-xs font-bold text-slate-950">{pick.priceRange}</p>
+                      <p className="text-xs text-slate-600">{pick.configuration}</p>
+                      <Link
+                        to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`}
+                        className="mt-2 inline-flex items-center justify-center rounded-lg bg-[#0AA6A6] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#088f8f]"
+                      >
+                        View Projects
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             </div>
           )}
 
