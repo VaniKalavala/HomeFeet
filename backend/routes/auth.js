@@ -38,6 +38,10 @@ const publicUser = (user) => ({
   builderSubscriptionExpiresAt: user.builderSubscriptionExpiresAt,
   ownerPlanTier: user.ownerPlanTier,
   ownerPlanExpiresAt: user.ownerPlanExpiresAt,
+  agentCompanyName: user.agentCompanyName,
+  agentExperienceYears: user.agentExperienceYears,
+  agentLanguages: user.agentLanguages,
+  agentSpecializations: user.agentSpecializations,
   freeContactCredits: user.freeContactCredits,
   contactUnlocksUsed: user.contactUnlocksUsed
 });
@@ -834,9 +838,16 @@ router.patch('/profile', async (req, res) => {
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const { city, state } = req.body;
+    const { city, state, agentCompanyName, agentExperienceYears, agentLanguages, agentSpecializations } = req.body;
     if (typeof city === 'string') user.city = city.trim();
     if (typeof state === 'string') user.state = state.trim();
+    if (typeof agentCompanyName === 'string') user.agentCompanyName = agentCompanyName.trim();
+    if (agentExperienceYears !== undefined) {
+      const years = Number(agentExperienceYears);
+      user.agentExperienceYears = Number.isFinite(years) && years >= 0 ? years : null;
+    }
+    if (Array.isArray(agentLanguages)) user.agentLanguages = agentLanguages.filter(Boolean);
+    if (Array.isArray(agentSpecializations)) user.agentSpecializations = agentSpecializations.filter(Boolean);
     await user.save();
 
     res.json(publicUser(user));

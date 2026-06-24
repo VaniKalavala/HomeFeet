@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Lock, MapPin, Phone, User } from 'lucide-react';
+import { ArrowLeft, Briefcase, Building2, Languages, Lock, MapPin, Phone, User } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 
 type AgentProperty = {
@@ -22,6 +22,10 @@ type AgentProfileData = {
   lastName: string;
   city: string;
   state: string;
+  agentCompanyName: string;
+  agentExperienceYears: number | null;
+  agentLanguages: string[];
+  agentSpecializations: string[];
   phone: string;
   phoneLocked: boolean;
   properties: AgentProperty[];
@@ -91,10 +95,15 @@ export default function AgentProfile() {
 
         <div className="mt-5 grid gap-6 lg:grid-cols-[340px_1fr]">
           <aside className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-2xl font-black text-teal-700">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-black text-white" style={{ backgroundColor: '#0AA6A6' }}>
               {agent.firstName?.charAt(0).toUpperCase() || <User className="h-8 w-8" />}
             </div>
             <h1 className="mt-4 text-2xl font-black text-slate-950">{agent.firstName} {agent.lastName}</h1>
+            {agent.agentCompanyName && (
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                <Building2 className="h-4 w-4 text-teal-700" /> {agent.agentCompanyName}
+              </p>
+            )}
             <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
               <MapPin className="h-4 w-4 text-teal-700" />
               {[agent.city, agent.state].filter(Boolean).join(', ') || 'Location not specified'}
@@ -102,6 +111,24 @@ export default function AgentProfile() {
             <p className="mt-3 inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800">
               Agent (Mediator)
             </p>
+
+            {(typeof agent.agentExperienceYears === 'number' || agent.agentLanguages?.length > 0 || agent.agentSpecializations?.length > 0) && (
+              <div className="mt-4 space-y-1.5 border-t border-slate-100 pt-4 text-sm text-slate-600">
+                {typeof agent.agentExperienceYears === 'number' && (
+                  <p className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-teal-700" /> {agent.agentExperienceYears} Years Experience</p>
+                )}
+                {agent.agentLanguages?.length > 0 && (
+                  <p className="flex items-center gap-2"><Languages className="h-4 w-4 text-teal-700" /> {agent.agentLanguages.join(', ')}</p>
+                )}
+                {agent.agentSpecializations?.length > 0 && (
+                  <p className="flex flex-wrap items-center gap-1.5">
+                    {agent.agentSpecializations.map((spec) => (
+                      <span key={spec} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{spec}</span>
+                    ))}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mt-6 border-t border-slate-100 pt-5">
               {agent.phoneLocked ? (

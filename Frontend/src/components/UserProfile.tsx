@@ -15,8 +15,27 @@ const UserProfile: React.FC = () => {
   const [freeRemaining, setFreeRemaining] = useState(2);
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [experienceYears, setExperienceYears] = useState('');
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [specializations, setSpecializations] = useState<string[]>([]);
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationMessage, setLocationMessage] = useState('');
+
+  const languageOptions = ['English', 'Hindi', 'Telugu', 'Tamil', 'Kannada', 'Marathi', 'Bengali', 'Urdu', 'Gujarati', 'Malayalam'];
+  const specializationOptions = ['Apartment', 'Villa', 'Plot', 'Commercial Space', 'Independent House'];
+
+  const toggleListValue = (list: string[], value: string) =>
+    list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+
+  const parseStoredList = (key: string): string[] => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -37,9 +56,13 @@ const UserProfile: React.FC = () => {
     setFreeRemaining(Math.max(credits - used, 0));
     setCity(localStorage.getItem('city') || '');
     setState(localStorage.getItem('state') || '');
+    setCompanyName(localStorage.getItem('agentCompanyName') || '');
+    setExperienceYears(localStorage.getItem('agentExperienceYears') || '');
+    setLanguages(parseStoredList('agentLanguages'));
+    setSpecializations(parseStoredList('agentSpecializations'));
   }, [navigate]);
 
-  const saveLocation = async () => {
+  const saveAgentDetails = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     setSavingLocation(true);
@@ -48,15 +71,26 @@ const UserProfile: React.FC = () => {
       const response = await fetch(`${API_BASE}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ city, state })
+        body: JSON.stringify({
+          city,
+          state,
+          agentCompanyName: companyName,
+          agentExperienceYears: experienceYears,
+          agentLanguages: languages,
+          agentSpecializations: specializations
+        })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Unable to save location');
+      if (!response.ok) throw new Error(data.error || 'Unable to save agent details');
       localStorage.setItem('city', data.city || '');
       localStorage.setItem('state', data.state || '');
-      setLocationMessage('Location saved.');
+      localStorage.setItem('agentCompanyName', data.agentCompanyName || '');
+      localStorage.setItem('agentExperienceYears', data.agentExperienceYears != null ? String(data.agentExperienceYears) : '');
+      localStorage.setItem('agentLanguages', JSON.stringify(data.agentLanguages || []));
+      localStorage.setItem('agentSpecializations', JSON.stringify(data.agentSpecializations || []));
+      setLocationMessage('Agent details saved.');
     } catch (err) {
-      setLocationMessage(err instanceof Error ? err.message : 'Unable to save location');
+      setLocationMessage(err instanceof Error ? err.message : 'Unable to save agent details');
     } finally {
       setSavingLocation(false);
     }
@@ -133,7 +167,7 @@ const UserProfile: React.FC = () => {
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
               <MapPin className="h-6 w-6" />
             </div>
-            <h2 className="text-xl font-black text-slate-950">Agent Location</h2>
+            <h2 className="text-xl font-black text-slate-950">Agent Details</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Shown on your public agent profile so builders, owners, and buyers can find you in "Find an Agent".
             </p>
@@ -150,15 +184,65 @@ const UserProfile: React.FC = () => {
                 placeholder="State"
                 className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-teal-500"
               />
+              <input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Company Name"
+                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-teal-500"
+              />
+              <input
+                value={experienceYears}
+                onChange={(e) => setExperienceYears(e.target.value)}
+                placeholder="Years of Experience"
+                type="number"
+                min="0"
+                step="1"
+                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-teal-500"
+              />
             </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">Languages Spoken</p>
+              <div className="flex flex-wrap gap-2">
+                {languageOptions.map((option) => (
+                  <label key={option} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={languages.includes(option)}
+                      onChange={() => setLanguages((prev) => toggleListValue(prev, option))}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">Property Types You Deal In</p>
+              <div className="flex flex-wrap gap-2">
+                {specializationOptions.map((option) => (
+                  <label key={option} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={specializations.includes(option)}
+                      onChange={() => setSpecializations((prev) => toggleListValue(prev, option))}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-4 flex items-center gap-3">
               <button
                 type="button"
-                onClick={saveLocation}
+                onClick={saveAgentDetails}
                 disabled={savingLocation}
                 className="inline-flex items-center justify-center rounded-lg bg-[#0AA6A6] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {savingLocation ? 'Saving...' : 'Save Location'}
+                {savingLocation ? 'Saving...' : 'Save Agent Details'}
               </button>
               {locationMessage && <p className="text-sm font-semibold text-slate-600">{locationMessage}</p>}
             </div>

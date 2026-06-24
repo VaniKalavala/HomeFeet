@@ -770,16 +770,40 @@ router.get('/user-properties', async (req, res) => {
 // GET /api/agents - Public directory of agents (mediator accounts). Never returns phone/email.
 router.get('/agents', async (req, res) => {
   try {
-    const agents = await User.find({ accountType: 'mediator' })
-      .select('firstName lastName city state createdAt')
+    const { state, city, specialization, language, minExperience, maxExperience } = req.query;
+
+    const match = { accountType: 'mediator' };
+    if (state) match.state = new RegExp(`^${escapeRegex(String(state))}$`, 'i');
+    if (city) match.city = new RegExp(`^${escapeRegex(String(city))}$`, 'i');
+    if (specialization) match.agentSpecializations = specialization;
+    if (language) match.agentLanguages = language;
+    if (minExperience || maxExperience) {
+      match.agentExperienceYears = {};
+      if (minExperience) match.agentExperienceYears.$gte = Number(minExperience);
+      if (maxExperience) match.agentExperienceYears.$lte = Number(maxExperience);
+    }
+
+    const agents = await User.find(match)
+      .select('firstName lastName city state phone agentCompanyName agentExperienceYears agentLanguages agentSpecializations createdAt')
       .sort({ createdAt: -1 });
 
-    res.json(agents.map((agent) => ({
+    const propertiesCounts = await Promise.all(agents.map((agent) => {
+      const ownerMatch = [{ userId: agent._id.toString() }];
+      if (agent.phone) ownerMatch.push({ phone: agent.phone });
+      return Property.countDocuments({ $or: ownerMatch, status: 'approved' });
+    }));
+
+    res.json(agents.map((agent, index) => ({
       id: agent._id.toString(),
       firstName: agent.firstName,
       lastName: agent.lastName,
       city: agent.city || '',
-      state: agent.state || ''
+      state: agent.state || '',
+      agentCompanyName: agent.agentCompanyName || '',
+      agentExperienceYears: agent.agentExperienceYears ?? null,
+      agentLanguages: agent.agentLanguages || [],
+      agentSpecializations: agent.agentSpecializations || [],
+      propertiesCount: propertiesCounts[index]
     })));
   } catch (err) {
     console.error(err);
@@ -826,6 +850,10 @@ router.get('/agents/:id', async (req, res) => {
       lastName: agent.lastName,
       city: agent.city || '',
       state: agent.state || '',
+      agentCompanyName: agent.agentCompanyName || '',
+      agentExperienceYears: agent.agentExperienceYears ?? null,
+      agentLanguages: agent.agentLanguages || [],
+      agentSpecializations: agent.agentSpecializations || [],
       phone: canSeePhone ? agent.phone : '',
       phoneLocked: !canSeePhone,
       properties: properties.map(stripOwnerContact)

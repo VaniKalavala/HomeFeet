@@ -41,6 +41,10 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
     localStorage.setItem('builderSubscriptionExpiresAt', user.builderSubscriptionExpiresAt || '');
     localStorage.setItem('ownerPlanTier', user.ownerPlanTier || 'none');
     localStorage.setItem('ownerPlanExpiresAt', user.ownerPlanExpiresAt || '');
+    localStorage.setItem('agentCompanyName', user.agentCompanyName || '');
+    localStorage.setItem('agentExperienceYears', user.agentExperienceYears != null ? String(user.agentExperienceYears) : '');
+    localStorage.setItem('agentLanguages', JSON.stringify(user.agentLanguages || []));
+    localStorage.setItem('agentSpecializations', JSON.stringify(user.agentSpecializations || []));
     localStorage.setItem('freeContactCredits', String(user.freeContactCredits ?? 2));
     localStorage.setItem('contactUnlocksUsed', String(user.contactUnlocksUsed ?? 0));
     if (user.email) localStorage.setItem('email', user.email);

@@ -92,6 +92,23 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  agentCompanyName: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  agentExperienceYears: {
+    type: Number,
+    default: null
+  },
+  agentLanguages: {
+    type: [String],
+    default: []
+  },
+  agentSpecializations: {
+    type: [String],
+    default: []
+  },
   builderSubscriptionPlan: {
     type: String,
     enum: ['none', '3_months', '6_months', '12_months'],
