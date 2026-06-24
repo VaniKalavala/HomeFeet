@@ -598,7 +598,7 @@ const PropertyDetails: React.FC = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       download
-                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800"
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
                     >
                       <Download className="h-4 w-4" />
                       Download Brochure
@@ -923,7 +923,7 @@ const PropertyDetails: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button onClick={handleShowContact} className="ld-btn-primary w-full">
+                <button onClick={handleShowContact} className="ld-btn-primary w-full bg-[#0AA6A6] hover:bg-[#088f8f]">
                   {isOwnerOrMediator ? 'Unlock With Membership' : `Request / Unlock ${contactPartyLabel} Contact`}
                 </button>
                 {interestStatus && <p className="mt-3 text-sm font-bold text-amber-700">Request status: {interestStatus}</p>}
