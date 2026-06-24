@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import ListingsSidebar from './ListingsSidebar';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Building2, Mail, Phone, ShieldCheck, Sparkles, User } from 'lucide-react';
+import { BadgeCheck, Building2, Mail, MapPin, Phone, ShieldCheck, Sparkles, User } from 'lucide-react';
+import { API_BASE } from '../lib/api';
 
 const UserProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +13,10 @@ const UserProfile: React.FC = () => {
   const [builderStatus, setBuilderStatus] = useState('not_required');
   const [builderPlan, setBuilderPlan] = useState('none');
   const [freeRemaining, setFreeRemaining] = useState(2);
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -30,7 +35,32 @@ const UserProfile: React.FC = () => {
     const credits = Number(localStorage.getItem('freeContactCredits') || 2);
     const used = Number(localStorage.getItem('contactUnlocksUsed') || 0);
     setFreeRemaining(Math.max(credits - used, 0));
+    setCity(localStorage.getItem('city') || '');
+    setState(localStorage.getItem('state') || '');
   }, [navigate]);
+
+  const saveLocation = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setSavingLocation(true);
+    setLocationMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ city, state })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to save location');
+      localStorage.setItem('city', data.city || '');
+      localStorage.setItem('state', data.state || '');
+      setLocationMessage('Location saved.');
+    } catch (err) {
+      setLocationMessage(err instanceof Error ? err.message : 'Unable to save location');
+    } finally {
+      setSavingLocation(false);
+    }
+  };
 
   const info = [
     { icon: User, label: 'Name', value: name },
@@ -85,7 +115,7 @@ const UserProfile: React.FC = () => {
               {accountType === 'builder'
                 ? `Builder verification status: ${builderStatus}. Plan: ${builderPlan === 'none' ? `Free access (${freeRemaining} owner contacts left)` : builderPlan.replace('_', ' ')}.`
                 : accountType === 'mediator'
-                  ? `Mediator plan: ${builderPlan === 'none' ? 'Free summary access. Paid membership unlocks other complete listings.' : builderPlan.replace('_', ' ')}.`
+                  ? `Agent (Mediator) plan: ${builderPlan === 'none' ? 'Free summary access. Paid membership unlocks other complete listings.' : builderPlan.replace('_', ' ')}.`
                   : `Owner plan: ${builderPlan === 'none' ? 'Free summary access and your own listing details. Paid membership unlocks other complete listings.' : builderPlan.replace('_', ' ')}.`}
             </p>
           </div>
@@ -97,6 +127,43 @@ const UserProfile: React.FC = () => {
             <p className="mt-3 text-sm leading-7 text-slate-600">HomeFeet uses controlled contact reveal, admin-reviewed listings, and conversation history to keep high-value property discussions professional.</p>
           </div>
         </section>
+
+        {accountType === 'mediator' && (
+          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+              <MapPin className="h-6 w-6" />
+            </div>
+            <h2 className="text-xl font-black text-slate-950">Agent Location</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Shown on your public agent profile so builders, owners, and buyers can find you in "Find an Agent".
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="City"
+                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-teal-500"
+              />
+              <input
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="State"
+                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveLocation}
+                disabled={savingLocation}
+                className="inline-flex items-center justify-center rounded-lg bg-[#0AA6A6] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingLocation ? 'Saving...' : 'Save Location'}
+              </button>
+              {locationMessage && <p className="text-sm font-semibold text-slate-600">{locationMessage}</p>}
+            </div>
+          </section>
+        )}
 
         <section className="mt-6 rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

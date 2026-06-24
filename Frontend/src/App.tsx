@@ -47,6 +47,8 @@ import LegalPage from './components/LegalPage';
 import TestimonialsPage from './components/TestimonialsPage';
 import SubscriptionPlansPage from './components/SubscriptionPlansPage';
 import ComparisonPage from './components/ComparisonPage';
+import AgentDirectory from './components/AgentDirectory';
+import AgentProfile from './components/AgentProfile';
 import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from './config/razorpay.config';
 import { API_BASE, API_ORIGIN } from './lib/api';
 
@@ -172,9 +174,9 @@ const seoByPath: Record<string, SeoConfig> = {
       'Builder membership for verified apartment sales opportunities, owner conversations, and commercial space workflows.'
   },
   '/owner-mediator-membership': {
-    title: 'Owner & Mediator Membership | HomeFeet',
+    title: 'Owner & Agent (Mediator) Membership | HomeFeet',
     description:
-      'Owner and mediator membership for controlled access to complete listing details from other verified property owners and mediators.'
+      'Owner and agent (mediator) membership for controlled access to complete listing details from other verified property owners and agents.'
   },
   '/about': {
     title: 'About HomeFeet | Verified Marketplace for Apartments, Commercial Space & Buyers',
@@ -3176,7 +3178,7 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
     const accountAudience = currentAccountType === 'owner' || currentAccountType === 'mediator' ? 'owner_mediator' : 'builder';
     if (accountAudience !== selectedAudience) {
       setMessage(accountAudience === 'owner_mediator'
-        ? 'Your account is Owner/Mediator. Please open the Owner/Mediator membership page.'
+        ? 'Your account is Owner/Agent (Mediator). Please open the Owner/Agent (Mediator) membership page.'
         : 'Your account is Builder. Please open the Builder membership page.'
       );
       return;
@@ -3467,6 +3469,8 @@ function App() {
           <Route path="/testimonials" element={<TestimonialsPage />} />
           <Route path="/subscription-plans" element={<SubscriptionPlansPage />} />
           <Route path="/compare" element={<ComparisonPage />} />
+          <Route path="/find-an-agent" element={<AgentDirectory />} />
+          <Route path="/agent/:id" element={<AgentProfile />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/terms-and-conditions" element={<LegalPage type="terms" />} />
           <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />

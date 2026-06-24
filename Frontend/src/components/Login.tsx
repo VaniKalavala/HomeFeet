@@ -42,6 +42,8 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
     localStorage.setItem('freeContactCredits', String(user.freeContactCredits ?? 2));
     localStorage.setItem('contactUnlocksUsed', String(user.contactUnlocksUsed ?? 0));
     if (user.email) localStorage.setItem('email', user.email);
+    localStorage.setItem('city', user.city || '');
+    localStorage.setItem('state', user.state || '');
   };
 
   const afterAuthSuccess = () => {
@@ -428,7 +430,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
                   { value: 'owner', label: 'Owner', icon: User },
-                  { value: 'mediator', label: 'Mediator', icon: User },
+                  { value: 'mediator', label: 'Agent (Mediator)', icon: User },
                   { value: 'builder', label: 'Builder', icon: Building2 }
                 ].map((option) => {
                   const Icon = option.icon;
@@ -626,7 +628,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
               { value: 'owner', label: 'Owner', icon: User },
-              { value: 'mediator', label: 'Mediator', icon: User },
+              { value: 'mediator', label: 'Agent (Mediator)', icon: User },
               { value: 'builder', label: 'Builder', icon: Building2 }
             ].map((option) => {
               const Icon = option.icon;
@@ -656,7 +658,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess, stayOnPage = false }) => {
                 {accountType === 'builder'
                   ? 'Builder accounts are reviewed before owner contact and chat access are enabled.'
                   : accountType === 'mediator'
-                    ? 'Mediator accounts can browse listing summaries and post property information.'
+                    ? 'Agent (Mediator) accounts can browse listing summaries and post property information.'
                     : 'Owner accounts can browse listing summaries, post property information, and open their own listing details.'}
               </span>
             </div>

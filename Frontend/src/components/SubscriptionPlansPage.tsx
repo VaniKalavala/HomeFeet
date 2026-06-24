@@ -61,9 +61,9 @@ export default function SubscriptionPlansPage() {
     },
     {
       icon: Crown,
-      title: 'For Owners|Mediators',
-      text: 'Post property for free. Membership is only for viewing complete details from other owners and mediators.',
-      stat: `${marketplaceStats.ownersAndMediators} Owners/Mediators Onboarded`,
+      title: 'For Owners|Agents (Mediators)',
+      text: 'Post property for free. Membership is only for viewing complete details from other owners and agents.',
+      stat: `${marketplaceStats.ownersAndMediators} Owners/Agents (Mediators) Onboarded`,
       action: 'Subscribe',
       to: `/owner-mediator-membership?redirect=${encodeURIComponent('/properties')}`,
       className: 'border-amber-200 bg-amber-50',

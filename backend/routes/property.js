@@ -717,6 +717,75 @@ router.get('/user-properties', async (req, res) => {
   }
 });
 
+// GET /api/agents - Public directory of agents (mediator accounts). Never returns phone/email.
+router.get('/agents', async (req, res) => {
+  try {
+    const agents = await User.find({ accountType: 'mediator' })
+      .select('firstName lastName city state createdAt')
+      .sort({ createdAt: -1 });
+
+    res.json(agents.map((agent) => ({
+      id: agent._id.toString(),
+      firstName: agent.firstName,
+      lastName: agent.lastName,
+      city: agent.city || '',
+      state: agent.state || ''
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch agents' });
+  }
+});
+
+// GET /api/agents/:id - Agent public profile with their approved listings.
+// Phone number is only included if the requester has an active membership,
+// is the agent themselves, or is an admin.
+router.get('/agents/:id', async (req, res) => {
+  try {
+    const agent = await User.findOne({ _id: req.params.id, accountType: 'mediator' });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    let requester = null;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        requester = await User.findById(decoded.id);
+      } catch {
+        requester = null;
+      }
+    }
+
+    const isSelfOrAdmin = Boolean(requester) && (
+      requester._id.toString() === agent._id.toString() ||
+      requester.accountType === 'admin' ||
+      ADMIN_PHONES.includes(requester.phone) ||
+      isAdminEmailMatch(requester)
+    );
+    const canSeePhone = isSelfOrAdmin || (requester && hasActiveMarketplaceSubscription(requester));
+
+    const ownerMatch = [{ userId: agent._id.toString() }];
+    if (agent.phone) ownerMatch.push({ phone: agent.phone });
+    const properties = await Property.find({ $or: ownerMatch, status: 'approved' }).sort({ createdAt: -1 });
+
+    res.json({
+      id: agent._id.toString(),
+      firstName: agent.firstName,
+      lastName: agent.lastName,
+      city: agent.city || '',
+      state: agent.state || '',
+      phone: canSeePhone ? agent.phone : '',
+      phoneLocked: !canSeePhone,
+      properties: properties.map(stripOwnerContact)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch agent profile' });
+  }
+});
+
 // DELETE /api/properties/:id - Delete property
 router.delete('/properties/:id', async (req, res) => {
   try {

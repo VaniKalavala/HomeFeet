@@ -26,6 +26,8 @@ const publicUser = (user) => ({
   lastName: user.lastName,
   email: user.email,
   phone: user.phone,
+  city: user.city || '',
+  state: user.state || '',
   accountType: user.accountType,
   builderVerificationStatus: user.builderVerificationStatus,
   builderCompanyName: user.builderCompanyName,
@@ -682,6 +684,34 @@ router.get('/user/:phone', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching user' });
+  }
+});
+
+// PATCH /api/profile - Update the logged-in user's own profile (currently city/state)
+router.patch('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { city, state } = req.body;
+    if (typeof city === 'string') user.city = city.trim();
+    if (typeof state === 'string') user.state = state.trim();
+    await user.save();
+
+    res.json(publicUser(user));
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 

@@ -1938,7 +1938,7 @@ const PostProperty = () => {
         return;
       }
       if (!['owner', 'mediator'].includes(assistedOwner.accountType)) {
-        alert('Please select Owner or Mediator for admin-assisted upload');
+        alert('Please select Owner or Agent (Mediator) for admin-assisted upload');
         setIsSubmitting(false);
         return;
       }
@@ -2002,7 +2002,7 @@ const PostProperty = () => {
     }
     if (canUseAssistedUpload) {
       const ownerPhone = normalizeAssistedPhone(assistedOwner.phone);
-      const fallbackFirstName = assistedOwner.accountType === 'mediator' ? 'Mediator' : 'Owner';
+      const fallbackFirstName = assistedOwner.accountType === 'mediator' ? 'Agent' : 'Owner';
       data.append('adminAssistedUpload', 'true');
       data.append('assistedOwnerAccountType', assistedOwner.accountType);
       data.append('assistedOwnerPhone', ownerPhone);
@@ -2252,7 +2252,7 @@ const PostProperty = () => {
                 required
               >
                 <option value="owner">Owner</option>
-                <option value="mediator">Mediator</option>
+                <option value="mediator">Agent (Mediator)</option>
               </select>
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700">
