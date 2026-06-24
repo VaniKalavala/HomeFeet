@@ -2415,7 +2415,7 @@ const PostProperty = () => {
         </section>
       )}
       
-      <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex items-center gap-3">
           <Building2 className="h-6 w-6 text-teal-700" />
           <h2 className="text-xl font-bold text-slate-900">Property Details</h2>
@@ -2489,7 +2489,7 @@ const PostProperty = () => {
         name="developmentType"
         value={formData.developmentType}
         onChange={handleChange}
-        className="w-full border p-2 rounded"
+        className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
         required
       >
         <option value="">{formData.listingIntent === 'development' ? 'Select Development Type *' : 'Select Property Type *'}</option>
@@ -2522,13 +2522,13 @@ const PostProperty = () => {
         )}
       </select>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <input
           name="totalArea"
           value={formData.totalArea}
           onChange={handleChange}
           placeholder="Plot Size *"
-          className="border p-2 rounded"
+          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
           type="number"
           min="0"
           step="any"
@@ -2538,7 +2538,7 @@ const PostProperty = () => {
           name="areaUnit"
           onChange={handleChange}
           value={formData.areaUnit}
-          className="border p-2 rounded"
+          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
         >
           <option value="Sq Yards">Sq Yards</option>
           <option value="Sq Ft">Square Feet</option>
@@ -2554,43 +2554,43 @@ const PostProperty = () => {
       {showDimensions && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-teal-600">Plot Dimensions (in feet)</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <input 
-              name="northSideLength" 
-              value={formData.northSideLength} 
-              onChange={handleChange} 
-              placeholder="North Side Length (ft)" 
-              className="border p-2 rounded" 
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input
+              name="northSideLength"
+              value={formData.northSideLength}
+              onChange={handleChange}
+              placeholder="North Side Length (ft)"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               type="number"
               min="0"
               step="any"
             />
-            <input 
-              name="southSideLength" 
-              value={formData.southSideLength} 
-              onChange={handleChange} 
-              placeholder="South Side Length (ft)" 
-              className="border p-2 rounded" 
+            <input
+              name="southSideLength"
+              value={formData.southSideLength}
+              onChange={handleChange}
+              placeholder="South Side Length (ft)"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               type="number"
               min="0"
               step="any"
             />
-            <input 
-              name="eastSideLength" 
-              value={formData.eastSideLength} 
-              onChange={handleChange} 
-              placeholder="East Side Length (ft)" 
-              className="border p-2 rounded" 
+            <input
+              name="eastSideLength"
+              value={formData.eastSideLength}
+              onChange={handleChange}
+              placeholder="East Side Length (ft)"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               type="number"
               min="0"
               step="any"
             />
-            <input 
-              name="westSideLength" 
-              value={formData.westSideLength} 
-              onChange={handleChange} 
-              placeholder="West Side Length (ft)" 
-              className="border p-2 rounded" 
+            <input
+              name="westSideLength"
+              value={formData.westSideLength}
+              onChange={handleChange}
+              placeholder="West Side Length (ft)"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               type="number"
               min="0"
               step="any"
@@ -2603,7 +2603,7 @@ const PostProperty = () => {
         name="facing"
         onChange={handleChange}
         value={formData.facing}
-        className="w-full border p-2 rounded"
+        className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
       >
         <option value="">Plot Facing</option>
         {facings.map(f => <option key={f} value={f}>{f}</option>)}
@@ -2614,7 +2614,7 @@ const PostProperty = () => {
           <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <select
               onChange={e => setFormData(prev => ({ ...prev, roadSize: e.target.value }))}
-              className="w-full border p-2 rounded"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
             >
               <option value="">Select Road Size (ft)</option>
               {roadSizes.map(size => <option key={size} value={size}>{size}</option>)}
@@ -2623,7 +2623,7 @@ const PostProperty = () => {
               name="roadSize"
               value={formData.roadSize}
               onChange={handleChange}
-              className="w-full border p-2 rounded"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               placeholder="Or enter road size (in feet)"
             />
             <input
@@ -2840,51 +2840,55 @@ const PostProperty = () => {
         </div>
       </section>
 
-      <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-center gap-3">
         <Ruler className="h-6 w-6 text-teal-700" />
         <h2 className="text-xl font-bold text-slate-900">Commercial Terms</h2>
       </div>
-      <div className={formData.listingIntent === 'development' ? 'grid gap-2 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]' : 'hidden'}>
-        <select 
+      <div className={formData.listingIntent === 'development' ? 'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]' : 'hidden'}>
+        <select
           value={ratios.includes(formData.developerRatio) ? formData.developerRatio : ''}
-          onChange={e => setFormData(prev => ({ ...prev, developerRatio: e.target.value }))} 
-          className="w-full min-w-0 border p-2 rounded"
+          onChange={e => setFormData(prev => ({ ...prev, developerRatio: e.target.value }))}
+          className="w-full min-w-0 rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
         >
           <option value="">Select Development Ratio (Owner : Builder)</option>
           {ratios.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
-        <input 
-          name="developerRatio" 
-          value={formData.developerRatio} 
-          onChange={handleChange} 
-          className="w-full min-w-0 border p-2 rounded" 
-          placeholder="Or enter custom ratio" 
+        <input
+          name="developerRatio"
+          value={formData.developerRatio}
+          onChange={handleChange}
+          className="w-full min-w-0 rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+          placeholder="Or enter custom ratio"
         />
       </div>
-      <input 
-        name="goodwill" 
-        onChange={handleChange} 
-        value={formData.goodwill} 
-        placeholder="Goodwill (₹)" 
-        className={formData.listingIntent === 'development' ? 'w-full border p-2 rounded' : 'hidden'} 
-        type="number"
-      />
-      <input 
-        name="advance" 
-        onChange={handleChange} 
-        value={formData.advance} 
-        placeholder="Advance (₹)" 
-        className={formData.listingIntent === 'development' ? 'w-full border p-2 rounded' : 'hidden'} 
-        type="number"
-      />
       {formData.listingIntent === 'development' && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input
+            name="goodwill"
+            onChange={handleChange}
+            value={formData.goodwill}
+            placeholder="Goodwill (₹)"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            type="number"
+          />
+          <input
+            name="advance"
+            onChange={handleChange}
+            value={formData.advance}
+            placeholder="Advance (₹)"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            type="number"
+          />
+        </div>
+      )}
+      {formData.listingIntent === 'development' && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <select
             name="partlySale"
             value={formData.partlySale}
             onChange={handleChange}
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
           >
             <option value="">Partly sale required?</option>
             <option value="yes">Yes</option>
@@ -2894,7 +2898,7 @@ const PostProperty = () => {
             name="partlySaleUnit"
             value={formData.partlySaleUnit}
             onChange={handleChange}
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
           >
             <option value="Square Yard">Square Yard</option>
             <option value="Square Feet">Square Feet</option>
@@ -2905,7 +2909,7 @@ const PostProperty = () => {
             value={formData.partlySaleValue}
             onChange={handleChange}
             placeholder="Partly sale value"
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
             type="number"
             min="0"
             step="any"
@@ -2915,18 +2919,18 @@ const PostProperty = () => {
             value={formData.partlySalePrice}
             onChange={handleChange}
             placeholder="Expected sale price"
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
           />
         </div>
       )}
       {formData.listingIntent !== 'development' && (
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input
             name="squareFeetPrice"
             onChange={handleChange}
             value={formData.squareFeetPrice}
             placeholder={formData.listingIntent === 'buy' ? 'Budget per Sq Ft (Rs) *' : 'Square Feet Price (Rs) *'}
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
             type="number"
             min="0"
             step="any"
@@ -2937,7 +2941,7 @@ const PostProperty = () => {
             onChange={handleChange}
             value={formData.totalBudget}
             placeholder={formData.listingIntent === 'buy' ? 'Total Budget (Rs)' : 'Total Budget / Expected Price (Rs)'}
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
             type="number"
             min="0"
             step="any"
@@ -2950,7 +2954,7 @@ const PostProperty = () => {
           onChange={handleChange}
           value={formData.description}
           placeholder="Property Description (Optional)"
-          className="w-full border p-2 rounded h-24"
+          className="h-24 w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
         />
         <p className="mt-1 text-xs text-slate-500">Auto-filled from the details above. Edit it any time to customize.</p>
       </div>
@@ -3112,7 +3116,7 @@ const PostProperty = () => {
               name="state"
               value={formData.state}
               onChange={handleChange}
-              className="w-full border p-2 rounded focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               required
             >
               {states.map(state => (
@@ -3126,7 +3130,7 @@ const PostProperty = () => {
               name="city"
               value={formData.city}
               onChange={handleChange}
-              className="w-full border p-2 rounded focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               required
             >
               {cities.map(city => (
@@ -3228,7 +3232,7 @@ const PostProperty = () => {
               value={formData.landmark}
               onChange={handleChange}
               placeholder="e.g., Near Metro Station, Main Road"
-              className="w-full border p-2 rounded focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               required
             />
           </div>
