@@ -1674,19 +1674,15 @@ const PropertiesListingPage: React.FC = () => {
             </div>
           )}
 
-          <aside className={`order-2 flex h-auto min-h-[360px] flex-col overflow-hidden rounded-xl bg-white/40 p-2.5 sm:p-3 ${
-            isDeveloperView
-              ? 'max-h-[75vh] lg:h-[calc(100vh-24px)] lg:min-h-[620px] lg:max-h-none'
-              : 'max-h-[78vh] lg:h-[calc(100vh-140px)] lg:min-h-[620px] lg:max-h-[780px]'
-          }`}>
-            <div className="mb-3 flex shrink-0 flex-col gap-2">
+          <aside className="order-2 flex h-auto min-h-[360px] flex-col gap-2.5">
+            <div className="rounded-xl bg-white/40 p-2.5 sm:p-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-slate-950">{pageTitle}</h2>
                 <button onClick={() => setShowMobileFilters(true)} className="rounded-full bg-white p-2 shadow-sm lg:hidden">
                   <SlidersHorizontal className="h-5 w-5 text-slate-700" />
                 </button>
               </div>
-              <div className="relative">
+              <div className="relative mt-4">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
@@ -1707,7 +1703,12 @@ const PropertiesListingPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="min-h-0 flex-1 grid grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+            <div className={`min-h-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-sm ${
+              isDeveloperView
+                ? 'max-h-[75vh] lg:h-[calc(100vh-24px)] lg:min-h-[560px] lg:max-h-none'
+                : 'max-h-[78vh] lg:h-[calc(100vh-140px)] lg:min-h-[560px] lg:max-h-[780px]'
+            }`}>
+            <div className="grid h-full grid-cols-1 gap-3 overflow-y-auto p-2.5 sm:grid-cols-2 sm:p-3">
               {loading && Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-44 animate-pulse rounded-xl bg-white shadow-sm" />
               ))}
@@ -1877,6 +1878,7 @@ const PropertiesListingPage: React.FC = () => {
                   })()}
                 </article>
               ))}
+            </div>
             </div>
           </aside>
         </div>
