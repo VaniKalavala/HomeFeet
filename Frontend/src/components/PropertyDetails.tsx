@@ -710,29 +710,69 @@ const PropertyDetails: React.FC = () => {
             )}
 
             {property.floorPlanUrl && (
-              <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-xl font-black text-slate-950">Floor Plan</h2>
+              <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 p-6 pb-4">
+                  <h2 className="text-xl font-black text-slate-950">{title} Floor Plans and Pricing</h2>
                   <a
                     href={`${API_ORIGIN}${property.floorPlanUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     download
-                    className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-800 transition hover:bg-teal-100"
+                    className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-800 transition hover:bg-teal-100"
                   >
                     <Download className="h-4 w-4" />
                     Download
                   </a>
                 </div>
-                {isDisplayableImage(property.floorPlanUrl) ? (
-                  <img
-                    src={`${API_ORIGIN}${property.floorPlanUrl}`}
-                    alt={`${title} floor plan`}
-                    className="w-full rounded-lg border border-slate-200 object-contain"
-                  />
-                ) : (
-                  <p className="text-sm text-slate-600">Floor plan document uploaded. Use the Download button above to view it.</p>
-                )}
+
+                <div className="p-6">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="inline-flex flex-col rounded-lg border border-teal-200 bg-teal-50 px-4 py-2">
+                      <span className="text-sm font-black text-teal-800">
+                        {property.bedrooms ? `${property.bedrooms} Apartment` : cleanType(property.developmentType)}
+                      </span>
+                      {(property.flatSizeMin || property.flatSizeMax) ? (
+                        <span className="text-xs font-semibold text-teal-700">
+                          {property.flatSizeMin || '-'} - {property.flatSizeMax || '-'} Sq Ft
+                        </span>
+                      ) : property.flatSize ? (
+                        <span className="text-xs font-semibold text-teal-700">{property.flatSize} Sq Ft</span>
+                      ) : null}
+                    </div>
+                    {formatMoney(property.totalBudget) && (
+                      <p className="text-2xl font-black text-slate-950">{formatMoney(property.totalBudget)}</p>
+                    )}
+                  </div>
+
+                  <div className="mt-6">
+                    {isDisplayableImage(property.floorPlanUrl) ? (
+                      <img
+                        src={`${API_ORIGIN}${property.floorPlanUrl}`}
+                        alt={`${title} floor plan`}
+                        className="w-full rounded-lg border border-slate-200 object-contain"
+                      />
+                    ) : (
+                      <p className="text-sm text-slate-600">Floor plan document uploaded. Use the Download button above to view it.</p>
+                    )}
+                  </div>
+
+                  {(property.bedrooms || property.bathrooms || property.floorNumber || property.furnishingStatus || property.possessionStatus) && (
+                    <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                      {[
+                        { label: 'Bedrooms', value: property.bedrooms },
+                        { label: 'Bathrooms', value: property.bathrooms },
+                        { label: 'Floor', value: property.floorNumber ? `${property.floorNumber}${property.totalFloors ? ` of ${property.totalFloors}` : ''}` : '' },
+                        { label: 'Furnishing', value: property.furnishingStatus },
+                        { label: 'Possession', value: property.possessionStatus },
+                      ].filter((item) => item.value).map((item) => (
+                        <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                          <p className="mt-1 text-sm font-black text-slate-950">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
             )}
 
