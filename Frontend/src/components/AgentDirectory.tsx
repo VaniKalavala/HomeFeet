@@ -71,8 +71,8 @@ export default function AgentDirectory() {
                   to={`/agent/${agent.id}`}
                   className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-600 hover:shadow-lg"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-700">
-                    <User className="h-6 w-6" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-lg font-black text-teal-700">
+                    {agent.firstName?.charAt(0).toUpperCase() || <User className="h-6 w-6" />}
                   </div>
                   <h3 className="mt-4 text-lg font-black text-slate-950">
                     {agent.firstName} {agent.lastName}
