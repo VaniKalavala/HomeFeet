@@ -1621,12 +1621,12 @@ const PropertiesListingPage: React.FC = () => {
               <div className="relative mt-3">
                 <div
                   ref={housingPicksScrollRef}
-                  className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [-webkit-mask-image:linear-gradient(to_right,black_82%,transparent_100%)] [mask-image:linear-gradient(to_right,black_82%,transparent_100%)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {housingTopPicks.map((pick) => (
                     <div
                       key={pick.projectName}
-                      className="grid w-[min(80vw,460px)] shrink-0 grid-cols-[140px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
+                      className="grid w-full shrink-0 snap-start grid-cols-[140px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
                     >
                       <img src={pick.image} alt={pick.projectName} className="h-full w-full object-cover" />
                       <div className="flex flex-col justify-between p-3">
