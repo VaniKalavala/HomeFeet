@@ -1477,7 +1477,7 @@ const PropertiesListingPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#eef4fb] p-1.5 sm:p-3">
         <div className={`mx-auto grid max-w-[1580px] gap-2.5 lg:gap-4 ${
-          isDeveloperView ? 'lg:grid-cols-[2fr_3fr]' : 'lg:grid-cols-[minmax(0,1fr)]'
+          isDeveloperView ? 'lg:grid-cols-[3fr_2fr]' : 'lg:grid-cols-[minmax(0,1fr)]'
         }`}>
           <div className={`grid grid-cols-2 gap-1.5 sm:gap-4 ${
             isDeveloperView ? 'lg:col-span-2' : ''
@@ -1571,7 +1571,7 @@ const PropertiesListingPage: React.FC = () => {
           </div>
 
           {isDeveloperView && (
-            <div className="order-2 flex flex-col gap-2.5">
+            <div className="order-1 flex flex-col gap-2.5">
               <div className="rounded-xl bg-white/40 p-2.5 sm:p-3">
                 <h2 className="text-base font-semibold text-slate-950">Properties Marked on Map</h2>
                 <div className="relative mt-4">
@@ -1674,40 +1674,17 @@ const PropertiesListingPage: React.FC = () => {
             </div>
           )}
 
-          <aside className={`order-1 flex h-auto min-h-[360px] flex-col overflow-hidden rounded-xl bg-white/40 p-2.5 sm:p-3 ${
+          <aside className={`order-2 flex h-auto min-h-[360px] flex-col overflow-hidden rounded-xl bg-white/40 p-2.5 sm:p-3 ${
             isDeveloperView
               ? 'max-h-[75vh] lg:h-[calc(100vh-24px)] lg:min-h-[620px] lg:max-h-none'
               : 'max-h-[78vh] lg:h-[calc(100vh-140px)] lg:min-h-[620px] lg:max-h-[780px]'
           }`}>
-            <div className="mb-3 flex shrink-0 flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-base font-semibold text-slate-950">{pageTitle}</h2>
-                <button onClick={() => setShowMobileFilters(true)} className="rounded-full bg-white p-2 shadow-sm">
-                  <SlidersHorizontal className="h-5 w-5 text-slate-700" />
-                </button>
-              </div>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={propertyNumberQuery}
-                  onChange={(event) => setPropertyNumberQuery(event.target.value)}
-                  placeholder="Search property no. TEL-DP-101"
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm font-semibold text-slate-900 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                />
-                {propertyNumberQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setPropertyNumberQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                    aria-label="Clear property number search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+            <div className="mb-3 flex shrink-0 items-center justify-end">
+              <button onClick={() => setShowMobileFilters(true)} className="rounded-full bg-white p-2 shadow-sm lg:hidden">
+                <SlidersHorizontal className="h-5 w-5 text-slate-700" />
+              </button>
             </div>
-            <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
+            <div className="min-h-0 flex-1 grid grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
               {loading && Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-44 animate-pulse rounded-xl bg-white shadow-sm" />
               ))}
@@ -1717,7 +1694,7 @@ const PropertiesListingPage: React.FC = () => {
                 </div>
               )}
               {!loading && visibleProperties.length > 0 && visibleProperties.map((property) => (
-                <article key={property._id} className={`grid grid-cols-[130px_minmax(0,1fr)] gap-2.5 overflow-hidden rounded-xl border bg-white p-2 shadow-sm sm:grid-cols-[190px_minmax(0,1fr)] ${
+                <article key={property._id} className={`flex flex-col gap-2 overflow-hidden rounded-xl border bg-white p-2 shadow-sm ${
                   focusedPropertyId === property._id
                     ? 'border-red-300 ring-2 ring-red-100'
                     : propertyMatchesSearch(property, activeSearchTerm) ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-100'
@@ -1728,7 +1705,7 @@ const PropertiesListingPage: React.FC = () => {
                     const isPropertyApartment = apartmentLikeTypes.includes(String(property.developmentType || '').toLowerCase());
                     return (
                       <>
-                        <div className="relative h-[152px] overflow-hidden rounded-lg bg-slate-100 sm:h-[170px]">
+                        <div className="relative h-40 w-full overflow-hidden rounded-lg bg-slate-100">
                           <img
                             src={getCardImageSrc(property)}
                             alt={propertyTitle(property)}
