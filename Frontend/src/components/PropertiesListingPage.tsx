@@ -1865,6 +1865,12 @@ const PropertiesListingPage: React.FC = () => {
                           >
                             {detailLoadingId === property._id ? 'Opening...' : 'View Details'}
                           </button>
+                          {property.projectHighlights && (
+                            <div className="mt-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-[12px] leading-5 text-slate-700">
+                              <span className="font-semibold text-amber-800">Project Highlights: </span>
+                              <span className="line-clamp-2 whitespace-pre-line">{property.projectHighlights}</span>
+                            </div>
+                          )}
                         </div>
                       </>
                     );
