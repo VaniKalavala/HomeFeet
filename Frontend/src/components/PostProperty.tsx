@@ -247,6 +247,7 @@ const PostProperty = () => {
     zoningClassification: '',
     bedrooms: '',
     bathrooms: '',
+    bhkBathrooms: {} as Record<string, string>,
     floorNumber: '',
     totalFloors: '',
     furnishingStatus: '',
@@ -390,6 +391,7 @@ const PostProperty = () => {
       zoningClassification: prefill.zoningClassification || prev.zoningClassification,
       bedrooms: prefill.bedrooms || prev.bedrooms,
       bathrooms: prefill.bathrooms || prev.bathrooms,
+      bhkBathrooms: prefill.bhkBathrooms || prev.bhkBathrooms,
       floorNumber: prefill.floorNumber || prev.floorNumber,
       totalFloors: prefill.totalFloors || prev.totalFloors,
       furnishingStatus: prefill.furnishingStatus || prev.furnishingStatus,
@@ -612,6 +614,7 @@ const PostProperty = () => {
           zoningClassification: property.zoningClassification || '',
           bedrooms: property.bedrooms || '',
           bathrooms: property.bathrooms || '',
+          bhkBathrooms: (property.bhkBathrooms && typeof property.bhkBathrooms === 'object') ? property.bhkBathrooms : {},
           floorNumber: property.floorNumber || '',
           totalFloors: property.totalFloors || '',
           furnishingStatus: property.furnishingStatus || '',
@@ -2071,6 +2074,7 @@ const PostProperty = () => {
     data.append('zoningClassification', formData.zoningClassification);
     data.append('bedrooms', formData.bedrooms);
     data.append('bathrooms', formData.bathrooms);
+    data.append('bhkBathrooms', JSON.stringify(formData.bhkBathrooms || {}));
     data.append('floorNumber', formData.floorNumber);
     data.append('totalFloors', formData.totalFloors);
     data.append('furnishingStatus', formData.furnishingStatus);
@@ -2218,6 +2222,9 @@ const PostProperty = () => {
         : [...current, option].sort((a, b) => bedroomOptions.indexOf(a) - bedroomOptions.indexOf(b));
       return { ...prev, bedrooms: next.join(', ') };
     });
+  };
+  const updateBhkBathrooms = (option: string, value: string) => {
+    setFormData(prev => ({ ...prev, bhkBathrooms: { ...prev.bhkBathrooms, [option]: value } }));
   };
   const bathroomOptions = ['1', '2', '3', '4', '4+'];
   const furnishingOptions = ['Unfurnished', 'Semi-Furnished', 'Fully-Furnished'];
@@ -2850,15 +2857,36 @@ const PostProperty = () => {
                 ))}
               </div>
             </div>
-            <select
-              name="bathrooms"
-              value={formData.bathrooms}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="">Bathrooms</option>
-              {bathroomOptions.map(option => <option key={option} value={option}>{option}</option>)}
-            </select>
+            {selectedBedroomOptions.length > 1 ? (
+              <div className="md:col-span-2">
+                <p className="mb-2 text-sm font-semibold text-slate-700">Bathrooms per BHK *</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {selectedBedroomOptions.map(option => (
+                    <div key={option} className="flex items-center gap-3">
+                      <span className="w-20 shrink-0 text-sm font-medium text-slate-700">{option}</span>
+                      <select
+                        value={formData.bhkBathrooms[option] || ''}
+                        onChange={(e) => updateBhkBathrooms(option, e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="">Bathrooms</option>
+                        {bathroomOptions.map(bOption => <option key={bOption} value={bOption}>{bOption}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <select
+                name="bathrooms"
+                value={formData.bathrooms}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="">Bathrooms</option>
+                {bathroomOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            )}
             <input
               name="floorNumber"
               value={formData.floorNumber}

@@ -171,6 +171,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  bhkBathrooms: {  // Per-BHK bathroom counts, e.g. { "2 BHK": "2", "3 BHK": "3" }
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
   floorNumber: {
     type: String,
     default: ''

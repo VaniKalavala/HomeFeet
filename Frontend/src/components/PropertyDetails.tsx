@@ -874,8 +874,8 @@ const PropertyDetails: React.FC = () => {
                   {(property.bedrooms || property.bathrooms || property.floorNumber || property.furnishingStatus || property.possessionStatus) && (
                     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       {[
-                        { label: 'Bedrooms', value: property.bedrooms },
-                        { label: 'Bathrooms', value: property.bathrooms },
+                        { label: 'Bedrooms', value: activeFloorPlanGroup?.label || property.bedrooms },
+                        { label: 'Bathrooms', value: (property.bhkBathrooms && activeFloorPlanGroup?.label && property.bhkBathrooms[activeFloorPlanGroup.label]) || property.bathrooms },
                         { label: 'Floor', value: property.floorNumber ? `${property.floorNumber}${property.totalFloors ? ` of ${property.totalFloors}` : ''}` : '' },
                         { label: 'Furnishing', value: property.furnishingStatus },
                         { label: 'Possession', value: property.possessionStatus },

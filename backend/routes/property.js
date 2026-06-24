@@ -294,6 +294,15 @@ const getUploadBucket = () => {
   });
 };
 
+const parseJsonSafe = (raw, fallback) => {
+  if (typeof raw !== 'string') return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+};
+
 const abbreviateFilenamePart = (value, fallback, maxWords = 1) => {
   const words = String(value || '')
     .trim()
@@ -473,7 +482,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       developerRatio, partlySale, partlySaleUnit, partlySaleValue, partlySalePrice,
       state, city, locality, societyName, landmark, map, goodwill, advance,
       squareYardPrice, squareFeetPrice, totalBudget, purchaseTimeline, description, address, selectedAmenities, coordinates,
-      bedrooms, bathrooms, floorNumber, totalFloors, furnishingStatus, possessionStatus,
+      bedrooms, bathrooms, bhkBathrooms, floorNumber, totalFloors, furnishingStatus, possessionStatus,
       possessionDate, reraId, localityHighlights, projectHighlights
     } = req.body;
 
@@ -551,6 +560,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       zoningClassification,
       bedrooms: bedrooms || '',
       bathrooms: bathrooms || '',
+      bhkBathrooms: parseJsonSafe(bhkBathrooms, {}),
       floorNumber: floorNumber || '',
       totalFloors: totalFloors || '',
       furnishingStatus: furnishingStatus || '',
@@ -912,6 +922,10 @@ router.put('/properties/:id', handlePropertyUpload, async (req, res) => {
       } catch {
         updates.selectedAmenities = [];
       }
+    }
+
+    if (typeof updates.bhkBathrooms === 'string') {
+      updates.bhkBathrooms = parseJsonSafe(updates.bhkBathrooms, {});
     }
 
     const uploadNamingData = {
