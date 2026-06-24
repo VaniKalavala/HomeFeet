@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Armchair,
@@ -12,6 +12,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   CircleDot,
   Clapperboard,
   Compass,
@@ -134,7 +136,10 @@ const PropertyDetails: React.FC = () => {
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
-  const [activeFloorPlanUnit, setActiveFloorPlanUnit] = useState(0);
+  const [activeBhkGroupIndex, setActiveBhkGroupIndex] = useState(0);
+  const [activeFloorPlanUnitIndex, setActiveFloorPlanUnitIndex] = useState(0);
+  const [floorPlanView, setFloorPlanView] = useState<'3D' | '2D'>('3D');
+  const floorPlanSizeTabsRef = useRef<HTMLDivElement | null>(null);
 
   const token = localStorage.getItem('token');
   const accountType = localStorage.getItem('accountType') || 'owner';
@@ -343,14 +348,36 @@ const PropertyDetails: React.FC = () => {
 
   const amenities: string[] = Array.isArray(property?.selectedAmenities) ? property.selectedAmenities : [];
 
-  const floorPlanUnits: Array<{ size: string; price: string; imageUrl: string; rooms: { name: string; dimension: string }[] }> = property
+  const floorPlanUnits: Array<{ bedrooms: string; size: string; price: string; imageUrl: string; rooms: { name: string; dimension: string }[] }> = property
     ? (Array.isArray(property.floorPlanUnits) && property.floorPlanUnits.length
       ? property.floorPlanUnits
       : (property.floorPlanUrl
-        ? [{ size: property.flatSize || '', price: property.totalBudget || '', imageUrl: property.floorPlanUrl, rooms: [] }]
+        ? [{ bedrooms: (property.bedrooms || '').split(',')[0]?.trim() || '', size: property.flatSize || '', price: property.totalBudget || '', imageUrl: property.floorPlanUrl, rooms: [] }]
         : []))
     : [];
-  const selectedFloorPlanUnit = floorPlanUnits[activeFloorPlanUnit] || floorPlanUnits[0];
+
+  const floorPlanGroups = floorPlanUnits.reduce((groups: Array<{ label: string; units: typeof floorPlanUnits }>, unit) => {
+    const label = unit.bedrooms?.trim() || cleanType(property?.developmentType);
+    const existingGroup = groups.find((group) => group.label === label);
+    if (existingGroup) {
+      existingGroup.units.push(unit);
+    } else {
+      groups.push({ label, units: [unit] });
+    }
+    return groups;
+  }, []);
+
+  const activeFloorPlanGroup = floorPlanGroups[activeBhkGroupIndex] || floorPlanGroups[0];
+  const selectedFloorPlanUnit = activeFloorPlanGroup?.units[activeFloorPlanUnitIndex] || activeFloorPlanGroup?.units[0];
+  const moneyValue = (value?: string) => Number(String(value || '').replace(/,/g, '')) || 0;
+  const groupPriceRange = (group?: { units: typeof floorPlanUnits }) => {
+    if (!group) return '';
+    const prices = group.units.map((unit) => moneyValue(unit.price)).filter(Boolean);
+    if (!prices.length) return '';
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max ? formatMoney(String(min)) : `${formatMoney(String(min))} - ${formatMoney(String(max))}`;
+  };
   const localityHighlights = property?.localityHighlights || '';
   const projectHighlights = property?.projectHighlights || '';
 
@@ -721,50 +748,128 @@ const PropertyDetails: React.FC = () => {
               </section>
             )}
 
-            {property.floorPlanUrl && (
+            {floorPlanUnits.length > 0 && (
               <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-100 p-6 pb-4">
                   <h2 className="text-xl font-black text-slate-950">{title} Floor Plans and Pricing</h2>
                 </div>
 
                 <div className="p-6">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="inline-flex flex-col rounded-lg border border-teal-200 bg-teal-50 px-4 py-2">
-                      <span className="text-sm font-black text-teal-800">
-                        {property.bedrooms ? `${property.bedrooms} Apartment` : cleanType(property.developmentType)}
-                      </span>
-                      {(property.flatSizeMin || property.flatSizeMax) ? (
-                        <span className="text-xs font-semibold text-teal-700">
-                          {property.flatSizeMin || '-'} - {property.flatSizeMax || '-'} Sq Ft
-                        </span>
-                      ) : property.flatSize ? (
-                        <span className="text-xs font-semibold text-teal-700">{property.flatSize} Sq Ft</span>
-                      ) : null}
+                  {floorPlanGroups.length > 1 && (
+                    <div className="flex flex-wrap gap-3">
+                      {floorPlanGroups.map((group, groupIndex) => (
+                        <button
+                          key={group.label}
+                          type="button"
+                          onClick={() => { setActiveBhkGroupIndex(groupIndex); setActiveFloorPlanUnitIndex(0); }}
+                          className={`inline-flex flex-col items-start rounded-lg border px-4 py-2 text-left transition ${
+                            groupIndex === activeBhkGroupIndex
+                              ? 'border-teal-600 bg-teal-50'
+                              : 'border-slate-200 bg-white hover:border-teal-300'
+                          }`}
+                        >
+                          <span className={`text-sm font-black ${groupIndex === activeBhkGroupIndex ? 'text-teal-800' : 'text-slate-700'}`}>
+                            {group.label} Apartment
+                          </span>
+                          {groupPriceRange(group) && (
+                            <span className={`text-xs font-semibold ${groupIndex === activeBhkGroupIndex ? 'text-teal-700' : 'text-slate-500'}`}>
+                              {groupPriceRange(group)}
+                            </span>
+                          )}
+                        </button>
+                      ))}
                     </div>
-                    {formatMoney(property.totalBudget) && (
-                      <p className="text-2xl font-black text-slate-950">{formatMoney(property.totalBudget)}</p>
-                    )}
-                  </div>
+                  )}
 
-                  <div className="mt-6">
-                    {isDisplayableImage(property.floorPlanUrl) ? (
-                      <img
-                        src={`${API_ORIGIN}${property.floorPlanUrl}`}
-                        alt={`${title} floor plan`}
-                        className="w-full rounded-lg border border-slate-200 object-contain"
-                      />
-                    ) : (
-                      <a
-                        href={`${API_ORIGIN}${property.floorPlanUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-700 hover:text-teal-900"
+                  {activeFloorPlanGroup && activeFloorPlanGroup.units.length > 1 && (
+                    <div className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 p-2">
+                      <button
+                        type="button"
+                        onClick={() => floorPlanSizeTabsRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
+                        className="shrink-0 rounded-full p-1 text-slate-500 hover:bg-slate-100"
                       >
-                        <Download className="h-4 w-4" />
-                        View floor plan document
-                      </a>
-                    )}
-                  </div>
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <div ref={floorPlanSizeTabsRef} className="flex flex-1 gap-2 overflow-x-auto scroll-smooth">
+                        {activeFloorPlanGroup.units.map((unit, unitIndex) => (
+                          <button
+                            key={unitIndex}
+                            type="button"
+                            onClick={() => setActiveFloorPlanUnitIndex(unitIndex)}
+                            className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold ${
+                              unitIndex === activeFloorPlanUnitIndex
+                                ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-600'
+                                : 'text-slate-500 hover:bg-slate-50'
+                            }`}
+                          >
+                            {unit.size ? `${unit.size} Sq Ft` : `Unit ${unitIndex + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => floorPlanSizeTabsRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
+                        className="shrink-0 rounded-full p-1 text-slate-500 hover:bg-slate-100"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedFloorPlanUnit && (
+                    <>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+                        {formatMoney(selectedFloorPlanUnit.price) && (
+                          <p className="text-2xl font-black text-slate-950">{formatMoney(selectedFloorPlanUnit.price)}</p>
+                        )}
+                        <div className="inline-flex rounded-full border border-slate-200 p-1">
+                          {(['3D', '2D'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setFloorPlanView(mode)}
+                              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                floorPlanView === mode ? 'bg-teal-700 text-white' : 'text-slate-500'
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        {isDisplayableImage(selectedFloorPlanUnit.imageUrl) ? (
+                          <img
+                            src={`${API_ORIGIN}${selectedFloorPlanUnit.imageUrl}`}
+                            alt={`${title} floor plan`}
+                            className="w-full rounded-lg border border-slate-200 object-contain"
+                          />
+                        ) : selectedFloorPlanUnit.imageUrl ? (
+                          <a
+                            href={`${API_ORIGIN}${selectedFloorPlanUnit.imageUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm font-bold text-teal-700 hover:text-teal-900"
+                          >
+                            <Download className="h-4 w-4" />
+                            View floor plan document
+                          </a>
+                        ) : null}
+                      </div>
+
+                      {selectedFloorPlanUnit.rooms.length > 0 && (
+                        <div className="mt-4 flex gap-3 overflow-x-auto">
+                          {selectedFloorPlanUnit.rooms.map((room, roomIndex) => (
+                            <div key={roomIndex} className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2">
+                              <p className="text-xs font-semibold text-slate-700">{room.name}</p>
+                              <p className="text-xs text-slate-500">{room.dimension}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
 
                   {(property.bedrooms || property.bathrooms || property.floorNumber || property.furnishingStatus || property.possessionStatus) && (
                     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

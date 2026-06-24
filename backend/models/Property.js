@@ -237,8 +237,9 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  floorPlanUnits: {  // Per-unit floor plans: size, price, image, and room dimensions
+  floorPlanUnits: {  // Per-unit floor plans: BHK type, size, price, image, and room dimensions
     type: [{
+      bedrooms: { type: String, default: '' },
       size: { type: String, default: '' },
       price: { type: String, default: '' },
       imageUrl: { type: String, default: '' },

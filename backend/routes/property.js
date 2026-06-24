@@ -387,6 +387,7 @@ const buildFloorPlanUnits = async (rawUnitsJson, floorPlanFiles = [], uploadNami
       fileCursor += 1;
     }
     units.push({
+      bedrooms: unit.bedrooms || '',
       size: unit.size || '',
       price: unit.price || '',
       imageUrl,

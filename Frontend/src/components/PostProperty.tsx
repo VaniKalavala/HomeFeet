@@ -313,13 +313,21 @@ const PostProperty = () => {
     videoUrl: ''
   });
   type FloorPlanUnit = {
+    bedrooms: string;
     size: string;
     price: string;
     file: File | null;
     existingImageUrl: string;
     rooms: { name: string; dimension: string }[];
   };
-  const emptyFloorPlanUnit = (): FloorPlanUnit => ({ size: '', price: '', file: null, existingImageUrl: '', rooms: [] });
+  const emptyFloorPlanUnit = (): FloorPlanUnit => ({
+    bedrooms: (formData.bedrooms || '').split(',')[0]?.trim() || '',
+    size: '',
+    price: '',
+    file: null,
+    existingImageUrl: '',
+    rooms: []
+  });
   const [floorPlanUnits, setFloorPlanUnits] = useState<FloorPlanUnit[]>([]);
   const [cropModal, setCropModal] = useState<CropModalState | null>(null);
   const [cropArea, setCropArea] = useState<CropArea>({ x: 10, y: 10, width: 80, height: 80 });
@@ -652,6 +660,7 @@ const PostProperty = () => {
         });
         if (Array.isArray(property.floorPlanUnits) && property.floorPlanUnits.length) {
           setFloorPlanUnits(property.floorPlanUnits.map((unit: any) => ({
+            bedrooms: unit.bedrooms || '',
             size: unit.size || '',
             price: unit.price || '',
             file: null,
@@ -659,7 +668,7 @@ const PostProperty = () => {
             rooms: Array.isArray(unit.rooms) ? unit.rooms.map((room: any) => ({ name: room.name || '', dimension: room.dimension || '' })) : []
           })));
         } else if (property.floorPlanUrl) {
-          setFloorPlanUnits([{ size: property.flatSize || '', price: property.totalBudget || '', file: null, existingImageUrl: property.floorPlanUrl, rooms: [] }]);
+          setFloorPlanUnits([{ bedrooms: (property.bedrooms || '').split(',')[0]?.trim() || '', size: property.flatSize || '', price: property.totalBudget || '', file: null, existingImageUrl: property.floorPlanUrl, rooms: [] }]);
         }
         if (coordinates) {
           setTimeout(() => moveMapToLocation(coordinates.lat, coordinates.lng), 300);
@@ -2132,6 +2141,7 @@ const PostProperty = () => {
       data.append('video', formData.video);
     }
     const floorPlanUnitsMeta = floorPlanUnits.map((unit) => ({
+      bedrooms: unit.bedrooms,
       size: unit.size,
       price: unit.price,
       existingImageUrl: unit.existingImageUrl,
@@ -3134,6 +3144,16 @@ const PostProperty = () => {
                   </button>
                 </div>
 
+                <select
+                  value={unit.bedrooms}
+                  onChange={(e) => updateFloorPlanUnit(unitIndex, { bedrooms: e.target.value })}
+                  className="mb-3 w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="">BHK Type for this unit</option>
+                  {(selectedBedroomOptions.length ? selectedBedroomOptions : bedroomOptions).map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <input
                     value={unit.size}
