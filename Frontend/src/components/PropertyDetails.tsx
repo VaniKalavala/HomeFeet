@@ -2,8 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  ArrowUpDown,
   BadgeCheck,
+  Bike,
+  Car,
   Check,
+  CircleDot,
+  Download,
+  Droplet,
+  Dumbbell,
   IndianRupee,
   Lock,
   Mail,
@@ -11,8 +18,16 @@ import {
   MessageCircle,
   Phone,
   Share2,
+  Shield,
   ShieldCheck,
-  Tag
+  Sparkles,
+  Tag,
+  Trees,
+  Trophy,
+  Users,
+  UtensilsCrossed,
+  Waves,
+  Zap
 } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import LoginModal from './LoginModal';
@@ -59,6 +74,23 @@ const propertyNumber = (property: any) => {
 
 const fallbackPropertyImage = 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80';
 const isDisplayableImage = (url = '') => url && !url.toLowerCase().includes('.pdf');
+
+const AMENITY_ICONS: Record<string, typeof Sparkles> = {
+  'Single Parking': Car,
+  'Double Parking': Car,
+  'Bike Parking': Bike,
+  Lift: ArrowUpDown,
+  'Power Backup': Zap,
+  Security: Shield,
+  Gym: Dumbbell,
+  Clubhouse: Users,
+  'Water Supply': Droplet,
+  Park: Trees,
+  'Swimming Pool': Waves,
+  'Badminton Court': Trophy,
+  'Cricket Court': CircleDot,
+  'Food Court': UtensilsCrossed
+};
 
 const PropertyDetails: React.FC = () => {
   const { id } = useParams();
@@ -481,6 +513,28 @@ const PropertyDetails: React.FC = () => {
                 </div>
               )}
 
+              {property.projectName && (
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Project Name Overview</p>
+                  <p className="mt-2 text-lg font-black text-slate-950">{property.projectName}</p>
+                  {property.companyName && (
+                    <p className="mt-1 text-sm font-semibold text-slate-600">By {property.companyName}</p>
+                  )}
+                  {property.propertyFormUrl && (
+                    <a
+                      href={`${API_ORIGIN}${property.propertyFormUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Brochure
+                    </a>
+                  )}
+                </div>
+              )}
+
               {(property.advance || property.goodwill) && (
                 <div className="mt-5 grid gap-3 rounded-lg bg-teal-50 p-4 sm:grid-cols-2">
                   {property.goodwill && (
@@ -527,12 +581,18 @@ const PropertyDetails: React.FC = () => {
             {amenities.length > 0 && (
               <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">Amenities</h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {amenities.map((amenity) => (
-                    <span key={amenity} className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-800">
-                      {amenity}
-                    </span>
-                  ))}
+                <div className="mt-5 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+                  {amenities.map((amenity) => {
+                    const AmenityIcon = AMENITY_ICONS[amenity] || Sparkles;
+                    return (
+                      <div key={amenity} className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+                          <AmenityIcon className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-semibold leading-tight text-slate-700">{amenity}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -554,6 +614,33 @@ const PropertyDetails: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </section>
+            )}
+
+            {property.floorPlanUrl && (
+              <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-black text-slate-950">Floor Plan</h2>
+                  <a
+                    href={`${API_ORIGIN}${property.floorPlanUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-800 transition hover:bg-teal-100"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </a>
+                </div>
+                {isDisplayableImage(property.floorPlanUrl) ? (
+                  <img
+                    src={`${API_ORIGIN}${property.floorPlanUrl}`}
+                    alt={`${title} floor plan`}
+                    className="w-full rounded-lg border border-slate-200 object-contain"
+                  />
+                ) : (
+                  <p className="text-sm text-slate-600">Floor plan document uploaded. Use the Download button above to view it.</p>
+                )}
               </section>
             )}
 
