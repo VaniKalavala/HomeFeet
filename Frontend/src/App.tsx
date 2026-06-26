@@ -1147,7 +1147,7 @@ function HomePage() {
         <div className="ld-container">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">HomeFeet's Happening Projects</h2>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">HomeFeet's <span className="text-[#0AA6A6]">Happening</span> Projects</h2>
               <p className="mt-1 text-slate-600">Explore top living options with us</p>
             </div>
             {housingTopPicks[0] && (
