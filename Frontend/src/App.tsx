@@ -3,17 +3,21 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
+  BedDouble,
   Check,
   ChevronLeft,
   ChevronRight,
   Crown,
+  Download,
   Filter,
   Heart,
   LockKeyhole,
   Landmark,
+  MapPin,
   MapPinned,
   Newspaper,
   Rocket,
+  Ruler,
   Search,
   Share2,
   ShieldCheck,
@@ -1296,79 +1300,100 @@ function HomePage() {
       </section>
 
       {activeExclusiveProject && (
-        <section className="bg-slate-50 py-16">
+        <section className="bg-white py-16">
           <div className="ld-container">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-4xl">Exclusive Projects</h2>
-              <Link
-                to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`}
-                className="inline-flex items-center gap-1 text-sm font-bold text-[#0077CC] hover:text-teal-700"
-              >
-                View all <ChevronRight className="h-4 w-4" />
-              </Link>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-4xl">Premium Properties in {selectedCity}</h2>
+                <p className="mt-1 text-sm text-slate-500">Explore the latest and ongoing luxury projects in {selectedCity}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => goToExclusiveProject(-1)}
+                  aria-label="Previous project"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-teal-700 hover:text-teal-700"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToExclusiveProject(1)}
+                  aria-label="Next project"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-teal-700 hover:text-teal-700"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 md:p-6">
-              <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-                <div className="flex flex-col">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-950">
-                        {activeExclusiveProject.projectName || activeExclusiveProject.societyName || cleanDevelopmentType(activeExclusiveProject.developmentType)}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {activeExclusiveProject.locality || activeExclusiveProject.city || selectedCity}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" className="rounded-full border border-slate-200 p-2 text-slate-500 hover:border-rose-300 hover:text-rose-600">
-                        <Heart className="h-4 w-4" />
-                      </button>
-                      <button type="button" className="rounded-full border border-slate-200 p-2 text-slate-500 hover:border-teal-300 hover:text-teal-700">
-                        <Share2 className="h-4 w-4" />
-                      </button>
-                    </div>
+            <div className="mt-4 h-[3px] w-full bg-[#0AA6A6]" />
+
+            <div className="mt-6 rounded-2xl bg-[#eef4fb] p-5 md:p-6">
+              <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+                <div className="flex flex-col justify-center">
+                  <h3 className="text-2xl font-black text-slate-950">
+                    {activeExclusiveProject.projectName || activeExclusiveProject.societyName || cleanDevelopmentType(activeExclusiveProject.developmentType)}
+                  </h3>
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                    <MapPin className="h-4 w-4 shrink-0" />
+                    {activeExclusiveProject.locality || activeExclusiveProject.city || selectedCity}
+                    {activeExclusiveProject.locality ? `, ${activeExclusiveProject.city || selectedCity}` : ''}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-5 text-sm text-slate-700">
+                    <span className="flex items-center gap-1.5">
+                      <BedDouble className="h-4 w-4 text-slate-500" />
+                      {activeExclusiveProject.bedrooms || 'On request'}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Ruler className="h-4 w-4 text-slate-500" />
+                      {activeExclusiveProject.flatSize
+                        ? `${activeExclusiveProject.flatSize} sqft`
+                        : activeExclusiveProject.totalArea
+                          ? `${activeExclusiveProject.totalArea} ${activeExclusiveProject.areaUnit || ''}`
+                          : 'On request'}
+                    </span>
                   </div>
 
-                  <p className="mt-5 text-xl font-black text-amber-600">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
+                  <p className="mt-6 text-sm text-slate-500">Starting price</p>
+                  <p className="text-2xl font-black text-slate-950">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
 
-                  <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Configuration</p>
-                      <p className="mt-1 font-black text-slate-950">{activeExclusiveProject.bedrooms || 'On request'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Builtup area</p>
-                      <p className="mt-1 font-black text-slate-950">
-                        {activeExclusiveProject.flatSize
-                          ? `${activeExclusiveProject.flatSize} sq ft`
-                          : activeExclusiveProject.totalArea
-                            ? `${activeExclusiveProject.totalArea} ${activeExclusiveProject.areaUnit || ''}`
-                            : 'On request'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-auto flex gap-3 pt-6">
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    {activeExclusiveProject.propertyFormUrl && (
+                      <a
+                        href={`${API_ORIGIN}${activeExclusiveProject.propertyFormUrl}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-950 hover:border-teal-700 hover:text-teal-700"
+                      >
+                        Download Brochure <Download className="h-4 w-4" />
+                      </a>
+                    )}
                     <Link
                       to={`/property/${activeExclusiveProject._id}`}
-                      className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-3 text-sm font-bold text-slate-950 hover:border-teal-700 hover:text-teal-700"
+                      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-red-700"
                     >
-                      Contact Us
-                    </Link>
-                    <Link
-                      to={`/property/${activeExclusiveProject._id}`}
-                      className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-6 py-3 text-sm font-bold text-white hover:bg-slate-800"
-                    >
-                      Explore now
+                      Explore Now <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
                 </div>
 
-                <div className="relative overflow-hidden rounded-lg bg-slate-200">
+                <div className="relative overflow-hidden rounded-xl bg-slate-200">
+                  <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-amber-400 bg-slate-950/80 px-3 py-1.5 text-xs font-bold text-amber-300">
+                    <Crown className="h-3.5 w-3.5" /> Premium Project
+                  </span>
+                  <div className="absolute right-3 top-3 flex items-center gap-2">
+                    <button type="button" aria-label="Share project" className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700">
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    <button type="button" aria-label="Save project" className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700">
+                      <Heart className="h-4 w-4" />
+                    </button>
+                  </div>
                   <img
                     src={exclusiveGalleryImages[exclusiveImageIndex] ? `${API_ORIGIN}${exclusiveGalleryImages[exclusiveImageIndex]}` : fallbackExclusiveProjectImage}
-                    alt={activeExclusiveProject.projectName || 'Exclusive project'}
+                    alt={activeExclusiveProject.projectName || 'Premium project'}
                     className="h-72 w-full object-cover md:h-96"
                     onError={(e) => { e.currentTarget.src = fallbackExclusiveProjectImage; }}
                   />
@@ -1396,35 +1421,6 @@ function HomePage() {
                     </>
                   )}
                 </div>
-              </div>
-
-              <div className="mt-5 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => goToExclusiveProject(-1)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-teal-700 hover:text-teal-700"
-                  aria-label="Previous project"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                {exclusiveGalleryImages.slice(0, 3).map((url: string, index: number) => (
-                  <button
-                    key={`${url}-${index}`}
-                    type="button"
-                    onClick={() => setExclusiveImageIndex(index)}
-                    className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${index === exclusiveImageIndex ? 'border-teal-600' : 'border-transparent'}`}
-                  >
-                    <img src={`${API_ORIGIN}${url}`} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => goToExclusiveProject(1)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-teal-700 hover:text-teal-700"
-                  aria-label="Next project"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
               </div>
             </div>
           </div>
