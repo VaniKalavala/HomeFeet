@@ -14,8 +14,10 @@ type PlanTier = {
   validity: string;
   visibility: string;
   slot: string;
+  phonePrivacy: boolean;
   relationshipManager: boolean;
   fieldVisit: boolean;
+  propertyShowing: boolean;
   photoshoot: boolean;
   assuredRank: string;
   socialMedia: boolean;
@@ -33,8 +35,10 @@ const PLAN_TIERS: PlanTier[] = [
     validity: '30 Days',
     visibility: '75%',
     slot: 'Medium Slot',
+    phonePrivacy: true,
     relationshipManager: false,
     fieldVisit: false,
+    propertyShowing: false,
     photoshoot: false,
     assuredRank: '',
     socialMedia: false,
@@ -49,8 +53,10 @@ const PLAN_TIERS: PlanTier[] = [
     validity: '120 Days',
     visibility: '86%',
     slot: 'Medium Slot',
+    phonePrivacy: true,
     relationshipManager: false,
     fieldVisit: false,
+    propertyShowing: false,
     photoshoot: true,
     assuredRank: '',
     socialMedia: false,
@@ -66,8 +72,10 @@ const PLAN_TIERS: PlanTier[] = [
     validity: '120 Days',
     visibility: '92%',
     slot: 'Top Slot',
+    phonePrivacy: true,
     relationshipManager: true,
     fieldVisit: false,
+    propertyShowing: true,
     photoshoot: true,
     assuredRank: '3 Boosts',
     socialMedia: false,
@@ -82,8 +90,10 @@ const PLAN_TIERS: PlanTier[] = [
     validity: '150 Days',
     visibility: '98%',
     slot: 'Top Slot',
+    phonePrivacy: true,
     relationshipManager: true,
     fieldVisit: false,
+    propertyShowing: true,
     photoshoot: true,
     assuredRank: '5 Boosts',
     socialMedia: true,
@@ -99,8 +109,10 @@ const FEATURE_ROWS: Array<{
 }> = [
   { label: 'Plan Validity', render: (tier) => tier.validity },
   { label: 'Position in search result', render: (tier) => tier.slot },
+  { label: 'Privacy of Your Phone Number', render: (tier) => (tier.phonePrivacy ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Relationship Manager Assistance', render: (tier) => (tier.relationshipManager ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Field Visit Assistance', render: (tier) => (tier.fieldVisit ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
+  { label: 'Showing Property on Your Behalf', render: (tier) => (tier.propertyShowing ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Professional Photoshoot', render: (tier) => (tier.photoshoot ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Assured 1st Rank in Search Results', render: (tier) => tier.assuredRank || <X className="mx-auto h-4 w-4 text-slate-300" /> },
   { label: 'Social Media Marketing', render: (tier) => (tier.socialMedia ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
