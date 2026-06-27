@@ -506,28 +506,26 @@ const Dashboard: React.FC = () => {
       <div className="mx-auto flex max-w-7xl gap-6 px-4 py-8">
         <ListingsSidebar activePage="dashboard" />
         <main className="min-w-0 flex-1">
-          {isAdmin && (
-            <div className="mb-6 flex gap-2 border-b border-slate-200">
-              <button
-                type="button"
-                onClick={() => setActiveTab('posted')}
-                className={`px-4 py-2 text-sm font-bold transition ${
-                  activeTab === 'posted' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Posted Properties
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('subscription')}
-                className={`px-4 py-2 text-sm font-bold transition ${
-                  activeTab === 'subscription' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Subscription Plans
-              </button>
-            </div>
-          )}
+          <div className="mb-6 flex gap-2 border-b border-slate-200">
+            <button
+              type="button"
+              onClick={() => setActiveTab('posted')}
+              className={`px-4 py-2 text-sm font-bold transition ${
+                activeTab === 'posted' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Posted Properties
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('subscription')}
+              className={`px-4 py-2 text-sm font-bold transition ${
+                activeTab === 'subscription' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Subscription Plans
+            </button>
+          </div>
 
           {activeTab === 'posted' && (
             <div>
@@ -778,6 +776,16 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {!isAdmin && activeTab === 'subscription' && (
+            <div>
+              <h1 className="text-2xl font-black text-slate-950">Subscription Plans</h1>
+              <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+                <p className="text-lg font-bold text-slate-800">Coming soon</p>
+                <p className="mt-2 text-sm text-slate-500">Subscription plan details are not available to view yet. Check back soon.</p>
+              </div>
             </div>
           )}
 
