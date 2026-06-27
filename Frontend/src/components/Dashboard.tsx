@@ -5,6 +5,7 @@ import ListingsSidebar from './ListingsSidebar';
 import LoginModal from './LoginModal';
 import { API_BASE } from '../lib/api';
 import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
+import { isAdminUser } from '../lib/admin';
 
 type PlanTier = {
   value: string;
@@ -121,6 +122,10 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
+      navigate('/');
+      return;
+    }
+    if (!isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'))) {
       navigate('/');
       return;
     }
