@@ -57,9 +57,8 @@ const Navbar: React.FC = () => {
     { to: '/find-an-agent', label: 'Find an Agent' },
     { to: '/properties-map', label: 'Properties Map-View' },
   ];
-  const isAdmin = isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
   const accountLinks = [
-    ...(isAdmin ? [['Dashboard', '/dashboard']] : []),
+    ['Dashboard', '/dashboard'],
     ['My Profile', '/profile'],
   ];
 
