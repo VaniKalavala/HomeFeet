@@ -1651,7 +1651,7 @@ const PropertiesListingPage: React.FC = () => {
                               <img
                                 src={getBuilderLogo(pick)}
                                 alt={getBuilderLabel(pick)}
-                                className="h-5 w-5 shrink-0 rounded border border-white bg-white object-contain"
+                                className="h-5 w-5 shrink-0 rounded object-contain"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
                               />
                             ) : (

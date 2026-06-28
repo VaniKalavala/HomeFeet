@@ -42,7 +42,10 @@ export const getProjectPriceRange = (property: any) => {
 export const getProjectConfiguration = (property: any) => {
   if (property.floorPlanUnits && property.floorPlanUnits.length) {
     const sizes = Array.from(new Set(property.floorPlanUnits.map((unit: any) => unit.bedrooms).filter(Boolean)));
-    if (sizes.length) return `${sizes.join(', ')} BHK`;
+    if (sizes.length) {
+      const hasBhkSuffix = sizes.every((size: string) => /bhk/i.test(size));
+      return hasBhkSuffix ? sizes.join(', ') : `${sizes.join(', ')} BHK`;
+    }
   }
   if (property.bedrooms) return `${property.bedrooms} ${String(property.developmentType || '').toLowerCase() === 'villa' ? 'Villas' : ''}`.trim();
   return property.developmentType || 'Property';

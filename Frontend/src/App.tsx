@@ -1228,7 +1228,7 @@ function HomePage() {
                         <img
                           src={getBuilderLogo(pick)}
                           alt={getBuilderLabel(pick)}
-                          className="h-12 w-12 rounded-lg border border-white bg-white object-contain p-1 shadow-sm"
+                          className="h-12 w-12 rounded-lg object-contain"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
