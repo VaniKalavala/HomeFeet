@@ -1635,11 +1635,11 @@ const PropertiesListingPage: React.FC = () => {
                   className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {happeningProjects.length === 0 ? (
-                    <p className="px-2 py-4 text-xs font-semibold text-slate-500">No active listings in {selectedCity} yet.</p>
+                    <p className="flex h-44 w-full items-center justify-center px-2 text-center text-xs font-semibold text-slate-500">No active Sale Flats listings in {selectedCity} yet.</p>
                   ) : happeningProjects.map((pick) => (
                     <div
                       key={pick._id}
-                      className="grid w-[calc(50%-0.375rem)] shrink-0 snap-start grid-cols-[140px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
+                      className="grid h-44 w-[calc(50%-0.375rem)] shrink-0 snap-start grid-cols-[140px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
                     >
                       <img src={getProjectImage(pick)} alt={pick.projectName} className="h-full w-full object-cover" />
                       <div className="flex flex-col justify-between p-3">
@@ -1650,12 +1650,12 @@ const PropertiesListingPage: React.FC = () => {
                             </span>
                             <p className="line-clamp-1 text-[11px] font-bold leading-tight text-slate-950">{getBuilderLabel(pick)}</p>
                           </div>
-                          <p className="mt-1.5 text-sm font-black leading-tight text-slate-950">{pick.projectName || pick.developmentType}</p>
-                          <p className="text-xs text-slate-600">{pick.locality}, {pick.city}</p>
+                          <p className="mt-1.5 line-clamp-1 text-sm font-black leading-tight text-slate-950">{pick.projectName || pick.developmentType}</p>
+                          <p className="line-clamp-1 text-xs text-slate-600">{pick.locality}, {pick.city}</p>
                         </div>
                         <div>
-                          <p className="text-xs font-black text-slate-950">{getProjectPriceRange(pick)}</p>
-                          <p className="text-[11px] text-slate-600">{getProjectConfiguration(pick)}</p>
+                          <p className="line-clamp-1 text-xs font-black text-slate-950">{getProjectPriceRange(pick)}</p>
+                          <p className="line-clamp-1 text-[11px] text-slate-600">{getProjectConfiguration(pick)}</p>
                           <Link
                             to={`/property/${pick._id}`}
                             className="mt-1.5 inline-flex items-center justify-center rounded-lg bg-[#0AA6A6] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#088f8f]"

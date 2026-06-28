@@ -45,11 +45,14 @@ export const getProjectConfiguration = (property: any) => {
   return property.developmentType || 'Property';
 };
 
+const SALE_FLAT_TYPES = ['apartment', 'standalone', 'high-rise', 'group-house'];
+
 export const fetchHappeningProjects = async (city: string, limit = 8) => {
   const response = await fetch(`${API_BASE}/search?listingIntent=sell&city=${encodeURIComponent(city)}`);
   const data = await response.json();
   if (!response.ok || !Array.isArray(data)) throw new Error('Unable to load happening projects');
   return data
+    .filter((property: any) => SALE_FLAT_TYPES.includes(String(property.developmentType || '').toLowerCase()))
     .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, limit);
 };

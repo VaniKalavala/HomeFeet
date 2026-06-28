@@ -1208,8 +1208,8 @@ function HomePage() {
           </div>
 
           {happeningProjects.length === 0 ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm font-semibold text-slate-500">
-              No active listings in {selectedCity} yet.
+            <div className="flex h-[340px] items-center justify-center rounded-lg border border-slate-200 bg-white text-center text-sm font-semibold text-slate-500">
+              No active Sale Flats listings in {selectedCity} yet.
             </div>
           ) : (
           <div className="relative">
@@ -1220,25 +1220,25 @@ function HomePage() {
               {happeningProjects.map((pick) => (
                 <div
                   key={pick._id}
-                  className="grid w-[min(90vw,820px)] shrink-0 grid-cols-[280px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
+                  className="grid h-[340px] w-[min(90vw,820px)] shrink-0 grid-cols-[280px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
                 >
                   <div className="flex flex-col justify-between p-5">
                     <div>
                       <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-[#0AA6A6] text-lg font-black text-white shadow-sm">
                         {getBuilderInitial(pick)}
                       </div>
-                      <p className="mt-3 text-sm font-black leading-snug text-slate-950">{getBuilderLabel(pick)}</p>
+                      <p className="mt-3 line-clamp-1 text-sm font-black leading-snug text-slate-950">{getBuilderLabel(pick)}</p>
                       <Link to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`} className="text-xs font-bold text-indigo-700 underline">
                         View Projects
                       </Link>
                     </div>
                     <div className="mt-4">
-                      <p className="font-black text-slate-950">{pick.projectName || cleanDevelopmentType(pick.developmentType)}</p>
-                      <p className="text-sm text-slate-600">{pick.locality}, {pick.city}</p>
+                      <p className="line-clamp-1 font-black text-slate-950">{pick.projectName || pick.developmentType}</p>
+                      <p className="line-clamp-1 text-sm text-slate-600">{pick.locality}, {pick.city}</p>
                     </div>
                     <div className="mt-4">
-                      <p className="font-black text-slate-950">{getProjectPriceRange(pick)}</p>
-                      <p className="text-sm text-slate-600">{getProjectConfiguration(pick)}</p>
+                      <p className="line-clamp-1 font-black text-slate-950">{getProjectPriceRange(pick)}</p>
+                      <p className="line-clamp-1 text-sm text-slate-600">{getProjectConfiguration(pick)}</p>
                     </div>
                     <Link
                       to={`/property/${pick._id}`}
