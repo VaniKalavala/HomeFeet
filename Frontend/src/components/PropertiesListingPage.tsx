@@ -1636,11 +1636,11 @@ const PropertiesListingPage: React.FC = () => {
   if (showDashboardLayout) {
     return (
       <div className="min-h-screen bg-[#eef4fb] p-1.5 sm:p-3">
-        <div className={`mx-auto grid max-w-[1580px] gap-2.5 lg:gap-4 ${
-          isDeveloperView ? 'lg:grid-cols-[58fr_42fr]' : 'lg:grid-cols-[minmax(0,1fr)]'
+        <div className={`mx-auto grid max-w-[1580px] gap-2.5 md:gap-4 ${
+          isDeveloperView ? 'md:grid-cols-[60fr_40fr]' : 'md:grid-cols-[minmax(0,1fr)]'
         }`}>
           <div className={`grid grid-cols-2 gap-1.5 sm:gap-4 ${
-            isDeveloperView ? 'lg:col-span-2' : ''
+            isDeveloperView ? 'md:col-span-2' : ''
           } xl:grid-cols-4`}>
             {statCards.map((stat, index) => (
               <div key={stat.label} className="rounded-lg bg-white px-3 py-1 shadow-sm sm:rounded-xl sm:px-4 sm:py-1.5">
@@ -1662,7 +1662,7 @@ const PropertiesListingPage: React.FC = () => {
           </div>
 
           <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm ${
-            isDeveloperView ? 'lg:col-span-2' : ''
+            isDeveloperView ? 'md:col-span-2' : ''
           }`}>
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -1746,7 +1746,7 @@ const PropertiesListingPage: React.FC = () => {
                 </div>
               </div>
             <main className="relative min-h-[420px] overflow-hidden rounded-2xl bg-white shadow-sm sm:min-h-[560px] lg:min-h-[700px]">
-              <div className="absolute left-3 right-3 top-3 z-10 flex rounded-xl border border-white/70 bg-white/95 p-1 shadow-lg backdrop-blur lg:hidden">
+              <div className="absolute left-3 right-3 top-3 z-10 flex rounded-xl border border-white/70 bg-white/95 p-1 shadow-lg backdrop-blur md:hidden">
                 {developerIntentTabs.map((tab) => {
                   const active = listingIntent === tab.value && currentPropertyType === tab.propertyType;
                   return (
@@ -1853,7 +1853,7 @@ const PropertiesListingPage: React.FC = () => {
             <div className="rounded-xl bg-white/40 p-2.5 sm:p-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-slate-950">{pageTitle}</h2>
-                <button onClick={() => setShowMobileFilters(true)} className="rounded-full bg-white p-2 shadow-sm lg:hidden">
+                <button onClick={() => setShowMobileFilters(true)} className="rounded-full bg-white p-2 shadow-sm md:hidden">
                   <SlidersHorizontal className="h-5 w-5 text-slate-700" />
                 </button>
               </div>
@@ -1880,8 +1880,8 @@ const PropertiesListingPage: React.FC = () => {
             </div>
             <div className={`min-h-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-sm ${
               isDeveloperView
-                ? 'max-h-[75vh] lg:h-[calc(100vh-24px)] lg:min-h-[560px] lg:max-h-none'
-                : 'max-h-[78vh] lg:h-[calc(100vh-140px)] lg:min-h-[560px] lg:max-h-[780px]'
+                ? 'max-h-[75vh] md:h-[calc(100vh-24px)] md:min-h-[560px] md:max-h-none'
+                : 'max-h-[78vh] md:h-[calc(100vh-140px)] md:min-h-[560px] md:max-h-[780px]'
             }`}>
             <div className="grid h-full grid-cols-1 gap-3 overflow-y-auto p-2.5 sm:grid-cols-2 sm:p-3">
               {loading && Array.from({ length: 6 }).map((_, index) => (
