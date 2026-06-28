@@ -1378,51 +1378,55 @@ function HomePage() {
 
             <div className="mt-6 rounded-2xl bg-[#eef4fb] p-5 md:p-6">
               <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-                <div className="flex flex-col justify-center">
-                  <h3 className="text-2xl font-black text-slate-950">
-                    {activeExclusiveProject.projectName || activeExclusiveProject.societyName || cleanDevelopmentType(activeExclusiveProject.developmentType)}
-                  </h3>
-                  <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-                    <MapPin className="h-4 w-4 shrink-0" />
-                    {activeExclusiveProject.locality || activeExclusiveProject.city || selectedCity}
-                    {activeExclusiveProject.locality ? `, ${activeExclusiveProject.city || selectedCity}` : ''}
-                  </p>
+                <div className="flex h-full flex-col justify-between py-1">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-950 md:text-[1.7rem]">
+                      {activeExclusiveProject.projectName || activeExclusiveProject.societyName || cleanDevelopmentType(activeExclusiveProject.developmentType)}
+                    </h3>
+                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {activeExclusiveProject.locality || activeExclusiveProject.city || selectedCity}
+                      {activeExclusiveProject.locality ? `, ${activeExclusiveProject.city || selectedCity}` : ''}
+                    </p>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-5 text-sm text-slate-700">
-                    <span className="flex items-center gap-1.5">
-                      <BedDouble className="h-4 w-4 text-slate-500" />
-                      {activeExclusiveProject.bedrooms || 'On request'}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Ruler className="h-4 w-4 text-slate-500" />
-                      {activeExclusiveProject.flatSize
-                        ? `${activeExclusiveProject.flatSize} sqft`
-                        : activeExclusiveProject.totalArea
-                          ? `${activeExclusiveProject.totalArea} ${activeExclusiveProject.areaUnit || ''}`
-                          : 'On request'}
-                    </span>
+                    <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-700">
+                      <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 shadow-sm">
+                        <BedDouble className="h-4 w-4 text-[#0AA6A6]" />
+                        {activeExclusiveProject.bedrooms || 'On request'}
+                      </span>
+                      <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 shadow-sm">
+                        <Ruler className="h-4 w-4 text-[#0AA6A6]" />
+                        {activeExclusiveProject.flatSize
+                          ? `${activeExclusiveProject.flatSize} sqft`
+                          : activeExclusiveProject.totalArea
+                            ? `${activeExclusiveProject.totalArea} ${activeExclusiveProject.areaUnit || ''}`
+                            : 'On request'}
+                      </span>
+                    </div>
                   </div>
 
-                  <p className="mt-6 text-sm text-slate-500">Starting price</p>
-                  <p className="text-2xl font-black text-slate-950">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
+                  <div className="mt-6 border-t border-slate-200 pt-5">
+                    <p className="text-sm text-slate-500">Starting price</p>
+                    <p className="mt-1 text-3xl font-black text-slate-950">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
 
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    {activeExclusiveProject.propertyFormUrl && (
-                      <a
-                        href={`${API_ORIGIN}${activeExclusiveProject.propertyFormUrl}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-950 hover:border-teal-700 hover:text-teal-700"
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      {activeExclusiveProject.propertyFormUrl && (
+                        <a
+                          href={`${API_ORIGIN}${activeExclusiveProject.propertyFormUrl}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-950 hover:border-teal-700 hover:text-teal-700"
+                        >
+                          Download Brochure <Download className="h-4 w-4" />
+                        </a>
+                      )}
+                      <Link
+                        to={`/property/${activeExclusiveProject._id}`}
+                        className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-red-700"
                       >
-                        Download Brochure <Download className="h-4 w-4" />
-                      </a>
-                    )}
-                    <Link
-                      to={`/property/${activeExclusiveProject._id}`}
-                      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-red-700"
-                    >
-                      Explore Now <ArrowRight className="h-4 w-4" />
-                    </Link>
+                        Explore Now <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
