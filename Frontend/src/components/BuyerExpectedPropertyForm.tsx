@@ -21,15 +21,19 @@ const cityOptions = [
 
 const areaPresets = {
   sqYards: { unit: 'Sq Yards', min: '100', max: '4000' },
-  acres: { unit: 'Acres', min: '1', max: '100' }
+  acres: { unit: 'Acres', min: '1', max: '100' },
+  sqft: { unit: 'Sq Ft', min: '500', max: '5000' }
 };
 
+const bhkOptions = ['1 BHK', '2 BHK', '2.5 BHK', '3 BHK', '4 BHK', '4+ BHK'];
+
 const landTypeOptions = [
-  { label: 'Plot', value: 'open-plot', areaMode: 'sqYards' as const },
-  { label: 'Villa', value: 'villa', areaMode: 'sqYards' as const },
-  { label: 'Commercial', value: 'commercial-plot', areaMode: 'sqYards' as const },
-  { label: 'Acre', value: 'land', areaMode: 'acres' as const },
-  { label: 'FarmVilla', value: 'farm-villa', areaMode: 'acres' as const }
+  { label: 'Apartment', value: 'apartment', areaMode: 'sqft' as const, category: 'apartment' as const },
+  { label: 'Plot', value: 'open-plot', areaMode: 'sqYards' as const, category: 'plot' as const },
+  { label: 'Villa', value: 'villa', areaMode: 'sqYards' as const, category: 'plot' as const },
+  { label: 'Commercial', value: 'commercial-plot', areaMode: 'sqft' as const, category: 'commercial' as const },
+  { label: 'Acre', value: 'land', areaMode: 'acres' as const, category: 'land' as const },
+  { label: 'FarmVilla', value: 'farm-villa', areaMode: 'acres' as const, category: 'land' as const }
 ];
 
 const timelineOptions = [
@@ -44,11 +48,12 @@ const BuyerExpectedPropertyForm: React.FC = () => {
   const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [areaMode, setAreaMode] = useState<'sqYards' | 'acres'>('sqYards');
+  const [areaMode, setAreaMode] = useState<'sqYards' | 'acres' | 'sqft'>('sqYards');
   const [formData, setFormData] = useState({
     landType: 'open-plot',
     minArea: areaPresets.sqYards.min,
     maxArea: areaPresets.sqYards.max,
+    bedrooms: '',
     location: '',
     city: localStorage.getItem('selectedCity') || 'Hyderabad',
     avatar: null as File | null,
@@ -59,7 +64,13 @@ const BuyerExpectedPropertyForm: React.FC = () => {
     note: ''
   });
 
-  const updateAreaMode = (mode: 'sqYards' | 'acres') => {
+  const selectedLandType = landTypeOptions.find(option => option.value === formData.landType) || landTypeOptions[0];
+  const isApartment = selectedLandType.category === 'apartment';
+  const isCommercial = selectedLandType.category === 'commercial';
+  const showAreaModeToggle = selectedLandType.category === 'plot' || selectedLandType.category === 'land';
+  const priceUnitLabel = isApartment || isCommercial ? 'Square Feet' : 'Square Yard';
+
+  const updateAreaMode = (mode: 'sqYards' | 'acres' | 'sqft') => {
     setAreaMode(mode);
     setFormData(prev => ({
       ...prev,
@@ -75,7 +86,8 @@ const BuyerExpectedPropertyForm: React.FC = () => {
       ...prev,
       landType: selectedType.value,
       minArea: areaPresets[selectedType.areaMode].min,
-      maxArea: areaPresets[selectedType.areaMode].max
+      maxArea: areaPresets[selectedType.areaMode].max,
+      bedrooms: selectedType.category === 'apartment' ? prev.bedrooms : ''
     }));
   };
 
@@ -110,7 +122,11 @@ const BuyerExpectedPropertyForm: React.FC = () => {
       return;
     }
     if (!minPrice || !maxPrice || minPrice > maxPrice) {
-      alert('Please enter a valid square yard price range');
+      alert(`Please enter a valid ${priceUnitLabel.toLowerCase()} price range`);
+      return;
+    }
+    if (isApartment && !formData.bedrooms) {
+      alert('Please select a BHK type');
       return;
     }
 
@@ -121,9 +137,9 @@ const BuyerExpectedPropertyForm: React.FC = () => {
     const timelineLabel = timelineOptions.find(option => option.value === formData.purchaseTimeline)?.label || 'Property Looking Immediately';
     const locationText = `${formData.location.trim()}, ${formData.city.trim()}, India`;
     const description = [
-      `Buyer requirement for ${landTypeLabel}, ${areaRange} ${areaUnit} at ${formData.location.trim()}, ${formData.city}.`,
+      `Buyer requirement for ${landTypeLabel}${isApartment && formData.bedrooms ? ` (${formData.bedrooms})` : ''}, ${areaRange} ${areaUnit} at ${formData.location.trim()}, ${formData.city}.`,
       `Total budget: Rs. ${formData.totalBudget.trim()}.`,
-      `Expected square yard price range: Rs. ${minPrice.toLocaleString('en-IN')} to Rs. ${maxPrice.toLocaleString('en-IN')}.`,
+      `Expected ${priceUnitLabel.toLowerCase()} price range: Rs. ${minPrice.toLocaleString('en-IN')} to Rs. ${maxPrice.toLocaleString('en-IN')}.`,
       `Timeline: ${timelineLabel}.`,
       formData.note.trim()
     ].filter(Boolean).join(' ');
@@ -156,7 +172,8 @@ const BuyerExpectedPropertyForm: React.FC = () => {
     payload.append('partlySaleValue', '0');
     payload.append('goodwill', '');
     payload.append('advance', '');
-    payload.append('squareYardPrice', priceRange);
+    payload.append(isApartment || isCommercial ? 'squareFeetPrice' : 'squareYardPrice', priceRange);
+    payload.append('bedrooms', isApartment ? formData.bedrooms : '');
     payload.append('purchaseTimeline', formData.purchaseTimeline);
     payload.append('description', description);
     payload.append('address', locationText);
@@ -202,7 +219,7 @@ const BuyerExpectedPropertyForm: React.FC = () => {
           <form onSubmit={handleSubmit} className="mt-6 grid gap-5">
             <div>
               <p className="mb-2 text-sm font-black text-slate-900">Land Type</p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {landTypeOptions.map(option => (
                   <button
                     key={option.value}
@@ -216,30 +233,50 @@ const BuyerExpectedPropertyForm: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => updateAreaMode('sqYards')}
-                className={`rounded-lg border px-4 py-3 text-left text-sm font-black ${areaMode === 'sqYards' ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-slate-200 text-slate-700 hover:border-teal-300'}`}
-              >
-                100 Square Yards to 4000 Square Yards
-              </button>
-              <button
-                type="button"
-                onClick={() => updateAreaMode('acres')}
-                className={`rounded-lg border px-4 py-3 text-left text-sm font-black ${areaMode === 'acres' ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-slate-200 text-slate-700 hover:border-teal-300'}`}
-              >
-                1 Acre to 100 Acres
-              </button>
-            </div>
+            {isApartment && (
+              <div>
+                <p className="mb-2 text-sm font-black text-slate-900">BHK Type</p>
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                  {bhkOptions.map(option => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, bedrooms: option }))}
+                      className={`rounded-lg border px-4 py-3 text-left text-sm font-black ${formData.bedrooms === option ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-slate-200 text-slate-700 hover:border-teal-300'}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showAreaModeToggle && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => updateAreaMode('sqYards')}
+                  className={`rounded-lg border px-4 py-3 text-left text-sm font-black ${areaMode === 'sqYards' ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-slate-200 text-slate-700 hover:border-teal-300'}`}
+                >
+                  100 Square Yards to 4000 Square Yards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateAreaMode('acres')}
+                  className={`rounded-lg border px-4 py-3 text-left text-sm font-black ${areaMode === 'acres' ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-slate-200 text-slate-700 hover:border-teal-300'}`}
+                >
+                  1 Acre to 100 Acres
+                </button>
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900"><Ruler className="h-4 w-4 text-teal-700" /> Minimum Area</span>
+                <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900"><Ruler className="h-4 w-4 text-teal-700" /> Minimum Area ({areaPresets[areaMode].unit})</span>
                 <input
                   type="number"
-                  min={areaMode === 'sqYards' ? 100 : 1}
-                  max={areaMode === 'sqYards' ? 4000 : 100}
+                  min={areaMode === 'sqYards' ? 100 : areaMode === 'sqft' ? 100 : 1}
+                  max={areaMode === 'sqYards' ? 4000 : areaMode === 'sqft' ? 20000 : 100}
                   value={formData.minArea}
                   onChange={(event) => setFormData(prev => ({ ...prev, minArea: event.target.value }))}
                   className="ld-input"
@@ -303,7 +340,7 @@ const BuyerExpectedPropertyForm: React.FC = () => {
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-900">Square Yard Price From</span>
+                <span className="mb-2 block text-sm font-black text-slate-900">{priceUnitLabel} Price From</span>
                 <input
                   inputMode="numeric"
                   value={formData.minSquareYardPrice}
@@ -313,7 +350,7 @@ const BuyerExpectedPropertyForm: React.FC = () => {
                 />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-900">Square Yard Price To</span>
+                <span className="mb-2 block text-sm font-black text-slate-900">{priceUnitLabel} Price To</span>
                 <input
                   inputMode="numeric"
                   value={formData.maxSquareYardPrice}

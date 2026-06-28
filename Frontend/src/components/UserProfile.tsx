@@ -1,15 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ListingsSidebar from './ListingsSidebar';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Building2, Check, KeyRound, Mail, MapPin, Phone, ShieldCheck, Sparkles, User } from 'lucide-react';
+import { BadgeCheck, Building2, Mail, MapPin, Phone, ShieldCheck, Sparkles, User } from 'lucide-react';
 import { API_BASE } from '../lib/api';
-import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
-
-const BUYER_CONTACT_PACKS = [
-  { packSize: 1, price: 199, label: '1 Property' },
-  { packSize: 5, price: 1000, label: '5 Properties' },
-  { packSize: 10, price: 2000, label: '10 Properties' }
-];
 
 const UserProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -28,11 +21,6 @@ const UserProfile: React.FC = () => {
   const [specializations, setSpecializations] = useState<string[]>([]);
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationMessage, setLocationMessage] = useState('');
-  const [buyerFreeContactUsed, setBuyerFreeContactUsed] = useState(false);
-  const [buyerContactCredits, setBuyerContactCredits] = useState(0);
-  const [loadingPack, setLoadingPack] = useState(0);
-  const [buyerPlanMessage, setBuyerPlanMessage] = useState('');
-  const buyerPaymentInProgressRef = useRef(false);
 
   const languageOptions = ['English', 'Hindi', 'Telugu', 'Tamil', 'Kannada', 'Marathi', 'Bengali', 'Urdu', 'Gujarati', 'Malayalam'];
   const specializationOptions = ['Apartment', 'Villa', 'Plot', 'Commercial Space', 'Independent House'];
@@ -72,8 +60,6 @@ const UserProfile: React.FC = () => {
     setExperienceYears(localStorage.getItem('agentExperienceYears') || '');
     setLanguages(parseStoredList('agentLanguages'));
     setSpecializations(parseStoredList('agentSpecializations'));
-    setBuyerFreeContactUsed(localStorage.getItem('buyerFreeContactUsed') === 'true');
-    setBuyerContactCredits(Number(localStorage.getItem('buyerContactCredits') || 0));
   }, [navigate]);
 
   const saveAgentDetails = async () => {
@@ -107,99 +93,6 @@ const UserProfile: React.FC = () => {
       setLocationMessage(err instanceof Error ? err.message : 'Unable to save agent details');
     } finally {
       setSavingLocation(false);
-    }
-  };
-
-  const loadRazorpayCheckout = () =>
-    new Promise<void>((resolve, reject) => {
-      if (window.Razorpay) {
-        resolve();
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = RAZORPAY_CHECKOUT_URL;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Unable to load Razorpay Checkout'));
-      document.body.appendChild(script);
-    });
-
-  const handleBuyPack = async (pack: { packSize: number; price: number; label: string }) => {
-    if (buyerPaymentInProgressRef.current) return;
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/');
-      return;
-    }
-
-    buyerPaymentInProgressRef.current = true;
-    setLoadingPack(pack.packSize);
-    setBuyerPlanMessage('');
-
-    try {
-      await loadRazorpayCheckout();
-
-      const orderResponse = await fetch(`${API_BASE}/buyer-contact-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ packSize: pack.packSize })
-      });
-      const orderData = await orderResponse.json();
-      if (!orderResponse.ok) throw new Error(orderData.message || 'Failed to create Razorpay order');
-      if (!window.Razorpay) throw new Error('Razorpay Checkout is not available');
-
-      const checkout = new window.Razorpay({
-        key: orderData.keyId || razorpayConfig.keyId,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency || 'INR',
-        name: razorpayConfig.businessName,
-        description: `Contact Access - ${pack.label}`,
-        image: `${window.location.origin}${razorpayConfig.logoPath}`,
-        order_id: orderData.order.id,
-        prefill: {
-          name: localStorage.getItem('name') || 'HomeFeet User',
-          email: localStorage.getItem('email') || '',
-          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
-        },
-        notes: {
-          packSize: String(pack.packSize),
-          address: razorpayConfig.notesAddress
-        },
-        theme: { color: razorpayConfig.themeColor },
-        handler: async (response) => {
-          try {
-            const verifyResponse = await fetch(`${API_BASE}/buyer-contact-payment/verify`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-              body: JSON.stringify(response)
-            });
-            const verifyData = await verifyResponse.json();
-            if (!verifyResponse.ok) throw new Error(verifyData.message || 'Payment verification failed');
-
-            localStorage.setItem('buyerContactCredits', String(verifyData.user.buyerContactCredits || 0));
-            localStorage.setItem('buyerFreeContactUsed', String(Boolean(verifyData.user.buyerFreeContactUsed)));
-            setBuyerContactCredits(verifyData.user.buyerContactCredits || 0);
-            setBuyerFreeContactUsed(Boolean(verifyData.user.buyerFreeContactUsed));
-            setBuyerPlanMessage(`Payment successful. You now have ${verifyData.user.buyerContactCredits || 0} contact-reveal credit(s).`);
-          } catch (error) {
-            setBuyerPlanMessage(error instanceof Error ? error.message : 'Payment verification failed');
-          } finally {
-            buyerPaymentInProgressRef.current = false;
-            setLoadingPack(0);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            buyerPaymentInProgressRef.current = false;
-            setLoadingPack(0);
-          }
-        }
-      });
-
-      checkout.open();
-    } catch (error) {
-      buyerPaymentInProgressRef.current = false;
-      setLoadingPack(0);
-      setBuyerPlanMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
     }
   };
 
@@ -258,7 +151,7 @@ const UserProfile: React.FC = () => {
                 : accountType === 'mediator'
                   ? `Agent (Mediator) plan: ${builderPlan === 'none' ? 'Free summary access. Paid membership unlocks other complete listings.' : builderPlan.replace('_', ' ')}.`
                   : accountType === 'buyer'
-                    ? 'Buyer account: your first owner-contact reveal is free. See Owner Contact Access below for request and credit-pack options.'
+                    ? 'Buyer account: your first owner-contact reveal is free. See the Subscription Plans tab in your Dashboard for request and credit-pack options.'
                     : `Owner plan: ${builderPlan === 'none' ? 'Free summary access and your own listing details. Paid membership unlocks other complete listings.' : builderPlan.replace('_', ' ')}.`}
             </p>
           </div>
@@ -354,52 +247,6 @@ const UserProfile: React.FC = () => {
                 {savingLocation ? 'Saving...' : 'Save Agent Details'}
               </button>
               {locationMessage && <p className="text-sm font-semibold text-slate-600">{locationMessage}</p>}
-            </div>
-          </section>
-        )}
-
-        {['owner', 'mediator', 'buyer'].includes(accountType) && (
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
-              <KeyRound className="h-6 w-6" />
-            </div>
-            <h2 className="text-xl font-black text-slate-950">Owner Contact Access</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Your first property's owner contact number is free. After that, send a request and wait for the owner
-              to approve it, or buy a contact-reveal pack below for instant access without waiting.
-            </p>
-
-            <div className="mt-4 rounded-lg bg-teal-50 p-4 text-sm font-semibold text-teal-800">
-              {buyerFreeContactUsed
-                ? 'Your free reveal has been used.'
-                : 'Your free reveal is available for your next property.'}
-              {' '}You have {buyerContactCredits} paid credit{buyerContactCredits === 1 ? '' : 's'} remaining.
-            </div>
-
-            {buyerPlanMessage && (
-              <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm font-semibold text-teal-800">
-                {buyerPlanMessage}
-              </div>
-            )}
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              {BUYER_CONTACT_PACKS.map((pack) => (
-                <div key={pack.packSize} className="flex flex-col rounded-lg border border-slate-200 p-5 text-center">
-                  <p className="text-sm font-bold uppercase tracking-wide text-slate-500">{pack.label}</p>
-                  <p className="mt-2 text-2xl font-black text-slate-950">Rs. {pack.price.toLocaleString('en-IN')}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Rs. {Math.round(pack.price / pack.packSize).toLocaleString('en-IN')} per property
-                  </p>
-                  <button
-                    type="button"
-                    disabled={loadingPack === pack.packSize}
-                    onClick={() => handleBuyPack(pack)}
-                    className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0AA6A6] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loadingPack === pack.packSize ? 'Processing...' : <><Check className="h-4 w-4" /> Buy</>}
-                  </button>
-                </div>
-              ))}
             </div>
           </section>
         )}
