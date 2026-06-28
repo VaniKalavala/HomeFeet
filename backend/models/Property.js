@@ -9,6 +9,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  companyLogoUrl: {  // Square company/builder logo shown beside this property wherever it's listed
+    type: String,
+    default: ''
+  },
   listingIntent: {
     type: String,
     enum: ['development', 'buy', 'sell'],

@@ -283,6 +283,7 @@ const PostProperty = () => {
     plotDiagram: null as File | null,
     video: null as File | null,
     propertyForm: null as File | null,
+    companyLogo: null as File | null,
   });
   const [showParcelShapePicker, setShowParcelShapePicker] = useState(false);
   const formSteps = ['Property Details', 'Apartment Details', 'Pricing & Amenities', 'Media Uploads', 'Location Details'];
@@ -311,7 +312,8 @@ const PostProperty = () => {
     plotDiagramUrl: '',
     floorPlanUrl: '',
     propertyFormUrl: '',
-    videoUrl: ''
+    videoUrl: '',
+    companyLogoUrl: ''
   });
   type FloorPlanUnit = {
     bedrooms: string;
@@ -648,7 +650,8 @@ const PostProperty = () => {
           image: null,
           images: [],
           plotDiagram: null,
-          video: null
+          video: null,
+          companyLogo: null
         }));
         setMapLinkInput(mapLink);
         setExistingMedia({
@@ -659,7 +662,8 @@ const PostProperty = () => {
           plotDiagramUrl: property.plotDiagramUrl || '',
           floorPlanUrl: property.floorPlanUrl || '',
           propertyFormUrl: property.propertyFormUrl || '',
-          videoUrl: property.videoUrl || ''
+          videoUrl: property.videoUrl || '',
+          companyLogoUrl: property.companyLogoUrl || ''
         });
         if (Array.isArray(property.floorPlanUnits) && property.floorPlanUnits.length) {
           setFloorPlanUnits(property.floorPlanUnits.map((unit: any) => ({
@@ -1468,6 +1472,11 @@ const PostProperty = () => {
     setFormData(prev => ({ ...prev, plotDiagram: file }));
   };
 
+  const handleCompanyLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData(prev => ({ ...prev, companyLogo: file }));
+  };
+
   const getDefaultCropArea = (target: CropTarget): CropArea =>
     target === 'image'
       ? { x: 10, y: 12, width: 80, height: 60 }
@@ -2161,6 +2170,9 @@ const PostProperty = () => {
     if (formData.propertyForm) {
       data.append('propertyForm', formData.propertyForm);
     }
+    if (formData.companyLogo) {
+      data.append('companyLogo', formData.companyLogo);
+    }
 
     try {
       const res = await fetch(isEditMode ? `${API_BASE}/properties/${id}` : `${API_BASE}/add`, {
@@ -2790,6 +2802,22 @@ const PostProperty = () => {
               className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
               type="text"
             />
+            <label className="block rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 md:col-span-2">
+              <span className="mb-1 flex items-center gap-2 font-semibold text-slate-800">
+                <Image className="h-5 w-5 text-teal-700" />Company Logo
+              </span>
+              <span className="mb-2 block text-xs text-slate-500">
+                Recommended size: square, 256x256px (PNG/JPG, max 2MB). Shown beside this property wherever it's listed.
+              </span>
+              {isEditMode && existingMedia.companyLogoUrl && !formData.companyLogo && (
+                <div className="mb-3 flex items-center gap-3 rounded-lg bg-white p-3">
+                  <img src={`${API_ORIGIN}${existingMedia.companyLogoUrl}`} alt="Current company logo" className="h-12 w-12 rounded-lg border border-slate-200 object-contain" />
+                  <p className="text-sm text-slate-600">Current logo is saved. Upload a new one only if you want to replace it.</p>
+                </div>
+              )}
+              <input type="file" onChange={handleCompanyLogoChange} className="w-full rounded bg-white p-2" accept="image/*" />
+              {formData.companyLogo && <p className="mt-2 text-sm font-semibold text-teal-700">Selected: {formData.companyLogo.name}</p>}
+            </label>
             <input
               name="projectTotalUnits"
               value={formData.projectTotalUnits}

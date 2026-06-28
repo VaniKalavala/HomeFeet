@@ -44,7 +44,7 @@ import AdminPanel from './components/AdminPanel';
 import AdminChatbot from './components/AdminChatbot';
 import PropertiesListingPage from './components/PropertiesListingPage';
 import Dashboard from './components/Dashboard';
-import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getProjectConfiguration, getProjectImage, getProjectPriceRange } from './lib/happeningProjects';
+import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getBuilderLogo, getProjectConfiguration, getProjectImage, getProjectPriceRange } from './lib/happeningProjects';
 import ContactPage from './components/ContactPage';
 import ChatPage from './components/ChatPage';
 import LoginModal from './components/LoginModal';
@@ -1224,9 +1224,18 @@ function HomePage() {
                 >
                   <div className="flex flex-col justify-between p-5">
                     <div>
-                      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-[#0AA6A6] text-lg font-black text-white shadow-sm">
-                        {getBuilderInitial(pick)}
-                      </div>
+                      {getBuilderLogo(pick) ? (
+                        <img
+                          src={getBuilderLogo(pick)}
+                          alt={getBuilderLabel(pick)}
+                          className="h-12 w-12 rounded-lg border border-white bg-white object-contain p-1 shadow-sm"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-[#0AA6A6] text-lg font-black text-white shadow-sm">
+                          {getBuilderInitial(pick)}
+                        </div>
+                      )}
                       <p className="mt-3 line-clamp-1 text-sm font-black leading-snug text-slate-950">{getBuilderLabel(pick)}</p>
                       <Link to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`} className="text-xs font-bold text-indigo-700 underline">
                         View Projects

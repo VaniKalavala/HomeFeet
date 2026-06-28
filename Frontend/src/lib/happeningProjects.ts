@@ -15,6 +15,9 @@ export const getBuilderLabel = (property: any) =>
 export const getBuilderInitial = (property: any) =>
   getBuilderLabel(property).trim().charAt(0).toUpperCase() || 'H';
 
+export const getBuilderLogo = (property: any) =>
+  property.companyLogoUrl ? `${API_ORIGIN}${property.companyLogoUrl}` : '';
+
 const formatLakhCr = (value: number) => {
   if (value >= 10000000) return `Rs. ${(value / 10000000).toFixed(2)} Cr`;
   if (value >= 100000) return `Rs. ${(value / 100000).toFixed(2)} L`;

@@ -23,7 +23,7 @@ import {
   X
 } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
-import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getProjectConfiguration, getProjectImage, getProjectPriceRange } from '../lib/happeningProjects';
+import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getBuilderLogo, getProjectConfiguration, getProjectImage, getProjectPriceRange } from '../lib/happeningProjects';
 import LoginModal from './LoginModal';
 
 declare global {
@@ -1647,9 +1647,18 @@ const PropertiesListingPage: React.FC = () => {
                       <div className="flex flex-col justify-between p-3">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#0AA6A6] text-[10px] font-black text-white">
-                              {getBuilderInitial(pick)}
-                            </span>
+                            {getBuilderLogo(pick) ? (
+                              <img
+                                src={getBuilderLogo(pick)}
+                                alt={getBuilderLabel(pick)}
+                                className="h-5 w-5 shrink-0 rounded border border-white bg-white object-contain"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#0AA6A6] text-[10px] font-black text-white">
+                                {getBuilderInitial(pick)}
+                              </span>
+                            )}
                             <p className="line-clamp-1 text-[11px] font-bold leading-tight text-slate-950">{getBuilderLabel(pick)}</p>
                           </div>
                           <p className="mt-1.5 line-clamp-1 text-sm font-black leading-tight text-slate-950">{pick.projectName || pick.developmentType}</p>
