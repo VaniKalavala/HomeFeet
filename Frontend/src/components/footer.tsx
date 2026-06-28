@@ -42,7 +42,7 @@ export default function Footer() {
   return (
     <footer className="bg-slate-950 text-white">
       <div className="ld-container py-14">
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_0.7fr_0.6fr_0.8fr]">
           <div>
             <div className="flex items-center gap-1.5">
               <img src="/HomeFeet_logo.png" alt="HomeFeet" className="h-[3.6rem] w-[3.6rem] rounded-lg bg-white p-1" />
@@ -75,22 +75,28 @@ export default function Footer() {
           </div>
 
           <div>
-            <p className="mb-4 font-bold text-white">Explore</p>
-            <div className="space-y-3 text-sm text-slate-300">
-              <Link className="block hover:text-white" to="/properties">Properties</Link>
-              <Link className="block hover:text-white" to="/post-property">Post Property</Link>
-              <Link className="block hover:text-white" to="/about">About</Link>
-              <Link className="block hover:text-white" to="/subscription-plans">Subscription Plans</Link>
-              <Link className="block hover:text-white" to="/testimonials">Testimonials</Link>
-              <Link className="block hover:text-white" to="/contact">Contact</Link>
-              <Link className="block hover:text-white" to="/terms-and-conditions">Terms and Conditions</Link>
-              <Link className="block hover:text-white" to="/privacy-policy">Privacy Policy</Link>
-              <Link className="block hover:text-white" to="/refund-and-cancellation">Refund and Cancellation</Link>
+            <p className="mb-4 text-xs font-black uppercase tracking-wider text-teal-300">Explore</p>
+            <div className="space-y-3.5 text-sm text-slate-300">
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/properties">Properties</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/post-property">Post Property</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/about">About</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/subscription-plans">Subscription Plans</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/testimonials">Testimonials</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/contact">Contact</Link>
             </div>
           </div>
 
           <div>
-            <p className="mb-4 font-bold text-white">Contact</p>
+            <p className="mb-4 text-xs font-black uppercase tracking-wider text-teal-300">Legal</p>
+            <div className="space-y-3.5 text-sm text-slate-300">
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/terms-and-conditions">Terms and Conditions</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/privacy-policy">Privacy Policy</Link>
+              <Link className="block transition hover:translate-x-0.5 hover:text-white" to="/refund-and-cancellation">Refund and Cancellation</Link>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-4 text-xs font-black uppercase tracking-wider text-teal-300">Contact</p>
             <div className="space-y-3 text-sm text-slate-300">
               <p className="flex gap-2"><Phone className="h-4 w-4 text-teal-300" /> +91 80190 08351</p>
               <p className="flex gap-2"><Mail className="h-4 w-4 text-teal-300" /> contact@homefeet.in</p>
