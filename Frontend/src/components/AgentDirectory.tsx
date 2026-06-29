@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, Building2, Languages, MapPin, Trophy, User } from 'lucide-react';
+import { Briefcase, Building2, Languages, MapPin, Search, Trophy, User } from 'lucide-react';
 import { API_BASE } from '../lib/api';
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 type Agent = {
   id: string;
@@ -35,6 +41,13 @@ export default function AgentDirectory() {
   const [selectedSpecialization, setSelectedSpecialization] = useState('All');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
   const [selectedExperience, setSelectedExperience] = useState(0);
+  const [mapQuery, setMapQuery] = useState('');
+  const [focusedAgentId, setFocusedAgentId] = useState('');
+  const [mapLoadError, setMapLoadError] = useState('');
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<Record<string, any>>({});
+  const cityCoordsCacheRef = useRef<Record<string, { lat: number; lng: number }>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +89,130 @@ export default function AgentDirectory() {
       agent.agentExperienceYears <= activeExperienceRange.max
     ))
   );
+
+  useEffect(() => {
+    if (loading || visibleAgents.length === 0) return;
+
+    const renderAgentMap = () => {
+      if (!mapRef.current || !window.google?.maps) return;
+      const google = window.google;
+
+      if (!mapInstanceRef.current) {
+        mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+          center: { lat: 20.5937, lng: 78.9629 },
+          zoom: 5,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
+      }
+
+      Object.values(markersRef.current).forEach((marker: any) => marker.setMap(null));
+      markersRef.current = {};
+
+      const geocoder = new google.maps.Geocoder();
+      const matchedAgents = mapQuery.trim()
+        ? visibleAgents.filter((agent) =>
+            `${agent.firstName} ${agent.lastName} ${agent.city} ${agent.state}`.toLowerCase().includes(mapQuery.trim().toLowerCase())
+          )
+        : visibleAgents;
+
+      const cityGroups: Record<string, Agent[]> = {};
+      matchedAgents.forEach((agent) => {
+        const cityKey = [agent.city, agent.state].filter(Boolean).join(', ');
+        if (!cityKey) return;
+        cityGroups[cityKey] = cityGroups[cityKey] || [];
+        cityGroups[cityKey].push(agent);
+      });
+
+      const bounds = new google.maps.LatLngBounds();
+      let pinCount = 0;
+
+      const placeMarkersForCity = (cityKey: string, coords: { lat: number; lng: number }) => {
+        cityGroups[cityKey].forEach((agent, index) => {
+          const jitter = index === 0 ? { lat: 0, lng: 0 } : {
+            lat: Math.cos(index * 2.4) * 0.01,
+            lng: Math.sin(index * 2.4) * 0.01,
+          };
+          const position = { lat: coords.lat + jitter.lat, lng: coords.lng + jitter.lng };
+          const isFocused = focusedAgentId === agent.id;
+          const marker = new google.maps.Marker({
+            position,
+            map: mapInstanceRef.current,
+            title: `${agent.firstName} ${agent.lastName}`,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: isFocused ? '#dc2626' : BRAND_TEAL,
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: isFocused ? 4 : 3,
+              scale: isFocused ? 12 : 9,
+            },
+            zIndex: isFocused ? 1000 : 1,
+          });
+          marker.addListener('click', () => setFocusedAgentId(agent.id));
+          markersRef.current[agent.id] = marker;
+          bounds.extend(position);
+          pinCount += 1;
+        });
+      };
+
+      Object.keys(cityGroups).forEach((cityKey) => {
+        const cached = cityCoordsCacheRef.current[cityKey];
+        if (cached) {
+          placeMarkersForCity(cityKey, cached);
+          if (pinCount === Object.values(cityGroups).flat().length) {
+            mapInstanceRef.current.fitBounds(bounds, 60);
+          }
+          return;
+        }
+
+        geocoder.geocode({ address: `${cityKey}, India` }, (results: any, status: string) => {
+          if (status !== 'OK' || !results?.[0]?.geometry) return;
+          const location = results[0].geometry.location;
+          const coords = { lat: location.lat(), lng: location.lng() };
+          cityCoordsCacheRef.current[cityKey] = coords;
+          placeMarkersForCity(cityKey, coords);
+          bounds.extend(coords);
+          if (Object.keys(markersRef.current).length > 0) {
+            mapInstanceRef.current.fitBounds(bounds, 60);
+          }
+        });
+      });
+    };
+
+    if (!window.google?.maps) {
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', renderAgentMap, { once: true });
+        return;
+      }
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        setMapLoadError('Map unavailable: Google Maps API key is not configured.');
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.onload = () => { setMapLoadError(''); renderAgentMap(); };
+      script.onerror = () => setMapLoadError('Failed to load Google Maps. Please check your internet connection.');
+      document.head.appendChild(script);
+      return;
+    }
+
+    renderAgentMap();
+  }, [loading, visibleAgents, mapQuery, focusedAgentId]);
+
+  const focusAgentOnMap = (agent: Agent) => {
+    setFocusedAgentId(agent.id);
+    const marker = markersRef.current[agent.id];
+    if (marker && mapInstanceRef.current) {
+      mapInstanceRef.current.panTo(marker.getPosition());
+      mapInstanceRef.current.setZoom(12);
+    }
+    mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   const hasActiveFilters = selectedState !== 'All' || selectedCity !== 'All' ||
     selectedSpecialization !== 'All' || selectedLanguage !== 'All' || selectedExperience !== 0;
@@ -142,6 +279,30 @@ export default function AgentDirectory() {
           ))}
         </div>
 
+        {!loading && visibleAgents.length > 0 && (
+          <div className="mt-3 rounded-2xl bg-white p-3 shadow-sm sm:p-4">
+            <h2 className="text-base font-semibold text-slate-950">Agents Marked on Map</h2>
+            <div className="relative mt-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={mapQuery}
+                onChange={(e) => setMapQuery(e.target.value)}
+                placeholder="Search agent or city"
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+              />
+            </div>
+            <div className="relative mt-3 h-[360px] overflow-hidden rounded-xl bg-slate-100">
+              <div ref={mapRef} className="absolute inset-0 h-full w-full" />
+              {mapLoadError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-100/95 p-6 text-center">
+                  <p className="text-sm font-semibold text-red-700">{mapLoadError}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="mt-3">
           {loading && <p className="text-center text-slate-500">Loading agents...</p>}
           {!loading && error && (
@@ -195,7 +356,7 @@ export default function AgentDirectory() {
                     {visibleAgents.map((agent) => (
                       <div
                         key={agent.id}
-                        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-600 hover:shadow-lg"
+                        className={`overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-600 hover:shadow-lg ${focusedAgentId === agent.id ? 'border-red-500 ring-2 ring-red-200' : 'border-slate-200'}`}
                       >
                         <div className="flex h-28 w-full items-center justify-center" style={{ backgroundColor: BRAND_TEAL }}>
                           <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/40 text-3xl font-black text-white">
@@ -203,9 +364,19 @@ export default function AgentDirectory() {
                           </div>
                         </div>
                         <div className="p-3">
-                          <h3 className="truncate text-base font-black text-slate-950">
-                            {agent.firstName} {agent.lastName}
-                          </h3>
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="truncate text-base font-black text-slate-950">
+                              {agent.firstName} {agent.lastName}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => focusAgentOnMap(agent)}
+                              className="flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-teal-100 hover:text-teal-800"
+                              title="Show on map"
+                            >
+                              <MapPin className="h-3 w-3" /> Map
+                            </button>
+                          </div>
                           {agent.agentCompanyName && (
                             <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-semibold text-slate-500">
                               <Building2 className="h-3.5 w-3.5 shrink-0" /> {agent.agentCompanyName}
