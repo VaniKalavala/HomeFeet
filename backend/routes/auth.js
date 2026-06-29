@@ -13,6 +13,7 @@ const OTP = require('../models/OTP');
 const MembershipPayment = require('../models/MembershipPayment');
 const OwnerPlanPayment = require('../models/OwnerPlanPayment');
 const BuyerContactPayment = require('../models/BuyerContactPayment');
+const LoginHistory = require('../models/LoginHistory');
 const { OWNER_PLAN_TIERS } = require('../config/ownerPlans');
 const { BUYER_CONTACT_PACKS } = require('../config/buyerContactPacks');
 const speechUpload = multer({
@@ -692,8 +693,8 @@ router.post('/owner-plan-order', async (req, res) => {
     const user = await requireUser(req, res);
     if (!user) return;
 
-    if (!['owner', 'mediator'].includes(user.accountType)) {
-      return res.status(403).json({ message: 'Only owner and agent (mediator) accounts can subscribe to these plans' });
+    if (!['owner', 'mediator', 'builder'].includes(user.accountType)) {
+      return res.status(403).json({ message: 'Only owner, agent (mediator), and builder accounts can subscribe to these plans' });
     }
 
     const { tier } = req.body;

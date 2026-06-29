@@ -1101,7 +1101,7 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
-          {!isAdmin && activeTab === 'subscription' && !['owner', 'mediator', 'buyer'].includes(accountType) && (
+          {!isAdmin && activeTab === 'subscription' && !['owner', 'mediator', 'buyer', 'builder'].includes(accountType) && (
             <div>
               <h1 className="text-2xl font-black text-slate-950">Subscription Plans</h1>
               <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
@@ -1111,7 +1111,7 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
-          {isAdmin && activeTab === 'subscription' && (
+          {activeTab === 'subscription' && (isAdmin || accountType === 'builder') && (
             <div>
               <h1 className="text-2xl font-black text-slate-950">Subscription Plans</h1>
               <p className="mt-1 text-sm text-slate-600">Boost your property's visibility with a plan built for Owners and Agents.</p>
