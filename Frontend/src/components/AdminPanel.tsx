@@ -168,6 +168,7 @@ const AdminPanel: React.FC = () => {
   const [builderDigestStatus, setBuilderDigestStatus] = useState('');
   const [activeAdminPage, setActiveAdminPage] = useState<'properties' | 'builders' | 'builderContacts' | 'membership' | 'inquiries' | 'whatsapp' | 'testimonials'>('properties');
   const [activeMembershipTab, setActiveMembershipTab] = useState('all');
+  const [activeMembershipTypeTab, setActiveMembershipTypeTab] = useState('all');
   const [adminLoadError, setAdminLoadError] = useState('');
   
   // Filters
@@ -994,9 +995,21 @@ const AdminPanel: React.FC = () => {
     return a.state.localeCompare(b.state);
   });
 
-  const visibleMembershipGroups = activeMembershipTab === 'all'
+  const membershipAccountTypes = Array.from(new Set(users.map(user => user.accountType || 'owner'))).sort();
+  const membershipTypeCounts = membershipAccountTypes.reduce<Record<string, number>>((counts, type) => {
+    counts[type] = users.filter(user => (user.accountType || 'owner') === type).length;
+    return counts;
+  }, {});
+
+  const visibleMembershipGroups = (activeMembershipTab === 'all'
     ? groupedMembershipUsers
-    : groupedMembershipUsers.filter(group => group.key === activeMembershipTab);
+    : groupedMembershipUsers.filter(group => group.key === activeMembershipTab)
+  ).map(group => ({
+    ...group,
+    items: activeMembershipTypeTab === 'all'
+      ? group.items
+      : group.items.filter(user => (user.accountType || 'owner') === activeMembershipTypeTab)
+  })).filter(group => group.items.length > 0);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -1707,9 +1720,40 @@ const AdminPanel: React.FC = () => {
               ))}
             </div>
           )}
+          {users.length > 0 && (
+            <div className="mb-4 flex gap-2 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <button
+                type="button"
+                onClick={() => setActiveMembershipTypeTab('all')}
+                className={`shrink-0 rounded-lg px-4 py-2 text-sm font-bold capitalize transition ${
+                  activeMembershipTypeTab === 'all'
+                    ? 'bg-teal-700 text-white'
+                    : 'bg-white text-slate-700 hover:bg-teal-50 hover:text-teal-700'
+                }`}
+              >
+                All Types ({users.length})
+              </button>
+              {membershipAccountTypes.map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setActiveMembershipTypeTab(type)}
+                  className={`shrink-0 rounded-lg px-4 py-2 text-sm font-bold capitalize transition ${
+                    activeMembershipTypeTab === type
+                      ? 'bg-teal-700 text-white'
+                      : 'bg-white text-slate-700 hover:bg-teal-50 hover:text-teal-700'
+                  }`}
+                >
+                  {type} ({membershipTypeCounts[type] ?? 0})
+                </button>
+              ))}
+            </div>
+          )}
           <div className="max-h-[620px] overflow-y-auto pr-2">
             {users.length === 0 ? (
               <p className="text-sm text-gray-500">No users found.</p>
+            ) : visibleMembershipGroups.length === 0 ? (
+              <p className="text-sm text-gray-500">No users match this filter.</p>
             ) : visibleMembershipGroups.map(group => (
               <div key={group.key} className="mb-5 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
