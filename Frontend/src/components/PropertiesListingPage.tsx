@@ -164,6 +164,8 @@ const PropertiesListingPage: React.FC = () => {
   const pendingGeocodePropertyIdsRef = React.useRef<Set<string>>(new Set());
   const pendingGeocodeCallbacksRef = React.useRef<Record<string, Array<(coords: { lat: number; lng: number }) => void>>>({});
   const fetchRequestRef = React.useRef(0);
+  const mapAutoFitContextRef = React.useRef('');
+  const mapAutoFitDoneRef = React.useRef(false);
   const housingPicksScrollRef = React.useRef<HTMLDivElement>(null);
   const [happeningProjects, setHappeningProjects] = useState<any[]>([]);
   const [selectedCity, setSelectedCity] = useState(() => searchParams.get('city') || getStoredSelectedCity());
@@ -1456,16 +1458,30 @@ const PropertiesListingPage: React.FC = () => {
         markerCount += 1;
       });
 
+      // Properties without stored coordinates resolve via async geocoding one
+      // at a time, each re-running this effect as they land. Re-fitting bounds
+      // on every single arrival made the map keep zooming out for several
+      // seconds after the initial load as more far-flung pins appeared. Only
+      // auto-fit once per "view" (city/intent/search) and silently add any
+      // later-arriving markers without disturbing the user's current zoom.
+      const autoFitContextKey = `${currentMapCity}|${listingIntent}|${mapLocationQuery.trim()}`;
+      if (mapAutoFitContextRef.current !== autoFitContextKey) {
+        mapAutoFitContextRef.current = autoFitContextKey;
+        mapAutoFitDoneRef.current = false;
+      }
+
       const focusedProperty = visibleProperties.find((property) => property._id === focusedPropertyId);
       const focusedCoords = focusedProperty ? getPropertyMapCoordinates(focusedProperty) : null;
       if (focusedCoords) {
         developerMapInstanceRef.current.setCenter(focusedCoords);
         developerMapInstanceRef.current.setZoom(16);
-      } else if (markerCount > 1) {
+      } else if (!mapAutoFitDoneRef.current && markerCount > 1) {
         developerMapInstanceRef.current.fitBounds(bounds, 70);
-      } else if (markerCount === 1) {
+        mapAutoFitDoneRef.current = true;
+      } else if (!mapAutoFitDoneRef.current && markerCount === 1) {
         developerMapInstanceRef.current.setCenter(bounds.getCenter());
         developerMapInstanceRef.current.setZoom(14);
+        mapAutoFitDoneRef.current = true;
       }
       const mapSearchTerm = mapLocationQuery.trim() || activeSearchTerm;
       if (markerCount === 0 && mapSearchTerm) {
