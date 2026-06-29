@@ -270,61 +270,61 @@ export default function AgentDirectory() {
           </p>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-1.5 sm:gap-4 xl:grid-cols-4">
-          {statCards.map((stat) => (
-            <div key={stat.label} className="rounded-lg bg-white px-3 py-1 shadow-sm sm:rounded-xl sm:px-4 sm:py-1.5">
-              <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">{stat.label}</p>
-              <p className="mt-0.5 text-base font-semibold leading-5 text-slate-950 sm:text-xl">{loading ? '-' : stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {!loading && visibleAgents.length > 0 && (
-          <div className="order-1 mt-3 flex flex-col gap-2.5">
-            <div className="rounded-xl bg-white/40 p-2.5 sm:p-3">
-              <h2 className="text-base font-semibold text-slate-950">Agents Marked on Map</h2>
-              <div className="relative mt-4">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={mapQuery}
-                  onChange={(e) => setMapQuery(e.target.value)}
-                  placeholder="Search agent or city"
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                />
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-2.5 md:gap-4 md:grid-cols-[minmax(0,60fr)_minmax(0,40fr)]">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-4 md:col-span-2 xl:grid-cols-4">
+            {statCards.map((stat) => (
+              <div key={stat.label} className="rounded-lg bg-white px-3 py-1 shadow-sm sm:rounded-xl sm:px-4 sm:py-1.5">
+                <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">{stat.label}</p>
+                <p className="mt-0.5 text-base font-semibold leading-5 text-slate-950 sm:text-xl">{loading ? '-' : stat.value}</p>
               </div>
-            </div>
-            <main className="relative min-h-[600px] overflow-hidden rounded-2xl bg-white shadow-sm sm:min-h-[750px] lg:min-h-[850px]">
-              <div ref={mapRef} className="absolute inset-0 h-full w-full bg-slate-100" />
-              {mapLoadError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-100/95 p-6 text-center">
-                  <div className="max-w-sm rounded-xl bg-white p-5 shadow-sm">
-                    <MapPin className="mx-auto h-8 w-8 text-teal-700" />
-                    <p className="mt-3 text-sm font-semibold text-slate-950">Real map unavailable</p>
-                    <p className="mt-2 text-sm text-slate-600">{mapLoadError}</p>
-                  </div>
-                </div>
-              )}
-            </main>
+            ))}
           </div>
-        )}
 
-        <div className="mt-3">
-          {loading && <p className="text-center text-slate-500">Loading agents...</p>}
-          {!loading && error && (
-            <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
-              <p className="font-semibold text-slate-700">{error}</p>
+          {!loading && visibleAgents.length > 0 && (
+            <div className="order-1 flex flex-col gap-2.5">
+              <div className="rounded-xl bg-white/40 p-2.5 sm:p-3">
+                <h2 className="text-base font-semibold text-slate-950">Agents Marked on Map</h2>
+                <div className="relative mt-4">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={mapQuery}
+                    onChange={(e) => setMapQuery(e.target.value)}
+                    placeholder="Search agent or city"
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  />
+                </div>
+              </div>
+              <main className="relative min-h-[600px] overflow-hidden rounded-2xl bg-white shadow-sm sm:min-h-[750px] lg:min-h-[850px]">
+                <div ref={mapRef} className="absolute inset-0 h-full w-full bg-slate-100" />
+                {mapLoadError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-100/95 p-6 text-center">
+                    <div className="max-w-sm rounded-xl bg-white p-5 shadow-sm">
+                      <MapPin className="mx-auto h-8 w-8 text-teal-700" />
+                      <p className="mt-3 text-sm font-semibold text-slate-950">Real map unavailable</p>
+                      <p className="mt-2 text-sm text-slate-600">{mapLoadError}</p>
+                    </div>
+                  </div>
+                )}
+              </main>
             </div>
           )}
-          {!loading && !error && agents.length === 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
-              <User className="mx-auto h-8 w-8 text-teal-700" />
-              <p className="mt-3 font-black text-slate-950">No agents found yet.</p>
-            </div>
-          )}
-          {!loading && agents.length > 0 && (
-            <div className="grid gap-3 lg:grid-cols-[1fr_320px]">
-              <div>
+
+          <div className="order-2 flex flex-col gap-2.5">
+            {loading && <p className="text-center text-slate-500">Loading agents...</p>}
+            {!loading && error && (
+              <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+                <p className="font-semibold text-slate-700">{error}</p>
+              </div>
+            )}
+            {!loading && !error && agents.length === 0 && (
+              <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+                <User className="mx-auto h-8 w-8 text-teal-700" />
+                <p className="mt-3 font-black text-slate-950">No agents found yet.</p>
+              </div>
+            )}
+            {!loading && agents.length > 0 && (
+              <>
                 <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
                   <select value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity('All'); }} className={filterSelectClass}>
                     <option value="All">All States</option>
@@ -358,7 +358,7 @@ export default function AgentDirectory() {
                     <p className="font-black text-slate-950">No agents found for these filters.</p>
                   </div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3">
                     {visibleAgents.map((agent) => (
                       <div
                         key={agent.id}
@@ -427,9 +427,8 @@ export default function AgentDirectory() {
                     ))}
                   </div>
                 )}
-              </div>
 
-              {leaderboards.length > 0 && currentLeaderboard && (
+                {leaderboards.length > 0 && currentLeaderboard && (
                 <aside className="h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   {leaderboards.length > 1 ? (
                     <div className="flex gap-4 border-b border-slate-100 text-sm font-bold">
@@ -480,8 +479,9 @@ export default function AgentDirectory() {
                   </div>
                 </aside>
               )}
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
