@@ -31,7 +31,7 @@ const PLAN_TIERS: PlanTier[] = [
   {
     value: 'basic',
     label: 'Basic',
-    price: 2970,
+    price: 2500,
     validity: '30 Days',
     visibility: '75%',
     slot: 'Medium Slot',
