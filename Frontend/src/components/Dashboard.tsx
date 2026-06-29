@@ -33,7 +33,7 @@ const PLAN_TIERS: PlanTier[] = [
     label: 'Basic',
     price: 2970,
     validity: '30 Days',
-    visibility: '80%',
+    visibility: '75%',
     slot: 'Medium Slot',
     phonePrivacy: true,
     relationshipManager: false,
@@ -65,25 +65,6 @@ const PLAN_TIERS: PlanTier[] = [
     matchingBuyers: ''
   },
   {
-    value: 'premium_plus',
-    label: 'Premium +',
-    price: 6750,
-    validity: '120 Days',
-    visibility: '100%',
-    slot: 'Medium Slot',
-    phonePrivacy: true,
-    relationshipManager: false,
-    fieldVisit: false,
-    propertyShowing: false,
-    photoshoot: true,
-    assuredRank: '',
-    socialMedia: false,
-    shorts: false,
-    propertyReport: false,
-    matchingBuyers: '',
-    mostPopular: true
-  },
-  {
     value: 'premium',
     label: 'Premium Plan',
     price: 7500,
@@ -99,7 +80,8 @@ const PLAN_TIERS: PlanTier[] = [
     socialMedia: false,
     shorts: false,
     propertyReport: false,
-    matchingBuyers: ''
+    matchingBuyers: '',
+    mostPopular: true
   }
 ];
 
@@ -1159,7 +1141,7 @@ const Dashboard: React.FC = () => {
               )}
 
               <div className="mt-6 overflow-x-auto">
-                <div className="grid min-w-[1000px] grid-cols-[220px_repeat(4,1fr)] gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+                <div className="grid min-w-[800px] grid-cols-[220px_repeat(3,1fr)] gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
                   <div className="bg-white p-4" />
                   {PLAN_TIERS.map((tier) => (
                     <div
