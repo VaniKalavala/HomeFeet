@@ -325,32 +325,35 @@ export default function AgentDirectory() {
             )}
             {!loading && agents.length > 0 && (
               <>
-                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
-                  <select value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity('All'); }} className={filterSelectClass}>
-                    <option value="All">All States</option>
-                    {stateOptions.map((state) => <option key={state} value={state}>{state}</option>)}
-                  </select>
-                  <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className={filterSelectClass}>
-                    <option value="All">All Cities</option>
-                    {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
-                  </select>
-                  <select value={selectedSpecialization} onChange={(e) => setSelectedSpecialization(e.target.value)} className={filterSelectClass}>
-                    <option value="All">Property Type</option>
-                    {specializationOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                  <select value={selectedExperience} onChange={(e) => setSelectedExperience(Number(e.target.value))} className={filterSelectClass}>
-                    {EXPERIENCE_RANGES.map((range, index) => <option key={range.label} value={index}>{range.label}</option>)}
-                  </select>
-                  <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)} className={filterSelectClass}>
-                    <option value="All">Language</option>
-                    {languageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                  {hasActiveFilters && (
-                    <button type="button" onClick={clearAllFilters} className="text-sm font-semibold text-teal-700 underline-offset-2 hover:underline">
-                      Clear All
-                    </button>
-                  )}
-                  <span className="ml-auto text-sm font-semibold text-slate-500">{visibleAgents.length} of {agents.length} agents found</span>
+                <div className="mb-3 rounded-xl bg-white p-3 shadow-sm">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                    <select value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity('All'); }} className={`${filterSelectClass} w-full sm:w-auto`}>
+                      <option value="All">All States</option>
+                      {stateOptions.map((state) => <option key={state} value={state}>{state}</option>)}
+                    </select>
+                    <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className={`${filterSelectClass} w-full sm:w-auto`}>
+                      <option value="All">All Cities</option>
+                      {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+                    </select>
+                    <select value={selectedSpecialization} onChange={(e) => setSelectedSpecialization(e.target.value)} className={`${filterSelectClass} w-full sm:w-auto`}>
+                      <option value="All">Property Type</option>
+                      {specializationOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                    <select value={selectedExperience} onChange={(e) => setSelectedExperience(Number(e.target.value))} className={`${filterSelectClass} w-full sm:w-auto`}>
+                      {EXPERIENCE_RANGES.map((range, index) => <option key={range.label} value={index}>{range.label}</option>)}
+                    </select>
+                    <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)} className={`${filterSelectClass} w-full sm:w-auto`}>
+                      <option value="All">Language</option>
+                      {languageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                    {hasActiveFilters && (
+                      <button type="button" onClick={clearAllFilters} className="col-span-2 text-center text-sm font-semibold text-teal-700 underline-offset-2 hover:underline sm:col-span-1 sm:text-left">
+                        Clear All
+                      </button>
+                    )}
+                    <span className="hidden text-sm font-semibold text-slate-500 sm:ml-auto sm:block">{visibleAgents.length} of {agents.length} agents found</span>
+                  </div>
+                  <p className="mt-2 text-right text-sm font-semibold text-slate-500 sm:hidden">{visibleAgents.length} of {agents.length} agents found</p>
                 </div>
 
                 {visibleAgents.length === 0 ? (
