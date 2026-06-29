@@ -1880,8 +1880,8 @@ const PropertiesListingPage: React.FC = () => {
             </div>
             <div className={`min-h-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-sm ${
               isDeveloperView
-                ? 'max-h-[75vh] md:h-[calc(100vh-24px)] md:min-h-[560px] md:max-h-none'
-                : 'max-h-[78vh] md:h-[calc(100vh-140px)] md:min-h-[560px] md:max-h-[780px]'
+                ? 'h-[70vh] max-h-[75vh] md:h-[calc(100vh-24px)] md:min-h-[560px] md:max-h-none'
+                : 'h-[70vh] max-h-[78vh] md:h-[calc(100vh-140px)] md:min-h-[560px] md:max-h-[780px]'
             }`}>
             <div className="grid h-full grid-cols-1 gap-3 overflow-y-auto p-2.5 sm:grid-cols-2 sm:p-3">
               {loading && Array.from({ length: 6 }).map((_, index) => (
