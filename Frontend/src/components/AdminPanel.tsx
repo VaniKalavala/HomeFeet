@@ -77,18 +77,22 @@ const getPropertyImageUrl = (property: Pick<Property, 'imageUrl' | 'plotDiagramU
 
 const commercialDevelopmentTypes = ['commercial-plot', 'office-space', 'retail', 'hospitality', 'industrial'];
 
+const apartmentLikeDevelopmentTypes = ['apartment', 'standalone', 'high-rise', 'gated-community', 'group-house'];
+
 const getPropertyCategory = (property: Pick<Property, 'listingIntent' | 'developmentType'>) => {
   const intent = (property.listingIntent || 'development').toLowerCase();
   const type = (property.developmentType || '').toLowerCase();
   if (intent === 'buy') return 'Buyers';
   if (intent === 'sell' && commercialDevelopmentTypes.includes(type)) return 'Commercial Plot';
+  if (intent === 'sell' && apartmentLikeDevelopmentTypes.includes(type)) return 'Sell Flat';
   if (intent === 'sell') return 'Sell Plot';
   return 'ForDevelopers';
 };
 
 const getPropertyCategoryClass = (category: string) => {
   if (category === 'Buyers') return 'bg-blue-50 text-blue-800 border-blue-100';
-  if (category === 'Sell Plot') return 'bg-emerald-50 text-emerald-800 border-emerald-100';
+  if (category === 'Sell Flat') return 'bg-emerald-50 text-emerald-800 border-emerald-100';
+  if (category === 'Sell Plot') return 'bg-amber-50 text-amber-800 border-amber-100';
   if (category === 'Commercial Plot') return 'bg-purple-50 text-purple-800 border-purple-100';
   return 'bg-teal-50 text-teal-800 border-teal-100';
 };
@@ -1123,7 +1127,7 @@ const AdminPanel: React.FC = () => {
               <option value="all">All Categories</option>
               <option value="development">ForDevelopers</option>
               <option value="buy">Buyers</option>
-              <option value="sell">Sell Plot</option>
+              <option value="sell">Sell Flat / Plot</option>
               <option value="commercial">Commercial Plot</option>
               <option value="map-view">Properties Map-View</option>
             </select>
