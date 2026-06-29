@@ -362,14 +362,14 @@ export default function AgentDirectory() {
                     {visibleAgents.map((agent) => (
                       <div
                         key={agent.id}
-                        className={`overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-600 hover:shadow-lg ${focusedAgentId === agent.id ? 'border-red-500 ring-2 ring-red-200' : 'border-slate-200'}`}
+                        className={`flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-600 hover:shadow-lg ${focusedAgentId === agent.id ? 'border-red-500 ring-2 ring-red-200' : 'border-slate-200'}`}
                       >
-                        <div className="flex h-28 w-full items-center justify-center bg-slate-100">
+                        <div className="flex h-28 w-full shrink-0 items-center justify-center bg-slate-100">
                           <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white text-3xl font-black text-slate-700 shadow-sm">
                             {agent.firstName?.charAt(0).toUpperCase() || <User className="h-8 w-8" />}
                           </div>
                         </div>
-                        <div className="p-3">
+                        <div className="flex flex-1 flex-col p-3">
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="truncate text-base font-black text-slate-950">
                               {agent.firstName} {agent.lastName}
@@ -407,7 +407,7 @@ export default function AgentDirectory() {
                               {agent.propertiesCount} Listing{agent.propertiesCount === 1 ? '' : 's'}
                             </p>
                           )}
-                          <div className="mt-2 flex flex-wrap gap-1.5">
+                          <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
                             <Link
                               to={`/agent/${agent.id}`}
                               className="flex-1 rounded-lg bg-slate-950 px-3 py-1.5 text-center text-xs font-bold text-white hover:bg-teal-800"
