@@ -32,6 +32,77 @@ const EXPERIENCE_RANGES = [
 
 const BRAND_TEAL = '#0AA6A6';
 
+// Approximate coordinates for major Indian cities/state capitals, used as a fast, reliable
+// primary lookup before falling back to the live Geocoder (which can fail silently if the
+// Geocoding API isn't enabled/quota-limited for the configured Maps key).
+const INDIA_CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  hyderabad: { lat: 17.385, lng: 78.4867 },
+  secunderabad: { lat: 17.4399, lng: 78.4983 },
+  bengaluru: { lat: 12.9716, lng: 77.5946 },
+  bangalore: { lat: 12.9716, lng: 77.5946 },
+  mumbai: { lat: 19.076, lng: 72.8777 },
+  navimumbai: { lat: 19.033, lng: 73.0297 },
+  delhi: { lat: 28.7041, lng: 77.1025 },
+  newdelhi: { lat: 28.6139, lng: 77.209 },
+  chennai: { lat: 13.0827, lng: 80.2707 },
+  kolkata: { lat: 22.5726, lng: 88.3639 },
+  pune: { lat: 18.5204, lng: 73.8567 },
+  ahmedabad: { lat: 23.0225, lng: 72.5714 },
+  surat: { lat: 21.1702, lng: 72.8311 },
+  jaipur: { lat: 26.9124, lng: 75.7873 },
+  lucknow: { lat: 26.8467, lng: 80.9462 },
+  kanpur: { lat: 26.4499, lng: 80.3319 },
+  nagpur: { lat: 21.1458, lng: 79.0882 },
+  indore: { lat: 22.7196, lng: 75.8577 },
+  bhopal: { lat: 23.2599, lng: 77.4126 },
+  visakhapatnam: { lat: 17.6868, lng: 83.2185 },
+  vijayawada: { lat: 16.5062, lng: 80.648 },
+  guntur: { lat: 16.3067, lng: 80.4365 },
+  warangal: { lat: 17.9784, lng: 79.5941 },
+  patna: { lat: 25.5941, lng: 85.1376 },
+  vadodara: { lat: 22.3072, lng: 73.1812 },
+  ludhiana: { lat: 30.901, lng: 75.8573 },
+  agra: { lat: 27.1767, lng: 78.0081 },
+  nashik: { lat: 19.9975, lng: 73.7898 },
+  ranchi: { lat: 23.3441, lng: 85.3096 },
+  faridabad: { lat: 28.4089, lng: 77.3178 },
+  meerut: { lat: 28.9845, lng: 77.7064 },
+  rajkot: { lat: 22.3039, lng: 70.8022 },
+  varanasi: { lat: 25.3176, lng: 82.9739 },
+  srinagar: { lat: 34.0837, lng: 74.7973 },
+  amritsar: { lat: 31.634, lng: 74.8723 },
+  allahabad: { lat: 25.4358, lng: 81.8463 },
+  prayagraj: { lat: 25.4358, lng: 81.8463 },
+  coimbatore: { lat: 11.0168, lng: 76.9558 },
+  jabalpur: { lat: 23.1815, lng: 79.9864 },
+  gwalior: { lat: 26.2183, lng: 78.1828 },
+  vijayanagaram: { lat: 18.1067, lng: 83.3956 },
+  madurai: { lat: 9.9252, lng: 78.1198 },
+  raipur: { lat: 21.2514, lng: 81.6296 },
+  kota: { lat: 25.2138, lng: 75.8648 },
+  chandigarh: { lat: 30.7333, lng: 76.7794 },
+  guwahati: { lat: 26.1445, lng: 91.7362 },
+  thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+  kochi: { lat: 9.9312, lng: 76.2673 },
+  kozhikode: { lat: 11.2588, lng: 75.7804 },
+  mysuru: { lat: 12.2958, lng: 76.6394 },
+  mysore: { lat: 12.2958, lng: 76.6394 },
+  noida: { lat: 28.5355, lng: 77.391 },
+  gurugram: { lat: 28.4595, lng: 77.0266 },
+  gurgaon: { lat: 28.4595, lng: 77.0266 },
+  bhubaneswar: { lat: 20.2961, lng: 85.8245 },
+  dehradun: { lat: 30.3165, lng: 78.0322 },
+  jodhpur: { lat: 26.2389, lng: 73.0243 },
+  jammu: { lat: 32.7266, lng: 74.857 },
+  tirupati: { lat: 13.6288, lng: 79.4192 },
+  nellore: { lat: 14.4426, lng: 79.9865 },
+  karimnagar: { lat: 18.4386, lng: 79.1288 },
+  nizamabad: { lat: 18.6725, lng: 78.0941 },
+  khammam: { lat: 17.2473, lng: 80.1514 },
+};
+
+const normalizeCityKey = (value: string) => value.toLowerCase().replace(/[^a-z]/g, '');
+
 export default function AgentDirectory() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,8 +238,21 @@ export default function AgentDirectory() {
           return;
         }
 
-        geocoder.geocode({ address: `${cityKey}, India` }, (results: any, status: string) => {
-          if (status !== 'OK' || !results?.[0]?.geometry) return;
+        const cityName = cityGroups[cityKey][0]?.city || '';
+        const staticCoords = INDIA_CITY_COORDINATES[normalizeCityKey(cityName)];
+        if (staticCoords) {
+          cityCoordsCacheRef.current[cityKey] = staticCoords;
+          placeMarkersForCity(cityKey, staticCoords);
+          bounds.extend(staticCoords);
+          mapInstanceRef.current.fitBounds(bounds, 60);
+          return;
+        }
+
+        geocoder.geocode({ address: `${cityKey}, India`, region: 'in' }, (results: any, status: string) => {
+          if (status !== 'OK' || !results?.[0]?.geometry) {
+            console.warn(`Agent map: could not geocode "${cityKey}" (status: ${status})`);
+            return;
+          }
           const location = results[0].geometry.location;
           const coords = { lat: location.lat(), lng: location.lng() };
           cityCoordsCacheRef.current[cityKey] = coords;
