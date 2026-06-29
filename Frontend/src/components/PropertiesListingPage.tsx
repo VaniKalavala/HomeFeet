@@ -1945,7 +1945,7 @@ const PropertiesListingPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="grid h-[560px] grid-cols-1 gap-3 overflow-y-auto rounded-2xl bg-white p-2.5 shadow-sm sm:grid-cols-2 sm:p-3">
+            <div className="grid h-[560px] grid-cols-1 items-start gap-3 overflow-y-auto rounded-2xl bg-white p-2.5 shadow-sm sm:grid-cols-2 sm:p-3">
               {loading && Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-44 animate-pulse rounded-xl bg-white shadow-sm" />
               ))}
@@ -1966,11 +1966,12 @@ const PropertiesListingPage: React.FC = () => {
                     const isPropertyApartment = apartmentLikeTypes.includes(String(property.developmentType || '').toLowerCase());
                     return (
                       <>
-                        <div className="relative h-40 w-full overflow-hidden rounded-lg bg-slate-100">
+                        <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-lg bg-slate-100" style={{ height: '160px', minHeight: '160px' }}>
                           <img
                             src={getCardImageSrc(property)}
                             alt={propertyTitle(property)}
                             className={`h-full w-full ${isGeneratedDiagramPreview(property) || isBuyerAvatarFallback(property) ? 'bg-white object-contain p-2' : 'object-cover'}`}
+                            style={{ width: '100%', height: '100%' }}
                             onError={(e) => {
                               e.currentTarget.src = getCardFallbackImage(property);
                               e.currentTarget.className = `h-full w-full ${getPropertyIntent(property) === 'buy' ? 'bg-white object-contain p-2' : 'object-cover'}`;
