@@ -47,6 +47,24 @@ const PLAN_TIERS: PlanTier[] = [
     matchingBuyers: ''
   },
   {
+    value: 'standard',
+    label: 'Standard',
+    price: 5000,
+    validity: '60 Days',
+    visibility: '85%',
+    slot: 'Medium Slot',
+    phonePrivacy: true,
+    relationshipManager: false,
+    fieldVisit: false,
+    propertyShowing: false,
+    photoshoot: false,
+    assuredRank: '',
+    socialMedia: false,
+    shorts: false,
+    propertyReport: false,
+    matchingBuyers: ''
+  },
+  {
     value: 'premium_plus',
     label: 'Premium +',
     price: 6750,
@@ -64,6 +82,24 @@ const PLAN_TIERS: PlanTier[] = [
     propertyReport: false,
     matchingBuyers: '',
     mostPopular: true
+  },
+  {
+    value: 'premium',
+    label: 'Premium Plan',
+    price: 7500,
+    validity: '120 Days',
+    visibility: '100%',
+    slot: 'Medium Slot',
+    phonePrivacy: true,
+    relationshipManager: false,
+    fieldVisit: false,
+    propertyShowing: false,
+    photoshoot: true,
+    assuredRank: '',
+    socialMedia: false,
+    shorts: false,
+    propertyReport: false,
+    matchingBuyers: ''
   }
 ];
 
@@ -1123,7 +1159,7 @@ const Dashboard: React.FC = () => {
               )}
 
               <div className="mt-6 overflow-x-auto">
-                <div className="grid min-w-[600px] grid-cols-[220px_repeat(2,1fr)] gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+                <div className="grid min-w-[1000px] grid-cols-[220px_repeat(4,1fr)] gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
                   <div className="bg-white p-4" />
                   {PLAN_TIERS.map((tier) => (
                     <div
