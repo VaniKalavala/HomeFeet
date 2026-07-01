@@ -533,7 +533,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       facing, roadFacingDirection, roadSize, frontageWidth, pincode, zoningClassification,
       developerRatio, partlySale, partlySaleUnit, partlySaleValue, partlySalePrice,
       state, city, locality, societyName, landmark, map, goodwill, advance,
-      squareYardPrice, squareFeetPrice, totalBudget, totalBudgetOnwards, amenitiesChargeExtra, purchaseTimeline, description, address, selectedAmenities, coordinates,
+      squareYardPrice, squareFeetPrice, totalBudget, totalBudgetOnwards, amenitiesChargeExtra, priceRange, purchaseTimeline, description, address, selectedAmenities, coordinates,
       bedrooms, bathrooms, bhkBathrooms, floorNumber, totalFloors, furnishingStatus, possessionStatus,
       possessionDate, reraId, localityHighlights, projectHighlights
     } = req.body;
@@ -643,6 +643,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       totalBudget: totalBudget || '',
       totalBudgetOnwards: totalBudgetOnwards === 'true' || totalBudgetOnwards === true,
       amenitiesChargeExtra: amenitiesChargeExtra || '',
+      priceRange: priceRange || '',
       purchaseTimeline: listingIntent === 'buy' ? (purchaseTimeline || '') : '',
       description: description || '',
       address,

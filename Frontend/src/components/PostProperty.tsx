@@ -214,6 +214,9 @@ const buildAutoDescription = (formData: Record<string, any>, isApartment: boolea
   if (Array.isArray(formData.selectedAmenities) && formData.selectedAmenities.length) {
     sentences.push(`Amenities include ${formData.selectedAmenities.join(', ')}.`);
   }
+  if (formData.priceRange) {
+    sentences.push(`Price range: ${formData.priceRange}.`);
+  }
   if (formData.amenitiesChargeExtra) {
     sentences.push(`Amenities charge extra: ${formData.amenitiesChargeExtra}.`);
   }
@@ -302,6 +305,7 @@ const PostProperty = () => {
     totalBudget: '',
     totalBudgetOnwards: false,
     amenitiesChargeExtra: '',
+    priceRange: '',
     purchaseTimeline: '',
     description: '',
     selectedAmenities: [] as string[],
@@ -450,6 +454,7 @@ const PostProperty = () => {
       totalBudget: prefill.totalBudget || prev.totalBudget,
       totalBudgetOnwards: prefill.totalBudgetOnwards ?? prev.totalBudgetOnwards,
       amenitiesChargeExtra: prefill.amenitiesChargeExtra || prev.amenitiesChargeExtra,
+      priceRange: prefill.priceRange || prev.priceRange,
       description: prefill.description || prev.description,
       selectedAmenities: Array.isArray(prefill.selectedAmenities) && prefill.selectedAmenities.length
         ? prefill.selectedAmenities
@@ -679,6 +684,7 @@ const PostProperty = () => {
           totalBudget: property.totalBudget || '',
           totalBudgetOnwards: Boolean(property.totalBudgetOnwards),
           amenitiesChargeExtra: property.amenitiesChargeExtra || '',
+          priceRange: property.priceRange || '',
           purchaseTimeline: normalizePurchaseTimeline(property.purchaseTimeline),
           description: property.description || '',
           selectedAmenities: Array.isArray(property.selectedAmenities) ? property.selectedAmenities : [],
@@ -2199,6 +2205,7 @@ const PostProperty = () => {
     data.append('totalBudget', parseBudgetValue(formData.totalBudget));
     data.append('totalBudgetOnwards', String(formData.totalBudgetOnwards));
     data.append('amenitiesChargeExtra', formData.amenitiesChargeExtra);
+    data.append('priceRange', formData.priceRange);
     data.append('description', formData.description);
     data.append('selectedAmenities', JSON.stringify(formData.selectedAmenities));
     if (isAdminEditMode) {
@@ -2347,7 +2354,7 @@ const PostProperty = () => {
     formData.developmentType, formData.bedrooms, formData.bathrooms, formData.flatSize, formData.flatFacing,
     formData.floorNumber, formData.totalFloors, formData.furnishingStatus, formData.possessionStatus,
     formData.totalArea, formData.areaUnit, formData.facing, formData.locality, formData.city,
-    formData.totalBudget, formData.totalBudgetOnwards, formData.amenitiesChargeExtra, formData.squareFeetPrice, formData.squareYardPrice, formData.selectedAmenities,
+    formData.totalBudget, formData.totalBudgetOnwards, formData.amenitiesChargeExtra, formData.priceRange, formData.squareFeetPrice, formData.squareYardPrice, formData.selectedAmenities,
     isApartmentOrVilla
   ]);
 
@@ -3221,6 +3228,14 @@ const PostProperty = () => {
           onChange={handleChange}
           value={formData.amenitiesChargeExtra}
           placeholder="Amenities Charge Extra — e.g. ₹50,000 or 2500/month (optional)"
+          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+          type="text"
+        />
+        <input
+          name="priceRange"
+          onChange={handleChange}
+          value={formData.priceRange}
+          placeholder="Price Range — e.g. 50 Lakhs to 1.2 Crore (optional)"
           className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
           type="text"
         />

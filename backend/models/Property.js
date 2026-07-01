@@ -152,6 +152,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  priceRange: {
+    type: String,
+    default: ''
+  },
   purchaseTimeline: {
     type: String,
     default: ''
