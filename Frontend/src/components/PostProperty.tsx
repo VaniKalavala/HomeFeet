@@ -2332,6 +2332,16 @@ const PostProperty = () => {
       return { ...prev, bedrooms: next.join(', ') };
     });
   };
+  const selectedFlatFacingOptions = formData.flatFacing ? formData.flatFacing.split(',').map(f => f.trim()).filter(Boolean) : [];
+  const toggleFlatFacingOption = (option: string) => {
+    setFormData(prev => {
+      const current = prev.flatFacing ? prev.flatFacing.split(',').map(f => f.trim()).filter(Boolean) : [];
+      const next = current.includes(option)
+        ? current.filter(o => o !== option)
+        : [...current, option].sort((a, b) => flatFacingOptions.indexOf(a) - flatFacingOptions.indexOf(b));
+      return { ...prev, flatFacing: next.join(', ') };
+    });
+  };
   const updateBhkBathrooms = (option: string, value: string) => {
     setFormData(prev => ({ ...prev, bhkBathrooms: { ...prev.bhkBathrooms, [option]: value } }));
   };
@@ -2956,12 +2966,12 @@ const PostProperty = () => {
                 {flatFacingOptions.map(f => (
                   <label
                     key={f}
-                    className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${formData.flatFacing === f ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-300 text-slate-700 hover:border-teal-300'}`}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${selectedFlatFacingOptions.includes(f) ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-300 text-slate-700 hover:border-teal-300'}`}
                   >
                     <input
                       type="checkbox"
-                      checked={formData.flatFacing === f}
-                      onChange={() => setFormData(prev => ({ ...prev, flatFacing: prev.flatFacing === f ? '' : f }))}
+                      checked={selectedFlatFacingOptions.includes(f)}
+                      onChange={() => toggleFlatFacingOption(f)}
                       className="h-4 w-4 accent-teal-600"
                     />
                     {f}
