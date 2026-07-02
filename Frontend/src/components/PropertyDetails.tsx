@@ -339,9 +339,48 @@ const PropertyDetails: React.FC = () => {
     : property?.city || property?.location || 'Hyderabad';
   const shareOrigin = (import.meta.env.VITE_SHARE_ORIGIN || 'https://www.homefeet.in').replace(/\/$/, '');
   const sharePreviewUrl = property ? `${shareOrigin}/share/property/${property._id}` : '';
-  const whatsappShareUrl = property
-    ? `https://wa.me/?text=${encodeURIComponent(`${title}\n${sharePreviewUrl}`)}`
-    : '';
+  const whatsappShareUrl = (() => {
+    if (!property) return '';
+    const priceRange = (() => {
+      if (Array.isArray(property.floorPlanUnits) && property.floorPlanUnits.length) {
+        const prices = property.floorPlanUnits
+          .map((u: any) => Number(String(u.price || '').replace(/,/g, '')))
+          .filter((n: number) => n > 0);
+        if (prices.length) {
+          const min = Math.min(...prices), max = Math.max(...prices);
+          return min === max ? formatMoney(String(min)) : `${formatMoney(String(min))} - ${formatMoney(String(max))}`;
+        }
+      }
+      return formatMoney(property.totalBudget) || formatMoney(property.squareFeetPrice) || 'Price on request';
+    })();
+    const size = property.flatSize
+      ? `${property.flatSize} sq.ft.`
+      : property.totalArea
+        ? `${property.totalArea} ${property.areaUnit || 'Sq Yd'}`
+        : '';
+    const amenities: string[] = Array.isArray(property.selectedAmenities) ? property.selectedAmenities.slice(0, 3) : [];
+    const lines = [
+      `🏠 *Don't miss out!*`,
+      `We noticed you're searching for amazing projects. Well, guess what? Your search ends here!`,
+      ``,
+      `📍 Checkout *${title}* in *${location}* - an amazing project worth exploring!`,
+      ``,
+      `*Key details -*`,
+      `💰 Price: ${priceRange}`,
+      property.bedrooms ? `🛏️ Type: *${property.bedrooms} ${cleanType(property.developmentType)}*` : `🏘️ Type: *${cleanType(property.developmentType)}*`,
+      size ? `📐 Size: ${size}` : '',
+      ``,
+      `*Additional info -*`,
+      property.possessionDate ? `📅 Possession: ${property.possessionDate}` : property.possessionStatus ? `📅 Status: ${property.possessionStatus}` : '',
+      amenities.length ? `🎯 Top Amenities: ${amenities.join(', ')}` : '',
+      ``,
+      `🚀 For floor plans, amenities, and more details visit`,
+      sharePreviewUrl,
+      ``,
+      `🔥 Don't miss out—contact the seller before it's gone! ⏳`,
+    ].filter(line => line !== undefined && !(line === '' && false));
+    return `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`;
+  })();
   const currentUserPhone = localStorage.getItem('phone') || '';
   const isOwnListing = property
     ? Boolean(
