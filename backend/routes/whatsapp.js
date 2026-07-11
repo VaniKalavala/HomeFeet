@@ -114,7 +114,7 @@ router.post('/submit-template', requireAdmin, async (req, res) => {
     });
 
     if (!result.success) {
-      return res.status(502).json({ error: result.error, raw: result.raw });
+      return res.status(502).json({ error: result.error, code: result.code, raw: result.raw });
     }
 
     res.json({ success: true, templateId: result.templateId, status: result.status, name: result.name });

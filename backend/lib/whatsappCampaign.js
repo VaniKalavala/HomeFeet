@@ -34,14 +34,25 @@ function buildTemplateComponents({ headerType, headerText, bodyText, footerText,
   if (headerType && headerType !== 'none') {
     const fmt = headerType.toUpperCase(); // TEXT | IMAGE | VIDEO | DOCUMENT
     const headerComp = { type: 'HEADER', format: fmt };
-    if (fmt === 'TEXT' && headerText) headerComp.text = headerText;
-    // For media headers, Meta only needs format at creation time — no URL needed
+    if (fmt === 'TEXT' && headerText) {
+      headerComp.text = headerText;
+    }
+    // IMAGE/VIDEO/DOCUMENT: no URL at creation time (provided at send time).
+    // Meta accepts the component without an example handle.
     components.push(headerComp);
   }
 
   // ── BODY ────────────────────────────────────────────────────────────────────
   if (bodyText) {
-    components.push({ type: 'BODY', text: bodyText });
+    const bodyComp = { type: 'BODY', text: bodyText };
+    // Meta REQUIRES example.body_text when body contains {{n}} variables
+    const vars = bodyText.match(/\{\{\d+\}\}/g) || [];
+    if (vars.length) {
+      bodyComp.example = {
+        body_text: [vars.map((_, i) => `value${i + 1}`)]
+      };
+    }
+    components.push(bodyComp);
   }
 
   // ── FOOTER ──────────────────────────────────────────────────────────────────
@@ -53,19 +64,25 @@ function buildTemplateComponents({ headerType, headerText, bodyText, footerText,
   if (buttons.length) {
     const metaButtons = buttons.map(btn => {
       if (btn.type === 'url') {
-        return {
-          type: 'URL',
-          text: btn.label,
-          url: btn.urlType === 'Dynamic'
-            ? `${btn.url.replace(/\/$/, '')}/{{1}}`
-            : btn.url
-        };
+        const isDynamic = btn.urlType === 'Dynamic';
+        const baseUrl   = (btn.url || '').replace(/\/$/, '');
+        const metaUrl   = isDynamic ? `${baseUrl}/{{1}}` : baseUrl;
+        const btnObj    = { type: 'URL', text: btn.label || 'Visit', url: metaUrl };
+        // Meta REQUIRES example[] for dynamic URL buttons ({{1}} suffix)
+        if (isDynamic) {
+          btnObj.example = [`${baseUrl}/home`];
+        }
+        return btnObj;
       }
       if (btn.type === 'phone_number') {
-        return { type: 'PHONE_NUMBER', text: btn.label, phone_number: btn.url };
+        return {
+          type: 'PHONE_NUMBER',
+          text: btn.label || 'Call Us',
+          phone_number: btn.url || ''
+        };
       }
       // quick_reply / custom
-      return { type: 'QUICK_REPLY', text: btn.label || btn.text };
+      return { type: 'QUICK_REPLY', text: btn.label || btn.text || 'Reply' };
     });
     components.push({ type: 'BUTTONS', buttons: metaButtons });
   }
@@ -100,15 +117,25 @@ async function submitTemplate({
   if (!name)     throw new Error('`name` is required');
   if (!bodyText) throw new Error('`bodyText` is required');
 
-  // Meta requires snake_case names, no spaces, lowercase
-  const safeName = name.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  // Meta: snake_case, lowercase, no leading/trailing/consecutive underscores, max 512 chars
+  const safeName = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')   // replace invalid chars with _
+    .replace(/_+/g, '_')            // collapse consecutive underscores
+    .replace(/^_+|_+$/g, '')        // strip leading/trailing underscores
+    .slice(0, 512) || 'template';
+
+  const components = buildTemplateComponents({ headerType, headerText, bodyText, footerText, buttons });
 
   const payload = {
     name: safeName,
     language: languageCode,
     category: category.toUpperCase(),
-    components: buildTemplateComponents({ headerType, headerText, bodyText, footerText, buttons })
+    components
   };
+
+  console.log('[submit-template] payload →', JSON.stringify(payload, null, 2));
 
   const res = await fetch(TEMPLATES_URL, {
     method: 'POST',
@@ -122,7 +149,17 @@ async function submitTemplate({
   const data = await res.json();
 
   if (!res.ok || data.error) {
-    return { success: false, error: data.error?.message || `HTTP ${res.status}`, raw: data };
+    // Surface the most useful fields from Meta's error response
+    const metaErr   = data.error || {};
+    const detail    = metaErr.error_data?.details || metaErr.error_user_msg || '';
+    const errorMsg  = [metaErr.message, detail].filter(Boolean).join(' — ');
+    console.error('[submit-template] Meta error:', JSON.stringify(data, null, 2));
+    return {
+      success: false,
+      error: errorMsg || `HTTP ${res.status}`,
+      code:  metaErr.code,
+      raw:   data
+    };
   }
 
   return { success: true, templateId: data.id, status: data.status, name: safeName };

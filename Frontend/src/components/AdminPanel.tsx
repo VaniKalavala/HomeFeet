@@ -2646,7 +2646,7 @@ const AdminPanel: React.FC = () => {
                                   setSubmittedTemplateName(d.name);
                                   setSubmitStatus(d.status === 'APPROVED' ? 'approved' : 'pending');
                                 } else {
-                                  setSubmitError(d.error || 'Submission failed');
+                                  setSubmitError(d.error || d.raw?.error?.error_user_msg || 'Submission failed');
                                 }
                               } catch (e: any) { setSubmitError(e.message); }
                               finally { setSubmitting(false); }
