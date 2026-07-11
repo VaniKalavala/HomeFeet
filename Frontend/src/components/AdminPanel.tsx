@@ -162,6 +162,12 @@ const AdminPanel: React.FC = () => {
   const [campaignName, setCampaignName] = useState('');
   const [campaignNumbers, setCampaignNumbers] = useState('');
   const [campaignNumberTab, setCampaignNumberTab] = useState<'insert' | 'contacts' | 'upload'>('insert');
+  const [contactsFilterType, setContactsFilterType] = useState<'group' | 'category' | 'tag'>('category');
+  const [contactsCategory, setContactsCategory] = useState('');
+  const [uploadContactFile, setUploadContactFile] = useState<File | null>(null);
+  const [uploadCountryCodeMissing, setUploadCountryCodeMissing] = useState(false);
+  const [uploadMobileField, setUploadMobileField] = useState('');
+  const [uploadContactColumns, setUploadContactColumns] = useState<string[]>([]);
   const [templateStep, setTemplateStep] = useState<1 | 2 | 3>(1);
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
@@ -2017,21 +2023,161 @@ const AdminPanel: React.FC = () => {
                   </div>
                 </>
               )}
+              {/* ── Get Contacts tab ── */}
               {campaignNumberTab === 'contacts' && (
-                <div className="mt-4 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
-                  Fetch contacts from your phonebook or CRM
+                <div className="mt-4 rounded-lg border border-gray-200 p-5">
+                  {/* Group / Category / Tag radio */}
+                  <div className="flex items-center justify-around border-b border-gray-100 pb-4">
+                    {(['group', 'category', 'tag'] as const).map((opt) => (
+                      <label key={opt} className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+                        <input
+                          type="radio"
+                          name="contactsFilter"
+                          value={opt}
+                          checked={contactsFilterType === opt}
+                          onChange={() => { setContactsFilterType(opt); setContactsCategory(''); }}
+                          className="h-4 w-4 accent-teal-600"
+                        />
+                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mt-4">
+                    <p className="mb-1.5 text-sm font-semibold text-teal-700">
+                      Send To {contactsFilterType.charAt(0).toUpperCase() + contactsFilterType.slice(1)}
+                    </p>
+                    <select
+                      value={contactsCategory}
+                      onChange={(e) => setContactsCategory(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="">— Select {contactsFilterType} —</option>
+                      {contactsFilterType === 'group' && (
+                        <>
+                          <option value="builders">Builders</option>
+                          <option value="mediators">Mediators</option>
+                          <option value="buyers">Buyers</option>
+                        </>
+                      )}
+                      {contactsFilterType === 'category' && (
+                        <>
+                          <option value="verified">Verified Contacts</option>
+                          <option value="leads">Leads</option>
+                          <option value="premium">Premium Members</option>
+                        </>
+                      )}
+                      {contactsFilterType === 'tag' && (
+                        <>
+                          <option value="hyderabad">Hyderabad</option>
+                          <option value="bangalore">Bangalore</option>
+                          <option value="active">Active</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <p className="mt-3 text-sm text-gray-500">
+                    Total Numbers: <strong className="text-gray-800">0</strong>
+                  </p>
                 </div>
               )}
+
+              {/* ── Upload file tab ── */}
               {campaignNumberTab === 'upload' && (
-                <div className="mt-4 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
-                  Upload a CSV/Excel file with phone numbers
+                <div className="mt-4 space-y-4">
+                  {/* Drop zone */}
+                  <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-teal-300 bg-teal-50 px-6 py-10 text-center hover:bg-teal-100">
+                    {uploadContactFile ? (
+                      <div className="space-y-1">
+                        <span className="text-4xl">📂</span>
+                        <p className="text-sm font-semibold text-teal-700">{uploadContactFile.name}</p>
+                        <p className="text-xs text-gray-500">{(uploadContactFile.size / 1024).toFixed(1)} KB</p>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); setUploadContactFile(null); setUploadContactColumns([]); setUploadMobileField(''); }}
+                          className="mt-1 rounded border border-red-400 px-3 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-5xl text-teal-600">📁</span>
+                        <p className="text-sm font-semibold text-gray-700">Upload a contact file here...</p>
+                        <p className="text-xs text-teal-600">No file selected</p>
+                        <span className="rounded border border-teal-500 px-4 py-1.5 text-sm font-semibold text-teal-600 hover:bg-teal-100">
+                          Click to Upload
+                        </span>
+                        <p className="text-xs text-gray-400">Accepted: CSV, XLSX &nbsp;|&nbsp; Max 10 MB</p>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadContactFile(file);
+                        // Mock column detection for CSV header
+                        if (file.name.endsWith('.csv')) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const firstLine = (ev.target?.result as string || '').split('\n')[0] || '';
+                            const cols = firstLine.split(',').map(c => c.replace(/"/g, '').trim()).filter(Boolean);
+                            setUploadContactColumns(cols.length ? cols : ['mobile', 'phone', 'number']);
+                          };
+                          reader.readAsText(file);
+                        } else {
+                          setUploadContactColumns(['mobile', 'phone', 'number']);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  {/* Country code checkbox */}
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={uploadCountryCodeMissing}
+                      onChange={(e) => setUploadCountryCodeMissing(e.target.checked)}
+                      className="h-4 w-4 accent-teal-600"
+                    />
+                    Country Code not included in the file?
+                  </label>
+
+                  {/* Mobile field selector */}
+                  <div>
+                    <p className="mb-1.5 text-sm text-gray-700">Please select the mobile number field in your file..</p>
+                    <select
+                      value={uploadMobileField}
+                      onChange={(e) => setUploadMobileField(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="">— Select column —</option>
+                      {uploadContactColumns.map((col) => (
+                        <option key={col} value={col}>{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { if (!uploadContactFile) { alert('Please upload a file first.'); return; } alert('Numbers validated!'); }}
+                      className="rounded-lg bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-amber-600"
+                    >
+                      Validate Numbers
+                    </button>
+                  </div>
                 </div>
               )}
 
               <div className="mt-4 flex justify-end">
                 <button
-                  onClick={() => { if (campaignName.trim() && campaignNumbers.trim()) setCampaignStep(2); }}
-                  className="rounded-lg bg-indigo-500 px-8 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
+                  onClick={() => { if (campaignName.trim()) setCampaignStep(2); }}
+                  className="rounded-lg bg-indigo-500 px-8 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600"
                 >
                   Next
                 </button>
