@@ -643,36 +643,61 @@ const AdminPanel: React.FC = () => {
     setWhatsappView('campaign');
   };
 
-  // Load only the send-relevant data from an approved template (buttons + language).
-  // Does NOT overwrite the template creation form — just sets up the campaign send state.
+  // Load full template data for the send flow — same as loadTemplateForEdit but
+  // keeps submitStatus = 'approved' so the Send Campaign button appears immediately.
   const prepareTemplateForSend = (tpl: any) => {
+    // Identity & meta
     setSubmittedTemplateName(tpl.name || '');
+    setTemplateName(tpl.name || '');
+    setTemplateCategory((tpl.category?.toLowerCase() || 'marketing') as any);
     setTemplateLanguage(tpl.language || 'en');
-    setSubmitStatus('approved');
+
+    // Reset all form fields first
     setEditingTemplateId('');
     setCampaignResult(null);
     setSubmitError('');
+    setTemplateHeaderType('');
+    setTemplateHeaderText('');
+    setTemplateHeaderFile(null);
+    setTemplateHeaderPreview('');
+    setTemplateBody('');
+    setTemplateFooter('');
+    setWebsiteActions([]);
+    setPhoneActions([]);
+    setQuickReplies([]);
 
-    // Parse buttons from template components so dynamic URL buttons get their suffix field
-    const urlBtns: ActionItem[] = [];
-    const qrBtns: QuickReplyItem[] = [];
+    // Populate form from template components
     for (const comp of tpl.components || []) {
+      if (comp.type === 'HEADER') {
+        setTemplateHeaderType(comp.format?.toLowerCase() || '');
+        if (comp.format === 'TEXT') setTemplateHeaderText(comp.text || '');
+      }
+      if (comp.type === 'BODY')   setTemplateBody(comp.text || '');
+      if (comp.type === 'FOOTER') setTemplateFooter(comp.text || '');
       if (comp.type === 'BUTTONS') {
+        const urlBtns: ActionItem[]    = [];
+        const phoneBtns: ActionItem[]  = [];
+        const qrBtns: QuickReplyItem[] = [];
         let btnIdx = 0;
         for (const btn of comp.buttons || []) {
           if (btn.type === 'URL') {
             const isDynamic = (btn.url || '').includes('{{1}}');
             urlBtns.push({ label: btn.text || '', urlType: isDynamic ? 'Dynamic' : 'Static', url: (btn.url || '').replace('/{{1}}', ''), urlSuffix: '', originalIndex: btnIdx });
+          } else if (btn.type === 'PHONE_NUMBER') {
+            phoneBtns.push({ label: btn.text || '', urlType: '', url: btn.phone_number || '', originalIndex: btnIdx });
           } else if (btn.type === 'QUICK_REPLY') {
             qrBtns.push({ text: btn.text || '' });
           }
           btnIdx++;
         }
+        setWebsiteActions(urlBtns);
+        setPhoneActions(phoneBtns);
+        setQuickReplies(qrBtns);
       }
     }
-    setWebsiteActions(urlBtns);
-    setQuickReplies(qrBtns);
 
+    // Stay 'approved' so Send Campaign button is immediately visible in Step 2
+    setSubmitStatus('approved');
     setTemplateStep(2);
     setCampaignStep(1);
     setWhatsappView('campaign');
