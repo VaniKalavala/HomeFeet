@@ -2553,12 +2553,12 @@ const AdminPanel: React.FC = () => {
                         {/* Header media preview */}
                         {templateHeaderType === 'image' && (
                           templateHeaderPreview
-                            ? <img src={templateHeaderPreview} alt="header" className="h-36 w-full object-cover" />
+                            ? <img src={templateHeaderPreview} alt="header" className="h-36 w-full object-contain bg-gray-50" />
                             : <div className="h-28 w-full bg-gray-200 flex items-center justify-center text-xs text-gray-400">🖼️ Image</div>
                         )}
                         {templateHeaderType === 'video' && (
                           templateHeaderPreview
-                            ? <video src={templateHeaderPreview} className="h-36 w-full object-cover" />
+                            ? <video src={templateHeaderPreview} className="h-36 w-full object-contain bg-black" />
                             : <div className="h-28 w-full bg-gray-800 flex items-center justify-center text-xs text-white">🎥 Video</div>
                         )}
                         {templateHeaderType === 'document' && (
