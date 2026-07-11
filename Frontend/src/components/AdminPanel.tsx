@@ -1073,7 +1073,7 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className={`${activeAdminPage === 'whatsapp' ? 'max-w-[104rem]' : 'max-w-7xl'} mx-auto px-4 py-8`}>
         {/* Header */}
         <div className="mb-6 rounded-lg bg-slate-950 p-8 text-white shadow-xl">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Operations Console</p>
@@ -2184,7 +2184,7 @@ const AdminPanel: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-[1fr_340px]">
+            <div className="grid gap-4 md:grid-cols-[1fr_440px]">
               {/* Left: template form */}
               <div className="rounded-xl bg-white p-6 shadow-sm">
                 {/* Template stepper */}
@@ -2430,14 +2430,14 @@ const AdminPanel: React.FC = () => {
               {/* Right: phone preview */}
               <div className="rounded-xl bg-white p-6 shadow-sm">
                 <h3 className="mb-4 text-sm font-bold text-gray-700">Template Preview</h3>
-                <div className="mx-auto w-[220px] rounded-[36px] border-4 border-gray-900 bg-[#e5ddd5] shadow-xl overflow-hidden" style={{ minHeight: 440 }}>
+                <div className="mx-auto w-[290px] rounded-[36px] border-4 border-gray-900 bg-[#e5ddd5] shadow-xl overflow-hidden" style={{ minHeight: 580 }}>
                   <div className="flex items-center gap-2 bg-teal-700 px-4 py-2">
                     <span className="text-xs font-semibold text-white">← {templateStep === 2 ? 'Add Template' : '999999999'}</span>
                   </div>
                   <div className="p-3">
                     {templateStep === 1 ? (
                       <div className="rounded-lg bg-white p-3 shadow-sm">
-                        <div className="mb-2 h-24 w-full rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-400">Image Preview</div>
+                        <div className="mb-2 h-32 w-full rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-400">Image Preview</div>
                         <p className="text-xs text-gray-800">Hello, take a look at our latest property listings on <strong>HomeFeet</strong>!</p>
                         <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
                         <div className="mt-2 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">🔗 View Properties</div>
@@ -2448,12 +2448,12 @@ const AdminPanel: React.FC = () => {
                         {/* Header media preview */}
                         {templateHeaderType === 'image' && (
                           templateHeaderPreview
-                            ? <img src={templateHeaderPreview} alt="header" className="h-28 w-full object-cover" />
+                            ? <img src={templateHeaderPreview} alt="header" className="h-36 w-full object-cover" />
                             : <div className="h-28 w-full bg-gray-200 flex items-center justify-center text-xs text-gray-400">🖼️ Image</div>
                         )}
                         {templateHeaderType === 'video' && (
                           templateHeaderPreview
-                            ? <video src={templateHeaderPreview} className="h-28 w-full object-cover" />
+                            ? <video src={templateHeaderPreview} className="h-36 w-full object-cover" />
                             : <div className="h-28 w-full bg-gray-800 flex items-center justify-center text-xs text-white">🎥 Video</div>
                         )}
                         {templateHeaderType === 'document' && (
