@@ -2816,10 +2816,12 @@ const AdminPanel: React.FC = () => {
                                   });
                                   const uploadData = await uploadRes.json();
                                   if (!uploadRes.ok || !uploadData.handle) {
-                                    setSubmitError(uploadData.error || 'Failed to upload header media to Meta.');
+                                    setSubmitError(uploadData.error || 'Failed to upload header media to server.');
                                     return;
                                   }
                                   headerMediaHandle = uploadData.handle;
+                                  // Replace ephemeral blob URL with the persisted server URL
+                                  if (uploadData.localUrl) setTemplateHeaderPreview(uploadData.localUrl);
                                 }
 
                                 // Step 2 — submit the template

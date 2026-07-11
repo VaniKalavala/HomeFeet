@@ -1,11 +1,24 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const WhatsAppIntake = require('../models/WhatsAppIntake');
-const { uploadMediaToMeta, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
+const { uploadWhatsAppMedia, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+// ── Disk storage for WhatsApp template header images ─────────────────────────
+const TEMPLATE_UPLOADS_DIR = path.join(__dirname, '..', 'uploads', 'whatsapp-templates');
+if (!fs.existsSync(TEMPLATE_UPLOADS_DIR)) fs.mkdirSync(TEMPLATE_UPLOADS_DIR, { recursive: true });
+
+const templateDiskStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, TEMPLATE_UPLOADS_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.bin';
+    cb(null, `template-${Date.now()}${ext}`);
+  }
+});
+const uploadMedia = multer({ storage: templateDiskStorage, limits: { fileSize: 100 * 1024 * 1024 } });
 
 const router = express.Router();
 
@@ -95,16 +108,25 @@ router.post('/send-campaign', requireAdmin, async (req, res) => {
 });
 
 // ── POST /api/whatsapp/upload-media ──────────────────────────────────────────
-// Upload a media file to Meta's Resumable Upload API and return the handle.
-// The handle is used as example.header_handle when creating IMAGE/VIDEO/DOCUMENT templates.
-router.post('/upload-media', requireAdmin, upload.single('file'), async (req, res) => {
+// 1. Saves the file to uploads/whatsapp-templates/ on the backend server.
+// 2. Uploads the file to WhatsApp Cloud API /media to get a media ID (header_handle).
+// Returns: { success, handle, localUrl }
+router.post('/upload-media', requireAdmin, uploadMedia.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file provided.' });
+
+  const apiOrigin = process.env.API_PUBLIC_ORIGIN || 'https://homefeet.onrender.com';
+  const localUrl = `${apiOrigin}/uploads/whatsapp-templates/${req.file.filename}`;
+
   try {
-    const handle = await uploadMediaToMeta(req.file.buffer, req.file.mimetype, req.file.originalname);
-    res.json({ success: true, handle });
+    // Read saved file and upload to Meta WhatsApp media endpoint
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const handle = await uploadWhatsAppMedia(fileBuffer, req.file.mimetype, req.file.originalname);
+    console.log(`[upload-media] saved to disk: ${req.file.path} | Meta handle: ${handle}`);
+    res.json({ success: true, handle, localUrl });
   } catch (err) {
     console.error('[upload-media]', err);
-    res.status(500).json({ error: err.message });
+    // File is saved on disk — return localUrl even if Meta upload fails, so user isn't stuck
+    res.status(500).json({ error: err.message, localUrl });
   }
 });
 

@@ -19,57 +19,50 @@ const getToken = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MEDIA UPLOAD (Resumable Upload API — required for template header examples)
+// MEDIA UPLOAD (WhatsApp Cloud API /media endpoint)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Upload a file to Meta's Resumable Upload API and return the media handle.
- * The handle is used as example.header_handle when creating IMAGE/VIDEO/DOCUMENT templates.
+ * Upload a file to the WhatsApp Cloud API media endpoint and return the media ID.
+ * The ID is used as example.header_handle when creating IMAGE/VIDEO/DOCUMENT templates.
+ *
+ * Uses native Node 18+ FormData + fetch — no extra npm packages required.
  *
  * @param {Buffer} fileBuffer  – raw file bytes
  * @param {string} mimeType   – e.g. "image/jpeg"
  * @param {string} [fileName] – optional display name
- * @returns {Promise<string>}  – media handle (e.g. "4::AvXd…")
+ * @returns {Promise<string>}  – WhatsApp media ID
  */
-async function uploadMediaToMeta(fileBuffer, mimeType, fileName) {
+async function uploadWhatsAppMedia(fileBuffer, mimeType, fileName) {
   const token = getToken();
 
-  // Step 1 — create an upload session
-  const sessionUrl = new URL('https://graph.facebook.com/v20.0/app/uploads');
-  sessionUrl.searchParams.set('file_length', fileBuffer.length);
-  sessionUrl.searchParams.set('file_type', mimeType);
-  if (fileName) sessionUrl.searchParams.set('file_name', fileName);
+  // Node 18+ native FormData + Blob
+  const blob = new Blob([fileBuffer], { type: mimeType });
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', mimeType);
+  form.append('file', blob, fileName || 'header_media');
 
-  const sessionRes = await fetch(sessionUrl.toString(), {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const sessionData = await sessionRes.json();
-  if (!sessionRes.ok || sessionData.error) {
-    throw new Error(`Upload session failed: ${sessionData.error?.message || sessionRes.status}`);
-  }
-
-  const sessionId = sessionData.id; // "upload:<id>"
-
-  // Step 2 — upload the bytes
-  const uploadRes = await fetch(
-    `https://rupload.facebook.com/whatsapp-business-media/${sessionId}`,
+  const res = await fetch(
+    `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/media`,
     {
       method: 'POST',
-      headers: {
-        Authorization: `OAuth ${token}`,
-        'file-offset': '0',
-        'Content-Type': mimeType
-      },
-      body: fileBuffer
+      headers: { Authorization: `Bearer ${token}` },
+      body: form
     }
   );
-  const uploadData = await uploadRes.json();
-  if (!uploadRes.ok || uploadData.error) {
-    throw new Error(`File upload failed: ${uploadData.error?.message || uploadRes.status}`);
+
+  const data = await res.json();
+  console.log('[upload-whatsapp-media] response:', JSON.stringify(data));
+
+  if (!res.ok || data.error) {
+    const detail = data.error?.error_data?.details || data.error?.error_user_msg || '';
+    throw new Error(
+      `WhatsApp media upload failed: ${data.error?.message || res.status}${detail ? ' — ' + detail : ''}`
+    );
   }
 
-  return uploadData.h; // Facebook media handle
+  return data.id; // WhatsApp media ID used as header_handle
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -386,4 +379,4 @@ async function sendCampaign(recipients, templateOpts) {
   return { sent, failed, results };
 }
 
-module.exports = { uploadMediaToMeta, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };
+module.exports = { uploadWhatsAppMedia, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };
