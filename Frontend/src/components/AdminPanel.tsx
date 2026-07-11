@@ -162,6 +162,8 @@ const AdminPanel: React.FC = () => {
   const [templateMarketingType, setTemplateMarketingType] = useState('Custom');
   const [templateLanguage, setTemplateLanguage] = useState('en');
   const [templateHeaderType, setTemplateHeaderType] = useState('');
+  const [templateHeaderFile, setTemplateHeaderFile] = useState<File | null>(null);
+  const [templateHeaderPreview, setTemplateHeaderPreview] = useState('');
   const [templateBody, setTemplateBody] = useState('');
   const [templateFooter, setTemplateFooter] = useState('');
   const [templateActions, setTemplateActions] = useState('');
@@ -2081,13 +2083,94 @@ const AdminPanel: React.FC = () => {
                     <div className="mb-5">
                       <p className="text-sm font-bold text-gray-900">Header Type <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Optional</span></p>
                       <p className="mt-0.5 text-xs text-gray-500">Add a title or choose which type of media you'll use for this header.</p>
-                      <select value={templateHeaderType} onChange={(e) => setTemplateHeaderType(e.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                      <select
+                        value={templateHeaderType}
+                        onChange={(e) => { setTemplateHeaderType(e.target.value); setTemplateHeaderFile(null); setTemplateHeaderPreview(''); }}
+                        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
                         <option value="">None</option>
                         <option value="text">Text</option>
                         <option value="image">Image</option>
                         <option value="video">Video</option>
                         <option value="document">Document</option>
                       </select>
+
+                      {/* File upload area for media header types */}
+                      {(templateHeaderType === 'image' || templateHeaderType === 'video' || templateHeaderType === 'document') && (
+                        <div className="mt-3">
+                          {templateHeaderType === 'image' && (
+                            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-teal-400 bg-teal-50 px-6 py-6 text-center hover:bg-teal-100">
+                              {templateHeaderPreview ? (
+                                <div className="relative w-full">
+                                  <img src={templateHeaderPreview} alt="Header preview" className="mx-auto max-h-40 rounded-lg object-cover" />
+                                  <button type="button" onClick={(e) => { e.preventDefault(); setTemplateHeaderFile(null); setTemplateHeaderPreview(''); }} className="absolute right-0 top-0 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">✕</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-3xl">🖼️</span>
+                                  <p className="text-sm font-semibold text-teal-700">Click to upload an Image</p>
+                                  <p className="text-xs text-gray-500">Accepted formats: JPG, PNG, WEBP &nbsp;|&nbsp; Max size: 5 MB</p>
+                                </>
+                              )}
+                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setTemplateHeaderFile(file);
+                                setTemplateHeaderPreview(URL.createObjectURL(file));
+                              }} />
+                            </label>
+                          )}
+
+                          {templateHeaderType === 'video' && (
+                            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-400 bg-blue-50 px-6 py-6 text-center hover:bg-blue-100">
+                              {templateHeaderFile ? (
+                                <div className="relative w-full">
+                                  <video src={templateHeaderPreview} controls className="mx-auto max-h-40 w-full rounded-lg" />
+                                  <button type="button" onClick={(e) => { e.preventDefault(); setTemplateHeaderFile(null); setTemplateHeaderPreview(''); }} className="absolute right-0 top-0 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">✕</button>
+                                  <p className="mt-1 text-xs text-gray-600">{templateHeaderFile.name}</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-3xl">🎥</span>
+                                  <p className="text-sm font-semibold text-blue-700">Click to upload a Video</p>
+                                  <p className="text-xs text-gray-500">Accepted format: MP4 &nbsp;|&nbsp; Max size: 16 MB</p>
+                                </>
+                              )}
+                              <input type="file" accept="video/mp4" className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setTemplateHeaderFile(file);
+                                setTemplateHeaderPreview(URL.createObjectURL(file));
+                              }} />
+                            </label>
+                          )}
+
+                          {templateHeaderType === 'document' && (
+                            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-orange-400 bg-orange-50 px-6 py-6 text-center hover:bg-orange-100">
+                              {templateHeaderFile ? (
+                                <div className="relative w-full text-center">
+                                  <span className="text-4xl">📄</span>
+                                  <p className="mt-1 text-sm font-semibold text-orange-700">{templateHeaderFile.name}</p>
+                                  <p className="text-xs text-gray-500">{(templateHeaderFile.size / 1024).toFixed(1)} KB</p>
+                                  <button type="button" onClick={(e) => { e.preventDefault(); setTemplateHeaderFile(null); setTemplateHeaderPreview(''); }} className="mt-2 rounded-full bg-red-500 px-3 py-0.5 text-xs text-white">Remove</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-3xl">📄</span>
+                                  <p className="text-sm font-semibold text-orange-700">Click to upload a Document</p>
+                                  <p className="text-xs text-gray-500">Accepted format: PDF &nbsp;|&nbsp; Max size: 100 MB</p>
+                                </>
+                              )}
+                              <input type="file" accept="application/pdf" className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setTemplateHeaderFile(file);
+                                setTemplateHeaderPreview('');
+                              }} />
+                            </label>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Template Format */}
@@ -2157,16 +2240,41 @@ const AdminPanel: React.FC = () => {
                         <div className="mt-1 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">📋 Copy code</div>
                       </div>
                     ) : (
-                      <div className="mt-2 rounded-t-lg bg-gray-100 px-3 py-2">
-                        <input className="w-full rounded border border-gray-300 px-2 py-1 text-xs" placeholder="Header text..." readOnly value={templateHeaderType === 'text' ? '(header)' : ''} />
-                        {templateBody && (
-                          <div className="mt-2 rounded-lg bg-white p-2 shadow-sm">
-                            <p className="whitespace-pre-wrap text-xs text-gray-800">{templateBody}</p>
-                            {templateFooter && <p className="mt-1 text-[10px] text-gray-400">{templateFooter}</p>}
-                            <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
-                            {templateActions && <div className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-teal-600">{templateActions}</div>}
+                      <div className="rounded-lg bg-white shadow-sm overflow-hidden">
+                        {/* Header media preview */}
+                        {templateHeaderType === 'image' && (
+                          templateHeaderPreview
+                            ? <img src={templateHeaderPreview} alt="header" className="h-28 w-full object-cover" />
+                            : <div className="h-28 w-full bg-gray-200 flex items-center justify-center text-xs text-gray-400">🖼️ Image</div>
+                        )}
+                        {templateHeaderType === 'video' && (
+                          templateHeaderPreview
+                            ? <video src={templateHeaderPreview} className="h-28 w-full object-cover" />
+                            : <div className="h-28 w-full bg-gray-800 flex items-center justify-center text-xs text-white">🎥 Video</div>
+                        )}
+                        {templateHeaderType === 'document' && (
+                          <div className="flex items-center gap-2 bg-orange-50 px-3 py-2 border-b">
+                            <span className="text-lg">📄</span>
+                            <span className="text-xs text-gray-600 truncate">{templateHeaderFile?.name || 'Document'}</span>
                           </div>
                         )}
+                        {templateHeaderType === 'text' && (
+                          <div className="px-3 pt-2 pb-0">
+                            <input className="w-full rounded border border-gray-300 px-2 py-1 text-xs" placeholder="Header text..." readOnly />
+                          </div>
+                        )}
+                        <div className="p-2">
+                          {templateBody ? (
+                            <>
+                              <p className="whitespace-pre-wrap text-xs text-gray-800">{templateBody}</p>
+                              {templateFooter && <p className="mt-1 text-[10px] text-gray-400">{templateFooter}</p>}
+                              <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
+                              {templateActions && <div className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-teal-600">{templateActions}</div>}
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-gray-400 italic">Message preview...</p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
