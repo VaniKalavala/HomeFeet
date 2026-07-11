@@ -193,6 +193,10 @@ const AdminPanel: React.FC = () => {
   const [submitError, setSubmitError] = useState('');
   const [submittedTemplateName, setSubmittedTemplateName] = useState('');
   const [campaignResult, setCampaignResult] = useState<{sent:number;failed:number}|null>(null);
+  // Template Jobs
+  const [whatsappView, setWhatsappView] = useState<'campaign'|'templates'>('campaign');
+  const [templateJobs, setTemplateJobs] = useState<any[]>([]);
+  const [templateJobsLoading, setTemplateJobsLoading] = useState(false);
   const [builderContacts, setBuilderContacts] = useState<BuilderContact[]>([]);
   const [builderContactCity, setBuilderContactCity] = useState('all');
   const [builderContactForm, setBuilderContactForm] = useState({
@@ -573,6 +577,63 @@ const AdminPanel: React.FC = () => {
       console.error('Error submitting WhatsApp intake:', error);
       alert(error instanceof Error ? error.message : 'Failed to submit WhatsApp intake');
     }
+  };
+
+  const fetchTemplateJobs = async () => {
+    setTemplateJobsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/whatsapp/templates`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const d = await res.json();
+      if (d.success) setTemplateJobs(d.templates || []);
+    } catch (e) { console.error(e); }
+    finally { setTemplateJobsLoading(false); }
+  };
+
+  const loadTemplateForEdit = (tpl: any) => {
+    setTemplateName(tpl.name || '');
+    setTemplateCategory((tpl.category?.toLowerCase() || 'marketing') as any);
+    setTemplateLanguage(tpl.language || 'en');
+    setTemplateHeaderType('');
+    setTemplateHeaderFile(null);
+    setTemplateHeaderPreview('');
+    setTemplateBody('');
+    setTemplateFooter('');
+    setWebsiteActions([]);
+    setPhoneActions([]);
+    setQuickReplies([]);
+    setSubmitStatus('idle');
+    setSubmitError('');
+
+    for (const comp of tpl.components || []) {
+      if (comp.type === 'HEADER') setTemplateHeaderType(comp.format?.toLowerCase() || '');
+      if (comp.type === 'BODY')   setTemplateBody(comp.text || '');
+      if (comp.type === 'FOOTER') setTemplateFooter(comp.text || '');
+      if (comp.type === 'BUTTONS') {
+        const urlBtns: ActionItem[]   = [];
+        const phoneBtns: ActionItem[] = [];
+        const qrBtns: QuickReplyItem[] = [];
+        for (const btn of comp.buttons || []) {
+          if (btn.type === 'URL') {
+            const isDynamic = (btn.url || '').includes('{{1}}');
+            urlBtns.push({ label: btn.text || '', urlType: isDynamic ? 'Dynamic' : 'Static', url: (btn.url || '').replace('/{{1}}', '') });
+          } else if (btn.type === 'PHONE_NUMBER') {
+            phoneBtns.push({ label: btn.text || '', urlType: '', url: btn.phone_number || '' });
+          } else if (btn.type === 'QUICK_REPLY') {
+            qrBtns.push({ text: btn.text || '' });
+          }
+        }
+        setWebsiteActions(urlBtns);
+        setPhoneActions(phoneBtns);
+        setQuickReplies(qrBtns);
+      }
+    }
+
+    setCampaignStep(2);
+    setTemplateStep(2);
+    setWhatsappView('campaign');
   };
 
   const fetchBuilderContacts = async (city = builderContactCity) => {
@@ -1912,7 +1973,90 @@ const AdminPanel: React.FC = () => {
 
         {/* WhatsApp Campaign */}
         <div className={`${activeAdminPage === 'whatsapp' ? 'block' : 'hidden'} space-y-4`}>
-          {campaignStep === 1 ? (
+
+          {/* View toggle — Campaign vs Template Jobs */}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1 rounded-xl bg-white p-1 shadow-sm border border-gray-100">
+              <button
+                onClick={() => setWhatsappView('campaign')}
+                className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${whatsappView === 'campaign' ? 'bg-teal-700 text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                📣 Campaign
+              </button>
+              <button
+                onClick={() => { setWhatsappView('templates'); fetchTemplateJobs(); }}
+                className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${whatsappView === 'templates' ? 'bg-teal-700 text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                📋 Template Jobs
+              </button>
+            </div>
+          </div>
+
+          {/* ── Template Jobs view ─────────────────────────────────────────── */}
+          {whatsappView === 'templates' && (
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">Template Jobs</h2>
+                <button
+                  onClick={fetchTemplateJobs}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
+
+              {templateJobsLoading ? (
+                <div className="py-12 text-center text-sm text-gray-400">Loading templates…</div>
+              ) : templateJobs.length === 0 ? (
+                <div className="py-12 text-center text-sm text-gray-400">No templates found. Create one via the Campaign tab.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        <th className="pb-3 pr-4">Template Name</th>
+                        <th className="pb-3 pr-4">Category</th>
+                        <th className="pb-3 pr-4">Language</th>
+                        <th className="pb-3 pr-4">Status</th>
+                        <th className="pb-3 pr-4">Rejected Reason</th>
+                        <th className="pb-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {templateJobs.map((tpl: any) => (
+                        <tr key={tpl.id} className="hover:bg-gray-50">
+                          <td className="py-3 pr-4 font-medium text-gray-900">{tpl.name}</td>
+                          <td className="py-3 pr-4 capitalize text-gray-600">{tpl.category?.toLowerCase()}</td>
+                          <td className="py-3 pr-4 text-gray-600">{tpl.language}</td>
+                          <td className="py-3 pr-4">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              tpl.status === 'APPROVED'  ? 'bg-green-100 text-green-700' :
+                              tpl.status === 'REJECTED'  ? 'bg-red-100 text-red-700' :
+                              tpl.status === 'PENDING'   ? 'bg-amber-100 text-amber-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {tpl.status === 'APPROVED' ? '✅' : tpl.status === 'REJECTED' ? '❌' : '⏳'} {tpl.status}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-xs text-red-500">{tpl.rejected_reason || '—'}</td>
+                          <td className="py-3">
+                            <button
+                              onClick={() => loadTemplateForEdit(tpl)}
+                              className="rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                            >
+                              ✏️ Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {whatsappView === 'campaign' && (campaignStep === 1 ? (
             <div className="rounded-xl bg-white p-6 shadow-sm">
               {/* Stepper */}
               <div className="mb-8 flex items-center gap-0">
@@ -2199,7 +2343,7 @@ const AdminPanel: React.FC = () => {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-[1fr_440px]">
-              {/* Left: template form */}
+              {/* Left: template form — step 2 */}
               <div className="rounded-xl bg-white p-6 shadow-sm">
                 {/* Template stepper */}
                 <div className="mb-6 flex items-center gap-2">
@@ -2736,7 +2880,7 @@ const AdminPanel: React.FC = () => {
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </div>
 
         {/* Properties List */}
