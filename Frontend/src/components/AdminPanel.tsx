@@ -160,7 +160,11 @@ const AdminPanel: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
   const [templateMarketingType, setTemplateMarketingType] = useState('Custom');
-  const [templateLanguage, setTemplateLanguage] = useState('');
+  const [templateLanguage, setTemplateLanguage] = useState('en');
+  const [templateHeaderType, setTemplateHeaderType] = useState('');
+  const [templateBody, setTemplateBody] = useState('');
+  const [templateFooter, setTemplateFooter] = useState('');
+  const [templateActions, setTemplateActions] = useState('');
   const [builderContacts, setBuilderContacts] = useState<BuilderContact[]>([]);
   const [builderContactCity, setBuilderContactCity] = useState('all');
   const [builderContactForm, setBuilderContactForm] = useState({
@@ -1982,117 +1986,196 @@ const AdminPanel: React.FC = () => {
                   {(['Choose Type', 'Create Template', 'Sync Template'] as const).map((label, idx) => (
                     <React.Fragment key={label}>
                       <button
-                        onClick={() => setTemplateStep((idx + 1) as 1 | 2 | 3)}
-                        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition ${templateStep === idx + 1 ? 'bg-green-200 text-green-900' : 'bg-gray-100 text-gray-500'}`}
+                        onClick={() => idx + 1 < templateStep && setTemplateStep((idx + 1) as 1 | 2 | 3)}
+                        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition ${templateStep === idx + 1 ? 'bg-green-300 text-green-900' : templateStep > idx + 1 ? 'bg-green-100 text-green-700 cursor-pointer' : 'bg-gray-100 text-gray-400'}`}
                       >
                         {idx === 0 ? '👆' : idx === 1 ? '📄' : '🔄'} {label}
                       </button>
-                      {idx < 2 && <div className="h-0.5 flex-1 bg-gray-200" />}
+                      {idx < 2 && <div className={`h-0.5 flex-1 ${templateStep > idx + 1 ? 'bg-green-300' : 'bg-gray-200'}`} />}
                     </React.Fragment>
                   ))}
                 </div>
 
-                <h2 className="mb-5 text-lg font-bold text-gray-900">Template Name &amp; Type</h2>
+                {/* ── templateStep 1: Choose Type ── */}
+                {templateStep === 1 && (
+                  <>
+                    <h2 className="mb-5 text-lg font-bold text-gray-900">Template Name &amp; Type</h2>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-700">Select Number</label>
-                    <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-800">
-                      <span>+918019008351 Homefeet</span>
-                      <span className="text-gray-400">▼</span>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-gray-700">Select Number</label>
+                        <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-800">
+                          <span>+918019008351 Homefeet</span>
+                          <span className="text-gray-400">▼</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-gray-700">Template Name</label>
+                        <input
+                          value={templateName}
+                          onChange={(e) => setTemplateName(e.target.value)}
+                          placeholder="Template name"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-700">Template Name</label>
-                    <input
-                      value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
-                      placeholder="Template name"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                  </div>
-                </div>
 
-                <div className="mt-5">
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">Template Category</label>
-                  <div className="grid grid-cols-3 gap-0 overflow-hidden rounded-lg border border-gray-300">
-                    {(['marketing', 'utility', 'authentication'] as const).map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setTemplateCategory(cat)}
-                        className={`py-2.5 text-sm font-semibold capitalize transition ${templateCategory === cat ? 'bg-teal-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                      >
-                        {cat === 'marketing' ? '📢' : cat === 'utility' ? '🔔' : '🔒'} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">Template Category</label>
+                      <div className="grid grid-cols-3 gap-0 overflow-hidden rounded-lg border border-gray-300">
+                        {(['marketing', 'utility', 'authentication'] as const).map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setTemplateCategory(cat)}
+                            className={`py-2.5 text-sm font-semibold capitalize transition ${templateCategory === cat ? 'bg-teal-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                          >
+                            {cat === 'marketing' ? '📢' : cat === 'utility' ? '🔔' : '🔒'} {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-700">Marketing Type</label>
-                    <select
-                      value={templateMarketingType}
-                      onChange={(e) => setTemplateMarketingType(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    >
-                      <option value="Custom">Custom</option>
-                      <option value="Promotional">Promotional</option>
-                      <option value="Transactional">Transactional</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-700">Select Language</label>
-                    <select
-                      value={templateLanguage}
-                      onChange={(e) => setTemplateLanguage(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    >
-                      <option value="">Select Language</option>
-                      <option value="en">English</option>
-                      <option value="hi">Hindi</option>
-                      <option value="te">Telugu</option>
-                    </select>
-                  </div>
-                </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-gray-700">Marketing Type</label>
+                        <select value={templateMarketingType} onChange={(e) => setTemplateMarketingType(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                          <option value="Custom">Custom</option>
+                          <option value="Promotional">Promotional</option>
+                          <option value="Transactional">Transactional</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-gray-700">Select Language</label>
+                        <select value={templateLanguage} onChange={(e) => setTemplateLanguage(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                          <option value="en">English</option>
+                          <option value="hi">Hindi</option>
+                          <option value="te">Telugu</option>
+                        </select>
+                      </div>
+                    </div>
 
-                <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-800">
-                  💡 If you wish to make any changes, please come back to this step and edit before submitting. Once submitted, the metadata cannot be modified.
-                </div>
+                    <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-800">
+                      💡 If you wish to make any changes, please come back to this step and edit before submitting. Once submitted, the metadata cannot be modified.
+                    </div>
 
-                <div className="mt-5 flex items-center justify-between">
-                  <button
-                    onClick={() => setCampaignStep(1)}
-                    className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => alert('Campaign submitted!')}
-                    className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
-                  >
-                    Next
-                  </button>
-                </div>
+                    <div className="mt-5 flex items-center justify-between">
+                      <button onClick={() => setCampaignStep(1)} className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Previous</button>
+                      <button onClick={() => setTemplateStep(2)} className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">Next</button>
+                    </div>
+                  </>
+                )}
+
+                {/* ── templateStep 2: Create Template ── */}
+                {templateStep === 2 && (
+                  <>
+                    {/* Summary bar */}
+                    <div className="mb-5 flex items-start justify-between rounded-lg bg-gray-50 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{templateName || 'Untitled'}</p>
+                        <p className="text-xs text-gray-500">Language: {templateLanguage}&nbsp;&nbsp;&nbsp;Category: {templateCategory}</p>
+                      </div>
+                      <button onClick={() => setTemplateStep(1)} className="text-gray-400 hover:text-gray-600" title="Edit">✏️</button>
+                    </div>
+
+                    {/* Header Type */}
+                    <div className="mb-5">
+                      <p className="text-sm font-bold text-gray-900">Header Type <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Optional</span></p>
+                      <p className="mt-0.5 text-xs text-gray-500">Add a title or choose which type of media you'll use for this header.</p>
+                      <select value={templateHeaderType} onChange={(e) => setTemplateHeaderType(e.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="">None</option>
+                        <option value="text">Text</option>
+                        <option value="image">Image</option>
+                        <option value="video">Video</option>
+                        <option value="document">Document</option>
+                      </select>
+                    </div>
+
+                    {/* Template Format */}
+                    <div className="mb-5">
+                      <p className="text-sm font-bold text-gray-900">Template Format</p>
+                      <p className="mt-0.5 text-xs text-gray-500">Enter the text for your message in the language you've selected.</p>
+                      <textarea
+                        value={templateBody}
+                        onChange={(e) => setTemplateBody(e.target.value)}
+                        rows={6}
+                        placeholder={`Write your message in ${templateLanguage}...`}
+                        maxLength={1024}
+                        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                      <div className="flex items-center justify-end gap-3 text-gray-400">
+                        <button className="text-lg hover:text-gray-600" title="Emoji">😊</button>
+                        <button className="text-sm font-bold hover:text-gray-600" title="Bold">B</button>
+                        <button className="text-sm italic hover:text-gray-600" title="Italic">I</button>
+                        <button className="text-sm line-through hover:text-gray-600" title="Strikethrough">S</button>
+                        <button className="font-mono text-sm hover:text-gray-600" title="Code">&lt;/&gt;</button>
+                        <button className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Add Variables</button>
+                        <span className="text-xs text-gray-400">Chars: {templateBody.length}/1024</span>
+                      </div>
+                    </div>
+
+                    {/* Template Footer */}
+                    <div className="mb-5">
+                      <p className="text-sm font-bold text-gray-900">Template Footer <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Optional</span></p>
+                      <p className="mt-0.5 text-xs text-gray-500">Add a short line of text to the bottom of your message template.</p>
+                      <input value={templateFooter} onChange={(e) => setTemplateFooter(e.target.value.slice(0, 60))} placeholder="Template Footer" className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <p className="mt-1 text-xs text-gray-400">Chars: {templateFooter.length}/60</p>
+                    </div>
+
+                    {/* Interactive Actions */}
+                    <div className="mb-5">
+                      <p className="text-sm font-bold text-gray-900">Interactive Actions <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Optional</span></p>
+                      <p className="mt-0.5 text-xs text-gray-500">Create buttons that let customers respond to your message or take action.</p>
+                      <div className="mt-2 flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5">
+                        <input value={templateActions} onChange={(e) => setTemplateActions(e.target.value)} placeholder="Button label or URL" className="flex-1 text-sm focus:outline-none" />
+                        <button onClick={() => setTemplateActions('')} className="text-gray-400 hover:text-gray-600">✕</button>
+                        <button className="text-blue-500 hover:text-blue-700">ℹ</button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <button onClick={() => setTemplateStep(1)} className="rounded-lg bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">Previous</button>
+                      <button onClick={() => alert('Template sent for review!')} className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">Send to Review</button>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Right: preview */}
+              {/* Right: phone preview */}
               <div className="rounded-xl bg-white p-6 shadow-sm">
                 <h3 className="mb-4 text-sm font-bold text-gray-700">Template Preview</h3>
-                <div className="mx-auto w-fit rounded-[36px] border-4 border-gray-900 bg-[#e5ddd5] p-3 shadow-xl" style={{ minHeight: 420 }}>
-                  <div className="mb-2 flex items-center gap-2 rounded-t-[28px] bg-teal-700 px-4 py-2">
-                    <span className="text-xs font-semibold text-white">← 999999999</span>
+                <div className="mx-auto w-[220px] rounded-[36px] border-4 border-gray-900 bg-[#e5ddd5] shadow-xl overflow-hidden" style={{ minHeight: 440 }}>
+                  <div className="flex items-center gap-2 bg-teal-700 px-4 py-2">
+                    <span className="text-xs font-semibold text-white">← {templateStep === 2 ? 'Add Template' : '999999999'}</span>
                   </div>
-                  <div className="rounded-lg bg-white p-3 shadow-sm">
-                    <div className="mb-2 h-28 w-full rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-400">Image Preview</div>
-                    <p className="text-xs text-gray-800">Hello, take a look at our latest</p>
-                    <p className="mt-1 text-xs text-gray-800">property listings on <strong>HomeFeet</strong>!</p>
-                    <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
-                    <div className="mt-2 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">🔗 View Properties</div>
-                    <div className="mt-1 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">📋 Copy code</div>
+                  <div className="p-3">
+                    {templateStep === 1 ? (
+                      <div className="rounded-lg bg-white p-3 shadow-sm">
+                        <div className="mb-2 h-24 w-full rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-400">Image Preview</div>
+                        <p className="text-xs text-gray-800">Hello, take a look at our latest property listings on <strong>HomeFeet</strong>!</p>
+                        <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
+                        <div className="mt-2 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">🔗 View Properties</div>
+                        <div className="mt-1 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">📋 Copy code</div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 rounded-t-lg bg-gray-100 px-3 py-2">
+                        <input className="w-full rounded border border-gray-300 px-2 py-1 text-xs" placeholder="Header text..." readOnly value={templateHeaderType === 'text' ? '(header)' : ''} />
+                        {templateBody && (
+                          <div className="mt-2 rounded-lg bg-white p-2 shadow-sm">
+                            <p className="whitespace-pre-wrap text-xs text-gray-800">{templateBody}</p>
+                            {templateFooter && <p className="mt-1 text-[10px] text-gray-400">{templateFooter}</p>}
+                            <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
+                            {templateActions && <div className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-teal-600">{templateActions}</div>}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="mt-3 text-[10px] text-gray-500">This template can be used for</p>
-                  <p className="text-[10px] text-gray-500">Welcome messages, promotions, offers, coupons, newsletters, announcements</p>
+                  {templateStep === 1 && (
+                    <div className="px-3 pb-3">
+                      <p className="text-[10px] text-gray-500">This template can be used for</p>
+                      <p className="text-[10px] text-gray-500">Welcome messages, promotions, offers, coupons, newsletters, announcements</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
