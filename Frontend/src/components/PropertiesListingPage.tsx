@@ -551,7 +551,7 @@ const PropertiesListingPage: React.FC = () => {
               property
             ])
           ).values()
-        );
+        ).sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
         if (requestId === fetchRequestRef.current) {
           setProperties(uniqueProperties);
