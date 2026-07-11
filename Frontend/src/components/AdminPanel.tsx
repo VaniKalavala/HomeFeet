@@ -179,6 +179,14 @@ const AdminPanel: React.FC = () => {
   const [templateBody, setTemplateBody] = useState('');
   const [templateFooter, setTemplateFooter] = useState('');
   const [templateActions, setTemplateActions] = useState('');
+  const [actionType, setActionType] = useState('');
+  const [showActionDropdown, setShowActionDropdown] = useState(false);
+  const [advancedSearch, setAdvancedSearch] = useState(false);
+  type ActionItem = { label: string; urlType: string; url: string };
+  type QuickReplyItem = { text: string };
+  const [websiteActions, setWebsiteActions] = useState<ActionItem[]>([]);
+  const [phoneActions, setPhoneActions] = useState<ActionItem[]>([]);
+  const [quickReplies, setQuickReplies] = useState<QuickReplyItem[]>([]);
   const [builderContacts, setBuilderContacts] = useState<BuilderContact[]>([]);
   const [builderContactCity, setBuilderContactCity] = useState('all');
   const [builderContactForm, setBuilderContactForm] = useState({
@@ -2412,11 +2420,108 @@ const AdminPanel: React.FC = () => {
                     <div className="mb-5">
                       <p className="text-sm font-bold text-gray-900">Interactive Actions <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Optional</span></p>
                       <p className="mt-0.5 text-xs text-gray-500">Create buttons that let customers respond to your message or take action.</p>
-                      <div className="mt-2 flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5">
-                        <input value={templateActions} onChange={(e) => setTemplateActions(e.target.value)} placeholder="Button label or URL" className="flex-1 text-sm focus:outline-none" />
-                        <button onClick={() => setTemplateActions('')} className="text-gray-400 hover:text-gray-600">✕</button>
-                        <button className="text-blue-500 hover:text-blue-700">ℹ</button>
+
+                      {/* Action type selector */}
+                      <div className="relative mt-2">
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 cursor-pointer" onClick={() => setShowActionDropdown(v => !v)}>
+                          <span className="flex-1 text-sm text-gray-700">{actionType || 'Select action type...'}</span>
+                          {actionType && <button type="button" onClick={(e) => { e.stopPropagation(); setActionType(''); setShowActionDropdown(false); }} className="text-gray-400 hover:text-gray-600">✕</button>}
+                          <span className="text-blue-500">ℹ</span>
+                          <span className="text-gray-400">{showActionDropdown ? '▲' : '▼'}</span>
+                        </div>
+                        {showActionDropdown && (
+                          <div className="absolute z-20 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+                            <p className="px-4 pt-3 pb-1 text-xs font-bold uppercase text-gray-400">Call To Action</p>
+                            {['Phone Number', 'Website', 'Copy Offer Code', 'Complete Flow'].map(opt => (
+                              <button key={opt} type="button" onClick={() => { setActionType(opt); setShowActionDropdown(false); if (opt === 'Website' && websiteActions.length === 0) setWebsiteActions([{ label: 'homefeet', urlType: 'Dynamic', url: 'https://www.homefeet.in' }]); if (opt === 'Phone Number' && phoneActions.length === 0) setPhoneActions([{ label: '', urlType: 'Static', url: '' }]); if (opt === 'Copy Offer Code' && quickReplies.length === 0) setQuickReplies([{ text: '' }]); }}
+                                className={`flex w-full items-center px-6 py-2.5 text-sm text-gray-700 hover:bg-gray-50 ${actionType === opt ? 'bg-gray-100 font-semibold' : ''}`}>
+                                {opt}
+                              </button>
+                            ))}
+                            <p className="px-4 pt-2 pb-1 text-xs font-bold uppercase text-gray-400">Quick Reply</p>
+                            {['Custom'].map(opt => (
+                              <button key={opt} type="button" onClick={() => { setActionType(opt); setShowActionDropdown(false); if (quickReplies.length === 0) setQuickReplies([{ text: '' }]); }}
+                                className={`flex w-full items-center px-6 py-2.5 pb-3 text-sm text-gray-700 hover:bg-gray-50 ${actionType === opt ? 'bg-indigo-100 font-semibold text-indigo-700' : ''}`}>
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
+
+                      {/* Website action details */}
+                      {actionType === 'Website' && (
+                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <p className="mb-3 text-sm font-bold text-gray-800">Call To Action</p>
+                          <label className="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                            <button type="button" onClick={() => setAdvancedSearch(v => !v)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${advancedSearch ? 'bg-teal-600' : 'bg-gray-300'}`}>
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${advancedSearch ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                            </button>
+                            Enable/Disable Advance Search
+                          </label>
+                          <p className="mb-2 text-sm font-semibold text-gray-700">Website</p>
+                          {websiteActions.map((item, idx) => (
+                            <div key={idx} className="mb-2 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <input value={item.label} onChange={e => setWebsiteActions(prev => prev.map((a, i) => i === idx ? { ...a, label: e.target.value } : a))} placeholder="Button label" className="w-36 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                                <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                                  <span>{item.urlType}</span>
+                                  <button onClick={() => setWebsiteActions(prev => prev.map((a, i) => i === idx ? { ...a, urlType: a.urlType === 'Dynamic' ? 'Static' : 'Dynamic' } : a))} className="ml-1 text-gray-400">▼</button>
+                                </div>
+                                <div className="relative flex flex-1 items-center gap-1">
+                                  <input value={item.url} onChange={e => setWebsiteActions(prev => prev.map((a, i) => i === idx ? { ...a, url: e.target.value } : a))} placeholder="https://www.homefeet.in" className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                                  <span className="text-blue-400">ℹ</span>
+                                </div>
+                                <button onClick={() => setWebsiteActions(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600" title="Remove">🗑</button>
+                                <span className="rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-500">{'{{1}}'}</span>
+                              </div>
+                              {item.urlType === 'Dynamic' && (
+                                <div className="flex gap-2">
+                                  <span className="rounded bg-gray-100 px-3 py-2 font-mono text-xs text-gray-500">{'{{1}}'}</span>
+                                  <input value={item.url} readOnly className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => setWebsiteActions(prev => [...prev, { label: '', urlType: 'Static', url: '' }])} className="mt-1 flex items-center gap-1 text-sm font-semibold text-teal-600 hover:text-teal-800">
+                            + Website
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Phone Number action details */}
+                      {actionType === 'Phone Number' && (
+                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <p className="mb-3 text-sm font-bold text-gray-800">Call To Action</p>
+                          <p className="mb-2 text-sm font-semibold text-gray-700">Phone Number</p>
+                          {phoneActions.map((item, idx) => (
+                            <div key={idx} className="mb-2 flex items-center gap-2">
+                              <input value={item.label} onChange={e => setPhoneActions(prev => prev.map((a, i) => i === idx ? { ...a, label: e.target.value } : a))} placeholder="Button label" className="w-36 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                              <input value={item.url} onChange={e => setPhoneActions(prev => prev.map((a, i) => i === idx ? { ...a, url: e.target.value } : a))} placeholder="+91 9100000000" type="tel" className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                              <button onClick={() => setPhoneActions(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">🗑</button>
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => setPhoneActions(prev => [...prev, { label: '', urlType: 'Static', url: '' }])} className="mt-1 flex items-center gap-1 text-sm font-semibold text-teal-600 hover:text-teal-800">
+                            + Phone Number
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Quick Reply / Custom */}
+                      {(actionType === 'Custom' || actionType === 'Copy Offer Code') && (
+                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <p className="mb-3 text-sm font-bold text-gray-800">Quick Reply</p>
+                          {quickReplies.map((item, idx) => (
+                            <div key={idx} className="mb-2 flex items-center gap-2">
+                              <input value={item.text} onChange={e => setQuickReplies(prev => prev.map((a, i) => i === idx ? { text: e.target.value } : a))} placeholder="Button text" className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                              <button onClick={() => setQuickReplies(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">🗑</button>
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => setQuickReplies(prev => [...prev, { text: '' }])} className="mt-1 flex items-center gap-1 text-sm font-semibold text-teal-600 hover:text-teal-800">
+                            + Add Reply
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2473,7 +2578,15 @@ const AdminPanel: React.FC = () => {
                               <p className="whitespace-pre-wrap text-xs text-gray-800">{templateBody}</p>
                               {templateFooter && <p className="mt-1 text-[10px] text-gray-400">{templateFooter}</p>}
                               <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
-                              {templateActions && <div className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-teal-600">{templateActions}</div>}
+                              {websiteActions.map((a, i) => a.label && (
+                                <div key={i} className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-teal-600">🔗 {a.label}</div>
+                              ))}
+                              {phoneActions.map((a, i) => a.label && (
+                                <div key={i} className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-teal-600">📞 {a.label}</div>
+                              ))}
+                              {quickReplies.map((a, i) => a.text && (
+                                <div key={i} className="mt-1 border-t border-gray-200 pt-1 text-center text-xs font-semibold text-blue-600">↩ {a.text}</div>
+                              ))}
                             </>
                           ) : (
                             <p className="text-[10px] text-gray-400 italic">Message preview...</p>
