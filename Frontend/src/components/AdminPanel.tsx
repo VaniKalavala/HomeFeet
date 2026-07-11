@@ -152,7 +152,13 @@ const AdminPanel: React.FC = () => {
   const [whatsAppForm, setWhatsAppForm] = useState({ ownerPhone: '', ownerName: '', summary: '' });
   // Campaign state
   const [campaignStep, setCampaignStep] = useState<1 | 2>(1);
-  const [campaignFromId] = useState('Homefeet - +918019008351');
+  const [campaignFromId, setCampaignFromId] = useState('Homefeet - +918019008351');
+  const [campaignFromIds, setCampaignFromIds] = useState([
+    { label: 'Homefeet', number: '+918019008351' }
+  ]);
+  const [showAddNumber, setShowAddNumber] = useState(false);
+  const [newNumberLabel, setNewNumberLabel] = useState('');
+  const [newNumberPhone, setNewNumberPhone] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [campaignNumbers, setCampaignNumbers] = useState('');
   const [campaignNumberTab, setCampaignNumberTab] = useState<'insert' | 'contacts' | 'upload'>('insert');
@@ -1905,11 +1911,63 @@ const AdminPanel: React.FC = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-gray-700">From ID <span className="text-red-500">*</span></label>
-                  <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-800">
-                    <span>{campaignFromId}</span>
-                    <span className="cursor-pointer text-gray-400">▼</span>
-                  </div>
-                  <button className="mt-1 text-xs text-teal-600 hover:underline">Register a new number?</button>
+                  <select
+                    value={campaignFromId}
+                    onChange={(e) => setCampaignFromId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    {campaignFromIds.map((item) => (
+                      <option key={item.number} value={`${item.label} - ${item.number}`}>
+                        {item.label} - {item.number}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddNumber((v) => !v)}
+                    className="mt-1 text-xs text-teal-600 hover:underline"
+                  >
+                    {showAddNumber ? '✕ Cancel' : '+ Register a new number?'}
+                  </button>
+
+                  {showAddNumber && (
+                    <div className="mt-2 rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
+                      <div>
+                        <label className="mb-0.5 block text-xs font-semibold text-gray-700">Business Name / Label</label>
+                        <input
+                          value={newNumberLabel}
+                          onChange={(e) => setNewNumberLabel(e.target.value)}
+                          placeholder="e.g. Homefeet Sales"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-0.5 block text-xs font-semibold text-gray-700">WhatsApp Phone Number</label>
+                        <input
+                          value={newNumberPhone}
+                          onChange={(e) => setNewNumberPhone(e.target.value)}
+                          placeholder="e.g. +918019008351"
+                          type="tel"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newNumberLabel.trim() || !newNumberPhone.trim()) return;
+                          const entry = { label: newNumberLabel.trim(), number: newNumberPhone.trim() };
+                          setCampaignFromIds((prev) => [...prev, entry]);
+                          setCampaignFromId(`${entry.label} - ${entry.number}`);
+                          setNewNumberLabel('');
+                          setNewNumberPhone('');
+                          setShowAddNumber(false);
+                        }}
+                        className="w-full rounded-lg bg-teal-700 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+                      >
+                        Add Number
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-gray-700">Campaign Name <span className="text-red-500">*</span></label>
