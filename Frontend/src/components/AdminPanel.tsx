@@ -187,6 +187,12 @@ const AdminPanel: React.FC = () => {
   const [websiteActions, setWebsiteActions] = useState<ActionItem[]>([]);
   const [phoneActions, setPhoneActions] = useState<ActionItem[]>([]);
   const [quickReplies, setQuickReplies] = useState<QuickReplyItem[]>([]);
+  // Campaign submission state
+  const [submitting, setSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle'|'pending'|'approved'|'rejected'|'sending'|'done'>('idle');
+  const [submitError, setSubmitError] = useState('');
+  const [submittedTemplateName, setSubmittedTemplateName] = useState('');
+  const [campaignResult, setCampaignResult] = useState<{sent:number;failed:number}|null>(null);
   const [builderContacts, setBuilderContacts] = useState<BuilderContact[]>([]);
   const [builderContactCity, setBuilderContactCity] = useState('all');
   const [builderContactForm, setBuilderContactForm] = useState({
@@ -2524,9 +2530,133 @@ const AdminPanel: React.FC = () => {
                       )}
                     </div>
 
+                    {/* Status banner */}
+                    {submitStatus === 'pending' && (
+                      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        ⏳ <strong>Template submitted!</strong> Meta is reviewing it — this usually takes a few minutes to a few hours. Click <strong>Check Status</strong> to refresh.
+                        <button
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('token');
+                              const r = await fetch(`${API_BASE}/whatsapp/templates/${submittedTemplateName}/status`, { headers: { Authorization: `Bearer ${token}` } });
+                              const d = await r.json();
+                              if (d.template?.status === 'APPROVED') setSubmitStatus('approved');
+                              else if (d.template?.status === 'REJECTED') { setSubmitStatus('rejected'); setSubmitError(d.template.rejected_reason || 'Rejected by Meta'); }
+                            } catch {}
+                          }}
+                          className="ml-3 rounded bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+                        >Check Status</button>
+                      </div>
+                    )}
+                    {submitStatus === 'approved' && (
+                      <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                        ✅ <strong>Template approved!</strong> Ready to send to {campaignNumbers.split('\n').filter(l => l.trim()).length} number(s).
+                      </div>
+                    )}
+                    {submitStatus === 'rejected' && (
+                      <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                        ❌ <strong>Template rejected by Meta:</strong> {submitError}
+                      </div>
+                    )}
+                    {submitStatus === 'sending' && (
+                      <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                        🚀 Sending campaign… please wait.
+                      </div>
+                    )}
+                    {submitStatus === 'done' && campaignResult && (
+                      <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                        🎉 Campaign sent! <strong>{campaignResult.sent} delivered</strong>, {campaignResult.failed} failed.
+                      </div>
+                    )}
+                    {submitError && submitStatus === 'idle' && (
+                      <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">❌ {submitError}</div>
+                    )}
+
                     <div className="flex items-center justify-between">
-                      <button onClick={() => setTemplateStep(1)} className="rounded-lg bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">Previous</button>
-                      <button onClick={() => alert('Template sent for review!')} className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">Send to Review</button>
+                      <button onClick={() => setTemplateStep(1)} className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Previous</button>
+
+                      <div className="flex gap-3">
+                        {/* Send Campaign — only visible once approved */}
+                        {submitStatus === 'approved' && (
+                          <button
+                            disabled={submitting}
+                            onClick={async () => {
+                              const recipients = campaignNumbers.split('\n').map(l => l.trim()).filter(Boolean);
+                              if (!recipients.length) { alert('No phone numbers entered in Step 1.'); return; }
+                              setSubmitting(true); setSubmitStatus('sending');
+                              try {
+                                const token = localStorage.getItem('token');
+                                const buttons = [
+                                  ...websiteActions.map((a, i) => ({ type: 'url', index: i, value: '' })),
+                                  ...quickReplies.map((a, i) => ({ type: 'quick_reply', index: i, value: a.text }))
+                                ];
+                                const res = await fetch(`${API_BASE}/whatsapp/send-campaign`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({
+                                    recipients,
+                                    templateName: submittedTemplateName,
+                                    languageCode: templateLanguage || 'en',
+                                    header: templateHeaderType && templateHeaderPreview ? { type: templateHeaderType.toUpperCase(), value: templateHeaderPreview } : null,
+                                    bodyVariables: [],
+                                    buttons
+                                  })
+                                });
+                                const d = await res.json();
+                                if (res.ok) { setCampaignResult({ sent: d.sent, failed: d.failed }); setSubmitStatus('done'); }
+                                else { setSubmitError(d.error || 'Send failed'); setSubmitStatus('approved'); }
+                              } catch (e: any) { setSubmitError(e.message); setSubmitStatus('approved'); }
+                              finally { setSubmitting(false); }
+                            }}
+                            className="rounded-lg bg-green-600 px-8 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {submitting ? 'Sending…' : `🚀 Send Campaign (${campaignNumbers.split('\n').filter(l => l.trim()).length})`}
+                          </button>
+                        )}
+
+                        {/* Send to Review */}
+                        {(submitStatus === 'idle' || submitStatus === 'rejected') && (
+                          <button
+                            disabled={submitting || !templateName || !templateBody}
+                            onClick={async () => {
+                              setSubmitting(true); setSubmitError(''); setSubmitStatus('idle');
+                              try {
+                                const token = localStorage.getItem('token');
+                                const allButtons = [
+                                  ...websiteActions.map(a => ({ type: 'url', label: a.label, urlType: a.urlType, url: a.url })),
+                                  ...phoneActions.map(a => ({ type: 'phone_number', label: a.label, url: a.url })),
+                                  ...quickReplies.map(a => ({ type: 'quick_reply', label: a.text }))
+                                ];
+                                const res = await fetch(`${API_BASE}/whatsapp/submit-template`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({
+                                    name: templateName,
+                                    category: templateCategory.toUpperCase(),
+                                    languageCode: templateLanguage || 'en',
+                                    headerType: templateHeaderType || '',
+                                    headerText: '',
+                                    bodyText: templateBody,
+                                    footerText: templateFooter,
+                                    buttons: allButtons
+                                  })
+                                });
+                                const d = await res.json();
+                                if (res.ok && d.success) {
+                                  setSubmittedTemplateName(d.name);
+                                  setSubmitStatus(d.status === 'APPROVED' ? 'approved' : 'pending');
+                                } else {
+                                  setSubmitError(d.error || 'Submission failed');
+                                }
+                              } catch (e: any) { setSubmitError(e.message); }
+                              finally { setSubmitting(false); }
+                            }}
+                            className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
+                          >
+                            {submitting ? 'Submitting…' : 'Send to Review'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}

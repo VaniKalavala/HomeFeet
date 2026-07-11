@@ -1,92 +1,218 @@
 /**
- * Meta WhatsApp Cloud API — Campaign Template Sender
+ * Meta WhatsApp Cloud API — Template Submission + Campaign Sender
  *
  * Phone Number ID : 1215866064942202
  * WABA ID        : 1362232019149375
  * API version    : v20.0
- *
- * Required env var:
- *   WHATSAPP_ACCESS_TOKEN  – permanent system-user token from Meta Business Manager
  */
 
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '1215866064942202';
+const WABA_ID         = process.env.WHATSAPP_WABA_ID         || '1362232019149375';
 const API_VERSION     = 'v20.0';
-const BASE_URL        = `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`;
+const MESSAGES_URL    = `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`;
+const TEMPLATES_URL   = `https://graph.facebook.com/${API_VERSION}/${WABA_ID}/message_templates`;
+
+const getToken = () => {
+  const t = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!t) throw new Error('WHATSAPP_ACCESS_TOKEN env var is not set.');
+  return t;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE CREATION (Submit for Meta review)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Build the "components" array that Meta requires.
+ * Build the components[] array for template CREATION (different schema from sending).
  *
- * @param {object} opts
- * @param {'IMAGE'|'VIDEO'|'DOCUMENT'|'TEXT'|null} opts.headerType
- * @param {string|null}  opts.headerValue   – media URL for IMAGE/VIDEO/DOCUMENT; plain text for TEXT
- * @param {string[]}     opts.bodyVariables  – ordered list of {{1}}, {{2}}… substitutions
- * @param {string|null}  opts.footerText    – plain text footer (informational only)
- * @param {{ type:'url'|'phone_number'|'quick_reply'; index:number; value:string }[]} opts.buttons
+ * @param {{ headerType, headerText, bodyText, footerText, buttons }} opts
  */
-function buildComponents({ headerType, headerValue, bodyVariables = [], buttons = [] }) {
+function buildTemplateComponents({ headerType, headerText, bodyText, footerText, buttons = [] }) {
   const components = [];
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-  if (headerType && headerValue) {
-    if (headerType === 'TEXT') {
-      components.push({
-        type: 'header',
-        parameters: [{ type: 'text', text: headerValue }]
-      });
-    } else {
-      const mediaKey = headerType.toLowerCase(); // 'image' | 'video' | 'document'
-      components.push({
-        type: 'header',
-        parameters: [{
-          type: mediaKey,
-          [mediaKey]: { link: headerValue }
-        }]
-      });
-    }
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  if (headerType && headerType !== 'none') {
+    const fmt = headerType.toUpperCase(); // TEXT | IMAGE | VIDEO | DOCUMENT
+    const headerComp = { type: 'HEADER', format: fmt };
+    if (fmt === 'TEXT' && headerText) headerComp.text = headerText;
+    // For media headers, Meta only needs format at creation time — no URL needed
+    components.push(headerComp);
   }
 
-  // ── Body ────────────────────────────────────────────────────────────────────
-  if (bodyVariables.length) {
-    components.push({
-      type: 'body',
-      parameters: bodyVariables.map((text) => ({ type: 'text', text: String(text) }))
+  // ── BODY ────────────────────────────────────────────────────────────────────
+  if (bodyText) {
+    components.push({ type: 'BODY', text: bodyText });
+  }
+
+  // ── FOOTER ──────────────────────────────────────────────────────────────────
+  if (footerText) {
+    components.push({ type: 'FOOTER', text: footerText });
+  }
+
+  // ── BUTTONS ─────────────────────────────────────────────────────────────────
+  if (buttons.length) {
+    const metaButtons = buttons.map(btn => {
+      if (btn.type === 'url') {
+        return {
+          type: 'URL',
+          text: btn.label,
+          url: btn.urlType === 'Dynamic'
+            ? `${btn.url.replace(/\/$/, '')}/{{1}}`
+            : btn.url
+        };
+      }
+      if (btn.type === 'phone_number') {
+        return { type: 'PHONE_NUMBER', text: btn.label, phone_number: btn.url };
+      }
+      // quick_reply / custom
+      return { type: 'QUICK_REPLY', text: btn.label || btn.text };
     });
-  }
-
-  // ── Buttons ─────────────────────────────────────────────────────────────────
-  for (const btn of buttons) {
-    if (btn.type === 'url') {
-      components.push({
-        type: 'button',
-        sub_type: 'url',
-        index: String(btn.index),
-        parameters: [{ type: 'text', text: btn.value }]   // dynamic URL suffix
-      });
-    } else if (btn.type === 'quick_reply') {
-      components.push({
-        type: 'button',
-        sub_type: 'quick_reply',
-        index: String(btn.index),
-        parameters: [{ type: 'payload', payload: btn.value }]
-      });
-    }
-    // phone_number buttons are static — no component needed
+    components.push({ type: 'BUTTONS', buttons: metaButtons });
   }
 
   return components;
 }
 
 /**
- * Send a single WhatsApp template message to one recipient.
+ * Submit a template to Meta for review.
  *
- * @param {object}  opts
- * @param {string}  opts.to               – E.164 phone (e.g. "919100000000")
- * @param {string}  opts.templateName     – approved template name
- * @param {string}  opts.languageCode     – e.g. "en" | "hi" | "te"
- * @param {object}  [opts.header]         – { type, value } — see buildComponents
- * @param {string[]}[opts.bodyVariables]  – substitution values for {{1}}, {{2}}…
- * @param {Array}   [opts.buttons]        – dynamic button payloads
- * @returns {Promise<{ success: boolean; messageId?: string; error?: string }>}
+ * @param {object} opts
+ * @param {string} opts.name           – snake_case template name (e.g. "builder_promo_v1")
+ * @param {string} opts.category       – MARKETING | UTILITY | AUTHENTICATION
+ * @param {string} opts.languageCode   – e.g. "en"
+ * @param {string} [opts.headerType]   – 'text' | 'image' | 'video' | 'document' | ''
+ * @param {string} [opts.headerText]   – only used when headerType = 'text'
+ * @param {string} opts.bodyText       – message body with optional {{1}} vars
+ * @param {string} [opts.footerText]
+ * @param {Array}  [opts.buttons]      – [{type,label,urlType,url}]
+ * @returns {Promise<{ success:boolean; templateId?:string; status?:string; error?:string }>}
+ */
+async function submitTemplate({
+  name,
+  category = 'MARKETING',
+  languageCode = 'en',
+  headerType = '',
+  headerText = '',
+  bodyText,
+  footerText = '',
+  buttons = []
+}) {
+  if (!name)     throw new Error('`name` is required');
+  if (!bodyText) throw new Error('`bodyText` is required');
+
+  // Meta requires snake_case names, no spaces, lowercase
+  const safeName = name.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+  const payload = {
+    name: safeName,
+    language: languageCode,
+    category: category.toUpperCase(),
+    components: buildTemplateComponents({ headerType, headerText, bodyText, footerText, buttons })
+  };
+
+  const res = await fetch(TEMPLATES_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || data.error) {
+    return { success: false, error: data.error?.message || `HTTP ${res.status}`, raw: data };
+  }
+
+  return { success: true, templateId: data.id, status: data.status, name: safeName };
+}
+
+/**
+ * Fetch all templates for the WABA (with optional status filter).
+ *
+ * @param {'APPROVED'|'PENDING'|'REJECTED'|''} [statusFilter]
+ */
+async function getTemplates(statusFilter = '') {
+  const url = new URL(TEMPLATES_URL);
+  url.searchParams.set('fields', 'id,name,status,category,language,components,rejected_reason');
+  url.searchParams.set('limit', '50');
+  if (statusFilter) url.searchParams.set('status', statusFilter);
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${getToken()}` }
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message || `HTTP ${res.status}`);
+  }
+  return data.data || [];
+}
+
+/**
+ * Get status of a single template by name.
+ */
+async function getTemplateStatus(name) {
+  const url = new URL(TEMPLATES_URL);
+  url.searchParams.set('name', name);
+  url.searchParams.set('fields', 'id,name,status,rejected_reason');
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${getToken()}` }
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
+  return (data.data || [])[0] || null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE SENDING (Single + Bulk)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Build the components[] for SENDING an approved template.
+ */
+function buildSendComponents({ headerType, headerValue, bodyVariables = [], buttons = [] }) {
+  const components = [];
+
+  if (headerType && headerValue) {
+    if (headerType.toUpperCase() === 'TEXT') {
+      components.push({ type: 'header', parameters: [{ type: 'text', text: headerValue }] });
+    } else {
+      const mediaKey = headerType.toLowerCase();
+      components.push({
+        type: 'header',
+        parameters: [{ type: mediaKey, [mediaKey]: { link: headerValue } }]
+      });
+    }
+  }
+
+  if (bodyVariables.length) {
+    components.push({
+      type: 'body',
+      parameters: bodyVariables.map(text => ({ type: 'text', text: String(text) }))
+    });
+  }
+
+  for (const btn of buttons) {
+    if (btn.type === 'url') {
+      components.push({
+        type: 'button', sub_type: 'url', index: String(btn.index),
+        parameters: [{ type: 'text', text: btn.value }]
+      });
+    } else if (btn.type === 'quick_reply') {
+      components.push({
+        type: 'button', sub_type: 'quick_reply', index: String(btn.index),
+        parameters: [{ type: 'payload', payload: btn.value }]
+      });
+    }
+  }
+
+  return components;
+}
+
+/**
+ * Send one approved template to one recipient.
  */
 async function sendTemplateMessage({
   to,
@@ -96,10 +222,6 @@ async function sendTemplateMessage({
   bodyVariables = [],
   buttons = []
 }) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  if (!token) throw new Error('WHATSAPP_ACCESS_TOKEN env var is not set.');
-
-  // Normalise phone: strip spaces/dashes, ensure no leading +
   const phone = String(to).replace(/[\s\-().+]/g, '');
 
   const payload = {
@@ -110,49 +232,42 @@ async function sendTemplateMessage({
     template: {
       name: templateName,
       language: { code: languageCode },
-      components: buildComponents({
-        headerType:    header?.type  || null,
-        headerValue:   header?.value || null,
+      components: buildSendComponents({
+        headerType:  header?.type  || null,
+        headerValue: header?.value || null,
         bodyVariables,
         buttons
       })
     }
   };
 
-  const res = await fetch(BASE_URL, {
+  const res = await fetch(MESSAGES_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${getToken()}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
   });
 
   const data = await res.json();
-
   if (!res.ok || data.error) {
-    const msg = data.error?.message || `HTTP ${res.status}`;
-    return { success: false, error: msg, raw: data };
+    return { success: false, error: data.error?.message || `HTTP ${res.status}`, raw: data };
   }
-
-  return {
-    success: true,
-    messageId: data.messages?.[0]?.id || null
-  };
+  return { success: true, messageId: data.messages?.[0]?.id || null };
 }
 
 /**
- * Send a template to many recipients and collect per-number results.
- * Adds a 100 ms delay between calls to stay under Meta rate limits.
+ * Bulk-send an approved template to many recipients.
+ * 100 ms gap between calls → stays well under Meta's 80 msg/s limit.
  *
- * @param {string[]} recipients  – list of E.164 phone numbers
- * @param {object}   templateOpts – same shape as sendTemplateMessage minus `to`
- * @returns {Promise<{ sent:number; failed:number; results: Array }>}
+ * @param {string[]} recipients
+ * @param {object}   templateOpts  – everything except `to`
+ * @returns {Promise<{ sent, failed, results }>}
  */
 async function sendCampaign(recipients, templateOpts) {
   const results = [];
-  let sent = 0;
-  let failed = 0;
+  let sent = 0, failed = 0;
 
   for (const phone of recipients) {
     try {
@@ -163,12 +278,10 @@ async function sendCampaign(recipients, templateOpts) {
       results.push({ phone, success: false, error: err.message });
       failed++;
     }
-
-    // Polite 100 ms gap — keeps us well below the 80 msg/s default limit
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 100));
   }
 
   return { sent, failed, results };
 }
 
-module.exports = { sendTemplateMessage, sendCampaign };
+module.exports = { submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };

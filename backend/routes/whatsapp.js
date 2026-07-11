@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const WhatsAppIntake = require('../models/WhatsAppIntake');
-const { sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
+const { submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
 
 const router = express.Router();
 
@@ -87,6 +87,64 @@ router.post('/send-campaign', requireAdmin, async (req, res) => {
     res.json({ success: true, ...summary });
   } catch (err) {
     console.error('[send-campaign]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/whatsapp/submit-template ───────────────────────────────────────
+// Submit a new template to Meta for review.
+// Body: { name, category, languageCode, headerType, headerText, bodyText, footerText, buttons[] }
+router.post('/submit-template', requireAdmin, async (req, res) => {
+  const { name, category, languageCode, headerType, headerText, bodyText, footerText, buttons } = req.body;
+
+  if (!name || !bodyText) {
+    return res.status(400).json({ error: '`name` and `bodyText` are required.' });
+  }
+
+  try {
+    const result = await submitTemplate({
+      name,
+      category:     category     || 'MARKETING',
+      languageCode: languageCode || 'en',
+      headerType:   headerType   || '',
+      headerText:   headerText   || '',
+      bodyText,
+      footerText:   footerText   || '',
+      buttons:      buttons      || []
+    });
+
+    if (!result.success) {
+      return res.status(502).json({ error: result.error, raw: result.raw });
+    }
+
+    res.json({ success: true, templateId: result.templateId, status: result.status, name: result.name });
+  } catch (err) {
+    console.error('[submit-template]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/whatsapp/templates ──────────────────────────────────────────────
+// List all templates (optionally filter by status=APPROVED|PENDING|REJECTED).
+router.get('/templates', requireAdmin, async (req, res) => {
+  try {
+    const templates = await getTemplates(req.query.status || '');
+    res.json({ success: true, templates });
+  } catch (err) {
+    console.error('[templates]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/whatsapp/templates/:name/status ──────────────────────────────────
+// Check status of a specific template by name.
+router.get('/templates/:name/status', requireAdmin, async (req, res) => {
+  try {
+    const template = await getTemplateStatus(req.params.name);
+    if (!template) return res.status(404).json({ error: 'Template not found.' });
+    res.json({ success: true, template });
+  } catch (err) {
+    console.error('[template-status]', err);
     res.status(500).json({ error: err.message });
   }
 });
