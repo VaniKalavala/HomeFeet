@@ -2636,6 +2636,8 @@ const AdminPanel: React.FC = () => {
                                     languageCode: templateLanguage || 'en',
                                     headerType: templateHeaderType || '',
                                     headerText: '',
+                                    // blob: URLs are browser-only; backend detects & falls back to a public sample
+                                    headerExampleUrl: templateHeaderPreview || '',
                                     bodyText: templateBody,
                                     footerText: templateFooter,
                                     buttons: allButtons

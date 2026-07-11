@@ -22,12 +22,21 @@ const getToken = () => {
 // TEMPLATE CREATION (Submit for Meta review)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Fallback example URLs for Meta template review (must be publicly accessible).
+// These are used only during template creation so Meta's reviewers can see the media type.
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://www.homefeet.in';
+const HEADER_EXAMPLE_FALLBACKS = {
+  IMAGE:    `${FRONTEND_ORIGIN}/HomeFeet_logo.png`,
+  VIDEO:    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  DOCUMENT: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf'
+};
+
 /**
  * Build the components[] array for template CREATION (different schema from sending).
  *
- * @param {{ headerType, headerText, bodyText, footerText, buttons }} opts
+ * @param {{ headerType, headerText, headerExampleUrl, bodyText, footerText, buttons }} opts
  */
-function buildTemplateComponents({ headerType, headerText, bodyText, footerText, buttons = [] }) {
+function buildTemplateComponents({ headerType, headerText, headerExampleUrl, bodyText, footerText, buttons = [] }) {
   const components = [];
 
   // ── HEADER ──────────────────────────────────────────────────────────────────
@@ -36,9 +45,14 @@ function buildTemplateComponents({ headerType, headerText, bodyText, footerText,
     const headerComp = { type: 'HEADER', format: fmt };
     if (fmt === 'TEXT' && headerText) {
       headerComp.text = headerText;
+    } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(fmt)) {
+      // Meta REQUIRES example.header_handle for media headers (used during review).
+      // The URL just needs to be publicly accessible; it's only a review sample.
+      const exampleUrl = (headerExampleUrl && !headerExampleUrl.startsWith('blob:'))
+        ? headerExampleUrl
+        : HEADER_EXAMPLE_FALLBACKS[fmt];
+      headerComp.example = { header_handle: [exampleUrl] };
     }
-    // IMAGE/VIDEO/DOCUMENT: no URL at creation time (provided at send time).
-    // Meta accepts the component without an example handle.
     components.push(headerComp);
   }
 
@@ -110,6 +124,7 @@ async function submitTemplate({
   languageCode = 'en',
   headerType = '',
   headerText = '',
+  headerExampleUrl = '',
   bodyText,
   footerText = '',
   buttons = []
@@ -126,7 +141,7 @@ async function submitTemplate({
     .replace(/^_+|_+$/g, '')        // strip leading/trailing underscores
     .slice(0, 512) || 'template';
 
-  const components = buildTemplateComponents({ headerType, headerText, bodyText, footerText, buttons });
+  const components = buildTemplateComponents({ headerType, headerText, headerExampleUrl, bodyText, footerText, buttons });
 
   const payload = {
     name: safeName,

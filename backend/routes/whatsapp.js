@@ -95,7 +95,7 @@ router.post('/send-campaign', requireAdmin, async (req, res) => {
 // Submit a new template to Meta for review.
 // Body: { name, category, languageCode, headerType, headerText, bodyText, footerText, buttons[] }
 router.post('/submit-template', requireAdmin, async (req, res) => {
-  const { name, category, languageCode, headerType, headerText, bodyText, footerText, buttons } = req.body;
+  const { name, category, languageCode, headerType, headerText, headerExampleUrl, bodyText, footerText, buttons } = req.body;
 
   if (!name || !bodyText) {
     return res.status(400).json({ error: '`name` and `bodyText` are required.' });
@@ -104,13 +104,14 @@ router.post('/submit-template', requireAdmin, async (req, res) => {
   try {
     const result = await submitTemplate({
       name,
-      category:     category     || 'MARKETING',
-      languageCode: languageCode || 'en',
-      headerType:   headerType   || '',
-      headerText:   headerText   || '',
+      category:        category        || 'MARKETING',
+      languageCode:    languageCode    || 'en',
+      headerType:      headerType      || '',
+      headerText:      headerText      || '',
+      headerExampleUrl: headerExampleUrl || '',
       bodyText,
-      footerText:   footerText   || '',
-      buttons:      buttons      || []
+      footerText:      footerText      || '',
+      buttons:         buttons         || []
     });
 
     if (!result.success) {
