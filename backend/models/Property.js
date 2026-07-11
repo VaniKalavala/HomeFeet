@@ -316,8 +316,7 @@ const propertySchema = new mongoose.Schema({
   status: {  // NEW: For admin approval
     type: String,
     default: 'pending',
-    enum: ['pending', 'approved', 'rejected'],
-    index: true
+    enum: ['pending', 'approved', 'rejected']
   },
   rejectionReason: {
     type: String,

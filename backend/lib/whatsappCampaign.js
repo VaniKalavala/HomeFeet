@@ -224,6 +224,45 @@ async function submitTemplate({
 }
 
 /**
+ * Update an existing template by ID (PATCH).
+ * Meta re-sends it for review; status changes back to PENDING.
+ * Name, category and language cannot be changed — only components.
+ */
+async function updateTemplate({ templateId, headerType, headerText, headerMediaHandle, bodyText, footerText, buttons }) {
+  if (!templateId) throw new Error('`templateId` is required');
+  if (!bodyText)   throw new Error('`bodyText` is required');
+
+  const components = buildTemplateComponents({ headerType, headerText, headerMediaHandle, bodyText, footerText, buttons });
+
+  const url = `https://graph.facebook.com/${API_VERSION}/${templateId}`;
+  const payload = { components };
+
+  console.log('[update-template] PATCH', templateId, JSON.stringify(payload, null, 2));
+
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || data.error) {
+    const metaErr  = data.error || {};
+    const detail   = metaErr.error_data?.details || metaErr.error_user_msg || '';
+    const errorMsg = [metaErr.message, detail].filter(Boolean).join(' — ');
+    console.error('[update-template] Meta error:', JSON.stringify(data, null, 2));
+    return { success: false, error: errorMsg || `HTTP ${res.status}`, code: metaErr.code, raw: data };
+  }
+
+  // PATCH returns { success: true } on success — status resets to PENDING
+  return { success: true, templateId, status: 'PENDING' };
+}
+
+/**
  * Fetch all templates for the WABA (with optional status filter).
  *
  * @param {'APPROVED'|'PENDING'|'REJECTED'|''} [statusFilter]
@@ -291,9 +330,11 @@ function buildSendComponents({ headerType, headerValue, bodyVariables = [], butt
 
   for (const btn of buttons) {
     if (btn.type === 'url') {
+      // Dynamic URL buttons need a suffix — skip if empty to avoid Meta validation error
+      if (!btn.value && btn.value !== 0) continue;
       components.push({
         type: 'button', sub_type: 'url', index: String(btn.index),
-        parameters: [{ type: 'text', text: btn.value }]
+        parameters: [{ type: 'text', text: String(btn.value) }]
       });
     } else if (btn.type === 'quick_reply') {
       components.push({
@@ -349,7 +390,11 @@ async function sendTemplateMessage({
 
   const data = await res.json();
   if (!res.ok || data.error) {
-    return { success: false, error: data.error?.message || `HTTP ${res.status}`, raw: data };
+    const metaErr = data.error || {};
+    const detail  = metaErr.error_data?.details || metaErr.error_user_msg || '';
+    const msg     = [metaErr.message, detail].filter(Boolean).join(' — ');
+    console.error('[send-template] Meta error to', phone, ':', JSON.stringify(data));
+    return { success: false, error: msg || `HTTP ${res.status}`, raw: data };
   }
   return { success: true, messageId: data.messages?.[0]?.id || null };
 }
@@ -381,4 +426,4 @@ async function sendCampaign(recipients, templateOpts) {
   return { sent, failed, results };
 }
 
-module.exports = { uploadWhatsAppMedia, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };
+module.exports = { uploadWhatsAppMedia, submitTemplate, updateTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };

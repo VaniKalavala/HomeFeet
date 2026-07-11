@@ -183,7 +183,7 @@ const AdminPanel: React.FC = () => {
   const [actionType, setActionType] = useState('');
   const [showActionDropdown, setShowActionDropdown] = useState(false);
   const [advancedSearch, setAdvancedSearch] = useState(false);
-  type ActionItem = { label: string; urlType: string; url: string };
+  type ActionItem = { label: string; urlType: string; url: string; urlSuffix?: string; originalIndex?: number };
   type QuickReplyItem = { text: string };
   const [websiteActions, setWebsiteActions] = useState<ActionItem[]>([]);
   const [phoneActions, setPhoneActions] = useState<ActionItem[]>([]);
@@ -193,11 +193,12 @@ const AdminPanel: React.FC = () => {
   const [submitStatus, setSubmitStatus] = useState<'idle'|'pending'|'approved'|'rejected'|'sending'|'done'>('idle');
   const [submitError, setSubmitError] = useState('');
   const [submittedTemplateName, setSubmittedTemplateName] = useState('');
-  const [campaignResult, setCampaignResult] = useState<{sent:number;failed:number}|null>(null);
+  const [campaignResult, setCampaignResult] = useState<{sent:number;failed:number;errors?:{phone:string;error:string}[]}|null>(null);
   // Template Jobs
   const [whatsappView, setWhatsappView] = useState<'campaign'|'templates'>('campaign');
   const [templateJobs, setTemplateJobs] = useState<any[]>([]);
   const [templateJobsLoading, setTemplateJobsLoading] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState(''); // set when editing existing template → triggers PATCH
   const [builderContacts, setBuilderContacts] = useState<BuilderContact[]>([]);
   const [builderContactCity, setBuilderContactCity] = useState('all');
   const [builderContactForm, setBuilderContactForm] = useState({
@@ -594,6 +595,7 @@ const AdminPanel: React.FC = () => {
   };
 
   const loadTemplateForEdit = (tpl: any) => {
+    setEditingTemplateId(tpl.id || '');
     setTemplateName(tpl.name || '');
     setTemplateCategory((tpl.category?.toLowerCase() || 'marketing') as any);
     setTemplateLanguage(tpl.language || 'en');
@@ -638,6 +640,41 @@ const AdminPanel: React.FC = () => {
 
     setCampaignStep(2);
     setTemplateStep(2);
+    setWhatsappView('campaign');
+  };
+
+  // Load only the send-relevant data from an approved template (buttons + language).
+  // Does NOT overwrite the template creation form — just sets up the campaign send state.
+  const prepareTemplateForSend = (tpl: any) => {
+    setSubmittedTemplateName(tpl.name || '');
+    setTemplateLanguage(tpl.language || 'en');
+    setSubmitStatus('approved');
+    setEditingTemplateId('');
+    setCampaignResult(null);
+    setSubmitError('');
+
+    // Parse buttons from template components so dynamic URL buttons get their suffix field
+    const urlBtns: ActionItem[] = [];
+    const qrBtns: QuickReplyItem[] = [];
+    for (const comp of tpl.components || []) {
+      if (comp.type === 'BUTTONS') {
+        let btnIdx = 0;
+        for (const btn of comp.buttons || []) {
+          if (btn.type === 'URL') {
+            const isDynamic = (btn.url || '').includes('{{1}}');
+            urlBtns.push({ label: btn.text || '', urlType: isDynamic ? 'Dynamic' : 'Static', url: (btn.url || '').replace('/{{1}}', ''), urlSuffix: '', originalIndex: btnIdx });
+          } else if (btn.type === 'QUICK_REPLY') {
+            qrBtns.push({ text: btn.text || '' });
+          }
+          btnIdx++;
+        }
+      }
+    }
+    setWebsiteActions(urlBtns);
+    setQuickReplies(qrBtns);
+
+    setTemplateStep(2);
+    setCampaignStep(1);
     setWhatsappView('campaign');
   };
 
@@ -2048,13 +2085,7 @@ const AdminPanel: React.FC = () => {
                             <div className="flex items-center gap-2">
                               {tpl.status === 'APPROVED' && (
                                 <button
-                                  onClick={() => {
-                                    setSubmittedTemplateName(tpl.name);
-                                    setSubmitStatus('approved');
-                                    setTemplateStep(2);
-                                    setCampaignStep(1);
-                                    setWhatsappView('campaign');
-                                  }}
+                                  onClick={() => prepareTemplateForSend(tpl)}
                                   className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
                                 >
                                   📣 Send
@@ -2738,8 +2769,33 @@ const AdminPanel: React.FC = () => {
 
                     {/* Status banner */}
                     {submitStatus === 'approved' && submittedTemplateName && !templateBody && (
-                      <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                        ✅ Using approved template: <strong>{submittedTemplateName}</strong>. Click <strong>🚀 Send Campaign</strong> below to deliver to your recipients.
+                      <div className="mb-4 space-y-3">
+                        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                          ✅ Using approved template: <strong>{submittedTemplateName}</strong>. Click <strong>🚀 Send Campaign</strong> below to deliver to your recipients.
+                        </div>
+                        {websiteActions.some(a => a.urlType === 'Dynamic') && (
+                          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                            <p className="mb-2 text-xs font-bold text-blue-700 uppercase tracking-wide">🔗 Dynamic Link Path</p>
+                            {websiteActions.filter(a => a.urlType === 'Dynamic').map((a, wi) => (
+                              <div key={wi} className="flex items-center gap-1 text-xs">
+                                <span className="text-blue-500 font-mono whitespace-nowrap">{a.url}/</span>
+                                <input
+                                  type="text"
+                                  placeholder="home"
+                                  value={a.urlSuffix || ''}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setWebsiteActions(prev => prev.map(wa =>
+                                      wa.originalIndex === a.originalIndex ? { ...wa, urlSuffix: val } : wa
+                                    ));
+                                  }}
+                                  className="flex-1 rounded border border-blue-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                />
+                              </div>
+                            ))}
+                            <p className="mt-1 text-[10px] text-blue-500">Leave blank to use the template's default example URL.</p>
+                          </div>
+                        )}
                       </div>
                     )}
                     {submitStatus === 'pending' && (
@@ -2777,6 +2833,13 @@ const AdminPanel: React.FC = () => {
                     {submitStatus === 'done' && campaignResult && (
                       <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
                         🎉 Campaign sent! <strong>{campaignResult.sent} delivered</strong>, {campaignResult.failed} failed.
+                        {campaignResult.errors && campaignResult.errors.length > 0 && (
+                          <ul className="mt-2 space-y-1 border-t border-teal-200 pt-2">
+                            {campaignResult.errors.map((e, i) => (
+                              <li key={i} className="text-xs text-red-600">❌ {e.phone}: {e.error}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     )}
                     {submitError && submitStatus === 'idle' && (
@@ -2803,8 +2866,12 @@ const AdminPanel: React.FC = () => {
                               setSubmitting(true); setSubmitStatus('sending');
                               try {
                                 const token = localStorage.getItem('token');
+                                // Only dynamic URL buttons need a parameter at send time.
+                                // Static URL buttons have no variable — sending a parameter for them causes errors.
                                 const buttons = [
-                                  ...websiteActions.map((a, i) => ({ type: 'url', index: i, value: '' })),
+                                  ...websiteActions
+                                    .filter(a => a.urlType === 'Dynamic')
+                                    .map(a => ({ type: 'url', index: a.originalIndex ?? 0, value: a.urlSuffix || '' })),
                                   ...quickReplies.map((a, i) => ({ type: 'quick_reply', index: i, value: a.text }))
                                 ];
                                 const res = await fetch(`${API_BASE}/whatsapp/send-campaign`, {
@@ -2820,8 +2887,11 @@ const AdminPanel: React.FC = () => {
                                   })
                                 });
                                 const d = await res.json();
-                                if (res.ok) { setCampaignResult({ sent: d.sent, failed: d.failed }); setSubmitStatus('done'); }
-                                else { setSubmitError(d.error || 'Send failed'); setSubmitStatus('approved'); }
+                                if (res.ok) {
+                                  const errors = (d.results || []).filter((r: any) => !r.success).map((r: any) => ({ phone: r.phone, error: r.error || 'Unknown error' }));
+                                  setCampaignResult({ sent: d.sent, failed: d.failed, errors });
+                                  setSubmitStatus('done');
+                                } else { setSubmitError(d.error || 'Send failed'); setSubmitStatus('approved'); }
                               } catch (e: any) { setSubmitError(e.message); setSubmitStatus('approved'); }
                               finally { setSubmitting(false); }
                             }}

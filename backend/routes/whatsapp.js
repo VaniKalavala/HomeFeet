@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const WhatsAppIntake = require('../models/WhatsAppIntake');
-const { uploadWhatsAppMedia, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
+const { uploadWhatsAppMedia, submitTemplate, updateTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
 
 // ── Disk storage for WhatsApp template header images ─────────────────────────
 const TEMPLATE_UPLOADS_DIR = path.join(__dirname, '..', 'uploads', 'whatsapp-templates');
@@ -160,6 +160,31 @@ router.post('/submit-template', requireAdmin, async (req, res) => {
     res.json({ success: true, templateId: result.templateId, status: result.status, name: result.name });
   } catch (err) {
     console.error('[submit-template]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/whatsapp/templates/:id ────────────────────────────────────────
+// Update an existing template's components and re-submit for Meta review.
+// Name / category / language cannot be changed — only the message body/buttons.
+router.patch('/templates/:id', requireAdmin, async (req, res) => {
+  const { headerType, headerText, headerMediaHandle, bodyText, footerText, buttons } = req.body;
+  if (!bodyText) return res.status(400).json({ error: '`bodyText` is required.' });
+
+  try {
+    const result = await updateTemplate({
+      templateId:      req.params.id,
+      headerType:      headerType      || '',
+      headerText:      headerText      || '',
+      headerMediaHandle: headerMediaHandle || '',
+      bodyText,
+      footerText:      footerText      || '',
+      buttons:         buttons         || []
+    });
+    if (!result.success) return res.status(502).json({ error: result.error, code: result.code, raw: result.raw });
+    res.json({ success: true, templateId: result.templateId, status: result.status });
+  } catch (err) {
+    console.error('[update-template]', err);
     res.status(500).json({ error: err.message });
   }
 });
