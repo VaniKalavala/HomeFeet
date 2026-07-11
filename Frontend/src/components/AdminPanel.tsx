@@ -2464,14 +2464,29 @@ const AdminPanel: React.FC = () => {
 
                       {/* Text header input */}
                       {templateHeaderType === 'text' && (
-                        <input
-                          type="text"
-                          value={templateHeaderText}
-                          onChange={(e) => setTemplateHeaderText(e.target.value)}
-                          maxLength={60}
-                          placeholder="Enter header text (max 60 chars)…"
-                          className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        />
+                        <div className="mt-4">
+                          <label className="mb-1 block text-sm font-semibold text-gray-700">
+                            Template Header <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={templateHeaderText}
+                              onChange={(e) => setTemplateHeaderText(e.target.value)}
+                              maxLength={60}
+                              placeholder="Enter Header text"
+                              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-32 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setTemplateHeaderText(prev => (prev.match(/\{\{\d+\}\}/g)?.length || 0) < 1 ? prev + '{{1}}' : prev)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                            >
+                              Add Variable
+                            </button>
+                          </div>
+                          <p className="mt-1 text-right text-xs text-gray-400">{templateHeaderText.length}/60</p>
+                        </div>
                       )}
 
                       {/* File upload area for media header types */}
