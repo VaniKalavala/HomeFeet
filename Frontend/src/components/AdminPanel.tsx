@@ -2045,12 +2045,28 @@ const AdminPanel: React.FC = () => {
                           </td>
                           <td className="py-3 pr-4 text-xs text-red-500">{tpl.rejected_reason || '—'}</td>
                           <td className="py-3">
-                            <button
-                              onClick={() => loadTemplateForEdit(tpl)}
-                              className="rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-100"
-                            >
-                              ✏️ Edit
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {tpl.status === 'APPROVED' && (
+                                <button
+                                  onClick={() => {
+                                    setSubmittedTemplateName(tpl.name);
+                                    setSubmitStatus('approved');
+                                    setTemplateStep(2);
+                                    setCampaignStep(1);
+                                    setWhatsappView('campaign');
+                                  }}
+                                  className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+                                >
+                                  📣 Send
+                                </button>
+                              )}
+                              <button
+                                onClick={() => loadTemplateForEdit(tpl)}
+                                className="rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                              >
+                                ✏️ Edit
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2075,6 +2091,14 @@ const AdminPanel: React.FC = () => {
                   <span className="mt-1 text-xs font-semibold text-gray-400">STEP-2</span>
                 </div>
               </div>
+
+              {/* Banner when an approved template is pre-selected from Template Jobs */}
+              {submitStatus === 'approved' && submittedTemplateName && (
+                <div className="mb-5 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                  <span className="text-sm text-green-800">✅ Approved template ready: <strong>{submittedTemplateName}</strong> — enter phone numbers below and click Next</span>
+                  <button onClick={() => { setSubmitStatus('idle'); setSubmittedTemplateName(''); }} className="text-xs text-green-600 underline hover:text-green-800">Clear</button>
+                </div>
+              )}
 
               {/* From ID + Campaign Name */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -2713,6 +2737,11 @@ const AdminPanel: React.FC = () => {
                     </div>
 
                     {/* Status banner */}
+                    {submitStatus === 'approved' && submittedTemplateName && !templateBody && (
+                      <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                        ✅ Using approved template: <strong>{submittedTemplateName}</strong>. Click <strong>🚀 Send Campaign</strong> below to deliver to your recipients.
+                      </div>
+                    )}
                     {submitStatus === 'pending' && (
                       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                         ⏳ <strong>Template submitted!</strong> Meta is reviewing it — this usually takes a few minutes to a few hours. Click <strong>Check Status</strong> to refresh.
