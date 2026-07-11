@@ -150,6 +150,17 @@ const AdminPanel: React.FC = () => {
   const [whatsAppIntake, setWhatsAppIntake] = useState<any>({ intakes: [], pendingProperties: [], counts: { morningPending: 0, eveningPending: 0, totalPending: 0 } });
   const [whatsAppPeriod, setWhatsAppPeriod] = useState<'all' | 'morning' | 'evening'>('all');
   const [whatsAppForm, setWhatsAppForm] = useState({ ownerPhone: '', ownerName: '', summary: '' });
+  // Campaign state
+  const [campaignStep, setCampaignStep] = useState<1 | 2>(1);
+  const [campaignFromId] = useState('Homefeet - +918019008351');
+  const [campaignName, setCampaignName] = useState('');
+  const [campaignNumbers, setCampaignNumbers] = useState('');
+  const [campaignNumberTab, setCampaignNumberTab] = useState<'insert' | 'contacts' | 'upload'>('insert');
+  const [templateStep, setTemplateStep] = useState<1 | 2 | 3>(1);
+  const [templateName, setTemplateName] = useState('');
+  const [templateCategory, setTemplateCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
+  const [templateMarketingType, setTemplateMarketingType] = useState('Custom');
+  const [templateLanguage, setTemplateLanguage] = useState('');
   const [builderContacts, setBuilderContacts] = useState<BuilderContact[]>([]);
   const [builderContactCity, setBuilderContactCity] = useState('all');
   const [builderContactForm, setBuilderContactForm] = useState({
@@ -1867,107 +1878,225 @@ const AdminPanel: React.FC = () => {
           )}
         </div>
 
-        <div className={`${activeAdminPage === 'whatsapp' ? 'block' : 'hidden'} space-y-6`}>
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-teal-700" />
-                  <h2 className="text-xl font-semibold">WhatsApp Property Intake</h2>
+        {/* WhatsApp Campaign */}
+        <div className={`${activeAdminPage === 'whatsapp' ? 'block' : 'hidden'} space-y-4`}>
+          {campaignStep === 1 ? (
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              {/* Stepper */}
+              <div className="mb-8 flex items-center gap-0">
+                <div className="flex flex-col items-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white">01</div>
+                  <span className="mt-1 text-xs font-semibold text-teal-700">STEP-1</span>
                 </div>
-                <p className="mt-2 text-sm text-gray-600">
-                  Paste forwarded WhatsApp owner details here. The system converts the summary into a pending property for approval.
-                </p>
-                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                  <p className="font-bold">Important: WhatsApp group posts are not auto-readable from a group invite link.</p>
-                  <p>
-                    WhatsApp Business webhooks can catch messages sent or forwarded to the connected business number. For group posts,
-                    copy/forward the owner property message here, or ask the owner/mediator to send it directly to the business WhatsApp number.
-                  </p>
+                <div className="h-0.5 flex-1 bg-gray-300" />
+                <div className="flex flex-col items-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-300 bg-white text-sm font-bold text-gray-400">02</div>
+                  <span className="mt-1 text-xs font-semibold text-gray-400">STEP-2</span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
-                <div className="rounded-lg bg-blue-50 px-3 py-2 text-blue-800">Morning<br /><span className="text-lg">{whatsAppIntake.counts?.morningPending || 0}</span></div>
-                <div className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">Evening<br /><span className="text-lg">{whatsAppIntake.counts?.eveningPending || 0}</span></div>
-                <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-800">Total<br /><span className="text-lg">{whatsAppIntake.counts?.totalPending || 0}</span></div>
+
+              {/* From ID + Campaign Name */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-gray-700">From ID <span className="text-red-500">*</span></label>
+                  <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-800">
+                    <span>{campaignFromId}</span>
+                    <span className="cursor-pointer text-gray-400">▼</span>
+                  </div>
+                  <button className="mt-1 text-xs text-teal-600 hover:underline">Register a new number?</button>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-gray-700">Campaign Name <span className="text-red-500">*</span></label>
+                  <input
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    placeholder="e.g. Hey Builders! Ready to scale your sales velocity"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              {/* Number entry tabs */}
+              <div className="mt-6 flex gap-2">
+                <button
+                  onClick={() => setCampaignNumberTab('insert')}
+                  className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${campaignNumberTab === 'insert' ? 'bg-teal-700 text-white' : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  ≡ Insert Number Here
+                </button>
+                <button
+                  onClick={() => setCampaignNumberTab('contacts')}
+                  className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${campaignNumberTab === 'contacts' ? 'bg-teal-700 text-white' : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  ☎ Get Contacts
+                </button>
+                <button
+                  onClick={() => setCampaignNumberTab('upload')}
+                  className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${campaignNumberTab === 'upload' ? 'bg-teal-700 text-white' : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  📄 Upload file
+                </button>
+              </div>
+
+              {campaignNumberTab === 'insert' && (
+                <>
+                  <textarea
+                    value={campaignNumbers}
+                    onChange={(e) => setCampaignNumbers(e.target.value)}
+                    rows={6}
+                    placeholder="Enter phone numbers, one per line (e.g. 9100000000)"
+                    className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <div className="mt-2 flex justify-end gap-6 text-sm text-gray-500">
+                    <span>Total Numbers: <strong className="text-gray-800">{campaignNumbers.split('\n').filter(l => l.trim()).length}</strong></span>
+                    <span>CAN: <strong className="text-gray-800">{campaignNumbers.split('\n').filter(l => l.trim()).length}</strong></span>
+                  </div>
+                </>
+              )}
+              {campaignNumberTab === 'contacts' && (
+                <div className="mt-4 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
+                  Fetch contacts from your phonebook or CRM
+                </div>
+              )}
+              {campaignNumberTab === 'upload' && (
+                <div className="mt-4 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
+                  Upload a CSV/Excel file with phone numbers
+                </div>
+              )}
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => { if (campaignName.trim() && campaignNumbers.trim()) setCampaignStep(2); }}
+                  className="rounded-lg bg-indigo-500 px-8 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
+                >
+                  Next
+                </button>
               </div>
             </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-[1fr_340px]">
+              {/* Left: template form */}
+              <div className="rounded-xl bg-white p-6 shadow-sm">
+                {/* Template stepper */}
+                <div className="mb-6 flex items-center gap-2">
+                  {(['Choose Type', 'Create Template', 'Sync Template'] as const).map((label, idx) => (
+                    <React.Fragment key={label}>
+                      <button
+                        onClick={() => setTemplateStep((idx + 1) as 1 | 2 | 3)}
+                        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition ${templateStep === idx + 1 ? 'bg-green-200 text-green-900' : 'bg-gray-100 text-gray-500'}`}
+                      >
+                        {idx === 0 ? '👆' : idx === 1 ? '📄' : '🔄'} {label}
+                      </button>
+                      {idx < 2 && <div className="h-0.5 flex-1 bg-gray-200" />}
+                    </React.Fragment>
+                  ))}
+                </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <input
-                value={whatsAppForm.ownerPhone}
-                onChange={(event) => setWhatsAppForm(prev => ({ ...prev, ownerPhone: event.target.value }))}
-                placeholder="Owner mobile number"
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500"
-              />
-              <input
-                value={whatsAppForm.ownerName}
-                onChange={(event) => setWhatsAppForm(prev => ({ ...prev, ownerName: event.target.value }))}
-                placeholder="Owner name"
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500"
-              />
-              <select
-                value={whatsAppPeriod}
-                onChange={(event) => {
-                  const period = event.target.value as 'all' | 'morning' | 'evening';
-                  setWhatsAppPeriod(period);
-                  fetchWhatsAppIntake(period);
-                }}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="all">All pending WhatsApp properties</option>
-                <option value="morning">Morning pending WhatsApp properties</option>
-                <option value="evening">Evening pending WhatsApp properties</option>
-              </select>
-            </div>
-            <textarea
-              value={whatsAppForm.summary}
-              onChange={(event) => setWhatsAppForm(prev => ({ ...prev, summary: event.target.value }))}
-              rows={5}
-              placeholder="Paste WhatsApp property summary here..."
-              className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm leading-6 focus:ring-2 focus:ring-teal-500"
-            />
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={grabCopiedWhatsAppSummary}
-                className="rounded-lg border border-teal-600 bg-white px-5 py-2.5 text-sm font-semibold text-teal-700 hover:bg-teal-50"
-              >
-                Grab Copied WhatsApp Summary
-              </button>
-              <button
-                type="button"
-                onClick={submitWhatsAppIntake}
-                className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
-              >
-                Submit for Admin Approval
-              </button>
-            </div>
-          </div>
+                <h2 className="mb-5 text-lg font-bold text-gray-900">Template Name &amp; Type</h2>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold">Pending WhatsApp Properties</h3>
-            <div className="mt-4 space-y-3">
-              {(whatsAppIntake.pendingProperties || []).length === 0 ? (
-                <p className="text-sm text-gray-500">No pending WhatsApp properties for this view.</p>
-              ) : whatsAppIntake.pendingProperties.map((property: Property) => (
-                <div key={property._id} className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">{property.societyName || property.locality || 'WhatsApp property'}</p>
-                      <p className="text-sm text-gray-600">{property.locality}, {property.city} | {property.totalArea} {property.areaUnit}</p>
-                      <p className="mt-1 text-xs font-semibold uppercase text-teal-700">{property.intakePeriod || 'WhatsApp'} intake</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEditProperty(property._id)} className="rounded bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-700">Edit</button>
-                      <button onClick={() => handleApprove(property._id)} className="rounded bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700">Approve</button>
-                      <button onClick={() => handleReject(property._id)} className="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700">Reject</button>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">Select Number</label>
+                    <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-800">
+                      <span>+918019008351 Homefeet</span>
+                      <span className="text-gray-400">▼</span>
                     </div>
                   </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">Template Name</label>
+                    <input
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="Template name"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
                 </div>
-              ))}
+
+                <div className="mt-5">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">Template Category</label>
+                  <div className="grid grid-cols-3 gap-0 overflow-hidden rounded-lg border border-gray-300">
+                    {(['marketing', 'utility', 'authentication'] as const).map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setTemplateCategory(cat)}
+                        className={`py-2.5 text-sm font-semibold capitalize transition ${templateCategory === cat ? 'bg-teal-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      >
+                        {cat === 'marketing' ? '📢' : cat === 'utility' ? '🔔' : '🔒'} {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">Marketing Type</label>
+                    <select
+                      value={templateMarketingType}
+                      onChange={(e) => setTemplateMarketingType(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="Custom">Custom</option>
+                      <option value="Promotional">Promotional</option>
+                      <option value="Transactional">Transactional</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">Select Language</label>
+                    <select
+                      value={templateLanguage}
+                      onChange={(e) => setTemplateLanguage(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="">Select Language</option>
+                      <option value="en">English</option>
+                      <option value="hi">Hindi</option>
+                      <option value="te">Telugu</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-800">
+                  💡 If you wish to make any changes, please come back to this step and edit before submitting. Once submitted, the metadata cannot be modified.
+                </div>
+
+                <div className="mt-5 flex items-center justify-between">
+                  <button
+                    onClick={() => setCampaignStep(1)}
+                    className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => alert('Campaign submitted!')}
+                    className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+
+              {/* Right: preview */}
+              <div className="rounded-xl bg-white p-6 shadow-sm">
+                <h3 className="mb-4 text-sm font-bold text-gray-700">Template Preview</h3>
+                <div className="mx-auto w-fit rounded-[36px] border-4 border-gray-900 bg-[#e5ddd5] p-3 shadow-xl" style={{ minHeight: 420 }}>
+                  <div className="mb-2 flex items-center gap-2 rounded-t-[28px] bg-teal-700 px-4 py-2">
+                    <span className="text-xs font-semibold text-white">← 999999999</span>
+                  </div>
+                  <div className="rounded-lg bg-white p-3 shadow-sm">
+                    <div className="mb-2 h-28 w-full rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-400">Image Preview</div>
+                    <p className="text-xs text-gray-800">Hello, take a look at our latest</p>
+                    <p className="mt-1 text-xs text-gray-800">property listings on <strong>HomeFeet</strong>!</p>
+                    <p className="mt-1 text-[10px] text-gray-400 text-right">11:45 ✓✓</p>
+                    <div className="mt-2 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">🔗 View Properties</div>
+                    <div className="mt-1 border-t border-gray-200 pt-2 text-center text-xs font-semibold text-teal-600">📋 Copy code</div>
+                  </div>
+                  <p className="mt-3 text-[10px] text-gray-500">This template can be used for</p>
+                  <p className="text-[10px] text-gray-500">Welcome messages, promotions, offers, coupons, newsletters, announcements</p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Properties List */}
