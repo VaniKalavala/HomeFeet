@@ -2177,12 +2177,18 @@ const AdminPanel: React.FC = () => {
                     value={campaignNumbers}
                     onChange={(e) => setCampaignNumbers(e.target.value)}
                     rows={6}
-                    placeholder="Enter phone numbers, one per line (e.g. 9100000000)"
+                    placeholder="Enter phone numbers, one per line&#10;With country code: 917093094141&#10;10-digit (auto 91 added): 7093094141"
                     className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
+                  {/* Show warning if any number is 10 digits (missing country code) */}
+                  {campaignNumbers.split('\n').some(l => /^\d{10}$/.test(l.trim())) && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      ⚠️ 10-digit numbers detected — country code <strong>91</strong> will be auto-added (e.g. 7093094141 → 917093094141) before sending.
+                    </div>
+                  )}
                   <div className="mt-2 flex justify-end gap-6 text-sm text-gray-500">
                     <span>Total Numbers: <strong className="text-gray-800">{campaignNumbers.split('\n').filter(l => l.trim()).length}</strong></span>
-                    <span>CAN: <strong className="text-gray-800">{campaignNumbers.split('\n').filter(l => l.trim()).length}</strong></span>
+                    <span>Valid: <strong className="text-green-700">{campaignNumbers.split('\n').filter(l => /^\d{10,15}$/.test(l.trim().replace(/[\s\-+]/g,''))).length}</strong></span>
                   </div>
                 </>
               )}
@@ -2757,8 +2763,14 @@ const AdminPanel: React.FC = () => {
                           <button
                             disabled={submitting}
                             onClick={async () => {
-                              const recipients = campaignNumbers.split('\n').map(l => l.trim()).filter(Boolean);
-                              if (!recipients.length) { alert('No phone numbers entered in Step 1.'); return; }
+                              const normalizePhone = (n: string) => {
+                                const digits = n.replace(/[\s\-().+]/g, '');
+                                // 10-digit Indian number → add country code 91
+                                if (/^\d{10}$/.test(digits) && /^[6-9]/.test(digits)) return '91' + digits;
+                                return digits;
+                              };
+                              const recipients = campaignNumbers.split('\n').map(l => normalizePhone(l.trim())).filter(n => /^\d{10,15}$/.test(n));
+                              if (!recipients.length) { alert('No valid phone numbers found. Enter numbers with country code (e.g. 917093094141) or 10-digit Indian numbers.'); return; }
                               setSubmitting(true); setSubmitStatus('sending');
                               try {
                                 const token = localStorage.getItem('token');

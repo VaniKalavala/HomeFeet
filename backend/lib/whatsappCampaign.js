@@ -317,7 +317,9 @@ async function sendTemplateMessage({
   bodyVariables = [],
   buttons = []
 }) {
-  const phone = String(to).replace(/[\s\-().+]/g, '');
+  let phone = String(to).replace(/[\s\-().+]/g, '');
+  // Auto-add India country code for 10-digit numbers starting with 6-9
+  if (/^\d{10}$/.test(phone) && /^[6-9]/.test(phone)) phone = '91' + phone;
 
   const payload = {
     messaging_product: 'whatsapp',
