@@ -2798,6 +2798,31 @@ const AdminPanel: React.FC = () => {
                               setSubmitting(true); setSubmitError(''); setSubmitStatus('idle');
                               try {
                                 const token = localStorage.getItem('token');
+
+                                // Step 1 — upload media file to Meta first (IMAGE/VIDEO/DOCUMENT headers require a Facebook handle)
+                                let headerMediaHandle = '';
+                                const isMediaHeader = ['image', 'video', 'document'].includes(templateHeaderType);
+                                if (isMediaHeader) {
+                                  if (!templateHeaderFile) {
+                                    setSubmitError(`Please upload a ${templateHeaderType} file for the header before submitting.`);
+                                    return;
+                                  }
+                                  const formData = new FormData();
+                                  formData.append('file', templateHeaderFile);
+                                  const uploadRes = await fetch(`${API_BASE}/whatsapp/upload-media`, {
+                                    method: 'POST',
+                                    headers: { Authorization: `Bearer ${token}` },
+                                    body: formData
+                                  });
+                                  const uploadData = await uploadRes.json();
+                                  if (!uploadRes.ok || !uploadData.handle) {
+                                    setSubmitError(uploadData.error || 'Failed to upload header media to Meta.');
+                                    return;
+                                  }
+                                  headerMediaHandle = uploadData.handle;
+                                }
+
+                                // Step 2 — submit the template
                                 const allButtons = [
                                   ...websiteActions.map(a => ({ type: 'url', label: a.label, urlType: a.urlType, url: a.url })),
                                   ...phoneActions.map(a => ({ type: 'phone_number', label: a.label, url: a.url })),
@@ -2812,8 +2837,7 @@ const AdminPanel: React.FC = () => {
                                     languageCode: templateLanguage || 'en',
                                     headerType: templateHeaderType || '',
                                     headerText: templateHeaderText || '',
-                                    // blob: URLs are browser-only; backend detects & falls back to a public sample
-                                    headerExampleUrl: templateHeaderPreview || '',
+                                    headerMediaHandle,
                                     bodyText: templateBody,
                                     footerText: templateFooter,
                                     buttons: allButtons
@@ -2831,7 +2855,7 @@ const AdminPanel: React.FC = () => {
                             }}
                             className="rounded-lg bg-teal-700 px-8 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
                           >
-                            {submitting ? 'Submitting…' : 'Send to Review'}
+                            {submitting ? (templateHeaderFile && ['image','video','document'].includes(templateHeaderType) ? 'Uploading media…' : 'Submitting…') : 'Send to Review'}
                           </button>
                         )}
                       </div>

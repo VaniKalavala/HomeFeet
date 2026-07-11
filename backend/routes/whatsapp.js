@@ -1,8 +1,11 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const WhatsAppIntake = require('../models/WhatsAppIntake');
-const { submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
+const { uploadMediaToMeta, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign } = require('../lib/whatsappCampaign');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 const router = express.Router();
 
@@ -91,11 +94,25 @@ router.post('/send-campaign', requireAdmin, async (req, res) => {
   }
 });
 
+// ── POST /api/whatsapp/upload-media ──────────────────────────────────────────
+// Upload a media file to Meta's Resumable Upload API and return the handle.
+// The handle is used as example.header_handle when creating IMAGE/VIDEO/DOCUMENT templates.
+router.post('/upload-media', requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided.' });
+  try {
+    const handle = await uploadMediaToMeta(req.file.buffer, req.file.mimetype, req.file.originalname);
+    res.json({ success: true, handle });
+  } catch (err) {
+    console.error('[upload-media]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/whatsapp/submit-template ───────────────────────────────────────
 // Submit a new template to Meta for review.
 // Body: { name, category, languageCode, headerType, headerText, bodyText, footerText, buttons[] }
 router.post('/submit-template', requireAdmin, async (req, res) => {
-  const { name, category, languageCode, headerType, headerText, headerExampleUrl, bodyText, footerText, buttons } = req.body;
+  const { name, category, languageCode, headerType, headerText, headerMediaHandle, bodyText, footerText, buttons } = req.body;
 
   if (!name || !bodyText) {
     return res.status(400).json({ error: '`name` and `bodyText` are required.' });
@@ -104,14 +121,14 @@ router.post('/submit-template', requireAdmin, async (req, res) => {
   try {
     const result = await submitTemplate({
       name,
-      category:        category        || 'MARKETING',
-      languageCode:    languageCode    || 'en',
-      headerType:      headerType      || '',
-      headerText:      headerText      || '',
-      headerExampleUrl: headerExampleUrl || '',
+      category:         category         || 'MARKETING',
+      languageCode:     languageCode     || 'en',
+      headerType:       headerType       || '',
+      headerText:       headerText       || '',
+      headerMediaHandle: headerMediaHandle || '',
       bodyText,
-      footerText:      footerText      || '',
-      buttons:         buttons         || []
+      footerText:       footerText       || '',
+      buttons:          buttons          || []
     });
 
     if (!result.success) {

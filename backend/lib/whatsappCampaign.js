@@ -19,24 +19,71 @@ const getToken = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MEDIA UPLOAD (Resumable Upload API — required for template header examples)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Upload a file to Meta's Resumable Upload API and return the media handle.
+ * The handle is used as example.header_handle when creating IMAGE/VIDEO/DOCUMENT templates.
+ *
+ * @param {Buffer} fileBuffer  – raw file bytes
+ * @param {string} mimeType   – e.g. "image/jpeg"
+ * @param {string} [fileName] – optional display name
+ * @returns {Promise<string>}  – media handle (e.g. "4::AvXd…")
+ */
+async function uploadMediaToMeta(fileBuffer, mimeType, fileName) {
+  const token = getToken();
+
+  // Step 1 — create an upload session
+  const sessionUrl = new URL('https://graph.facebook.com/v20.0/app/uploads');
+  sessionUrl.searchParams.set('file_length', fileBuffer.length);
+  sessionUrl.searchParams.set('file_type', mimeType);
+  if (fileName) sessionUrl.searchParams.set('file_name', fileName);
+
+  const sessionRes = await fetch(sessionUrl.toString(), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const sessionData = await sessionRes.json();
+  if (!sessionRes.ok || sessionData.error) {
+    throw new Error(`Upload session failed: ${sessionData.error?.message || sessionRes.status}`);
+  }
+
+  const sessionId = sessionData.id; // "upload:<id>"
+
+  // Step 2 — upload the bytes
+  const uploadRes = await fetch(
+    `https://rupload.facebook.com/whatsapp-business-media/${sessionId}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `OAuth ${token}`,
+        'file-offset': '0',
+        'Content-Type': mimeType
+      },
+      body: fileBuffer
+    }
+  );
+  const uploadData = await uploadRes.json();
+  if (!uploadRes.ok || uploadData.error) {
+    throw new Error(`File upload failed: ${uploadData.error?.message || uploadRes.status}`);
+  }
+
+  return uploadData.h; // Facebook media handle
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TEMPLATE CREATION (Submit for Meta review)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Fallback example URLs for Meta template review (must be publicly accessible).
-// These are used only during template creation so Meta's reviewers can see the media type.
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://www.homefeet.in';
-const HEADER_EXAMPLE_FALLBACKS = {
-  IMAGE:    `${FRONTEND_ORIGIN}/HomeFeet_logo.png`,
-  VIDEO:    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  DOCUMENT: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf'
-};
 
 /**
  * Build the components[] array for template CREATION (different schema from sending).
  *
- * @param {{ headerType, headerText, headerExampleUrl, bodyText, footerText, buttons }} opts
+ * @param {{ headerType, headerText, headerMediaHandle, bodyText, footerText, buttons }} opts
+ * headerMediaHandle – Facebook media handle from uploadMediaToMeta() (preferred for IMAGE/VIDEO/DOCUMENT)
  */
-function buildTemplateComponents({ headerType, headerText, headerExampleUrl, bodyText, footerText, buttons = [] }) {
+function buildTemplateComponents({ headerType, headerText, headerMediaHandle, bodyText, footerText, buttons = [] }) {
   const components = [];
 
   // ── HEADER ──────────────────────────────────────────────────────────────────
@@ -48,11 +95,12 @@ function buildTemplateComponents({ headerType, headerText, headerExampleUrl, bod
       if (fmt === 'TEXT') {
         headerComp.text = headerText;
       } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(fmt)) {
-        // Meta REQUIRES example.header_handle for media headers (used during review).
-        const exampleUrl = (headerExampleUrl && !headerExampleUrl.startsWith('blob:'))
-          ? headerExampleUrl
-          : HEADER_EXAMPLE_FALLBACKS[fmt];
-        headerComp.example = { header_handle: [exampleUrl] };
+        // Meta REQUIRES a Facebook media handle in example.header_handle.
+        // The handle comes from uploadMediaToMeta() called before template submission.
+        if (!headerMediaHandle) {
+          throw new Error(`Please upload a ${fmt.toLowerCase()} file for the header before submitting.`);
+        }
+        headerComp.example = { header_handle: [headerMediaHandle] };
       }
       components.push(headerComp);
     }
@@ -126,7 +174,7 @@ async function submitTemplate({
   languageCode = 'en',
   headerType = '',
   headerText = '',
-  headerExampleUrl = '',
+  headerMediaHandle = '',
   bodyText,
   footerText = '',
   buttons = []
@@ -143,7 +191,7 @@ async function submitTemplate({
     .replace(/^_+|_+$/g, '')        // strip leading/trailing underscores
     .slice(0, 512) || 'template';
 
-  const components = buildTemplateComponents({ headerType, headerText, headerExampleUrl, bodyText, footerText, buttons });
+  const components = buildTemplateComponents({ headerType, headerText, headerMediaHandle, bodyText, footerText, buttons });
 
   const payload = {
     name: safeName,
@@ -338,4 +386,4 @@ async function sendCampaign(recipients, templateOpts) {
   return { sent, failed, results };
 }
 
-module.exports = { submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };
+module.exports = { uploadMediaToMeta, submitTemplate, getTemplates, getTemplateStatus, sendTemplateMessage, sendCampaign };
