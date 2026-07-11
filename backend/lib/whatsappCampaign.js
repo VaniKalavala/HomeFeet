@@ -42,18 +42,20 @@ function buildTemplateComponents({ headerType, headerText, headerExampleUrl, bod
   // ── HEADER ──────────────────────────────────────────────────────────────────
   if (headerType && headerType !== 'none') {
     const fmt = headerType.toUpperCase(); // TEXT | IMAGE | VIDEO | DOCUMENT
-    const headerComp = { type: 'HEADER', format: fmt };
-    if (fmt === 'TEXT' && headerText) {
-      headerComp.text = headerText;
-    } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(fmt)) {
-      // Meta REQUIRES example.header_handle for media headers (used during review).
-      // The URL just needs to be publicly accessible; it's only a review sample.
-      const exampleUrl = (headerExampleUrl && !headerExampleUrl.startsWith('blob:'))
-        ? headerExampleUrl
-        : HEADER_EXAMPLE_FALLBACKS[fmt];
-      headerComp.example = { header_handle: [exampleUrl] };
+    // TEXT with no text is invalid — skip silently
+    if (!(fmt === 'TEXT' && !headerText)) {
+      const headerComp = { type: 'HEADER', format: fmt };
+      if (fmt === 'TEXT') {
+        headerComp.text = headerText;
+      } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(fmt)) {
+        // Meta REQUIRES example.header_handle for media headers (used during review).
+        const exampleUrl = (headerExampleUrl && !headerExampleUrl.startsWith('blob:'))
+          ? headerExampleUrl
+          : HEADER_EXAMPLE_FALLBACKS[fmt];
+        headerComp.example = { header_handle: [exampleUrl] };
+      }
+      components.push(headerComp);
     }
-    components.push(headerComp);
   }
 
   // ── BODY ────────────────────────────────────────────────────────────────────

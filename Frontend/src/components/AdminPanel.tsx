@@ -174,6 +174,7 @@ const AdminPanel: React.FC = () => {
   const [templateMarketingType, setTemplateMarketingType] = useState('Custom');
   const [templateLanguage, setTemplateLanguage] = useState('en');
   const [templateHeaderType, setTemplateHeaderType] = useState('');
+  const [templateHeaderText, setTemplateHeaderText] = useState('');
   const [templateHeaderFile, setTemplateHeaderFile] = useState<File | null>(null);
   const [templateHeaderPreview, setTemplateHeaderPreview] = useState('');
   const [templateBody, setTemplateBody] = useState('');
@@ -597,6 +598,7 @@ const AdminPanel: React.FC = () => {
     setTemplateCategory((tpl.category?.toLowerCase() || 'marketing') as any);
     setTemplateLanguage(tpl.language || 'en');
     setTemplateHeaderType('');
+    setTemplateHeaderText('');
     setTemplateHeaderFile(null);
     setTemplateHeaderPreview('');
     setTemplateBody('');
@@ -608,7 +610,10 @@ const AdminPanel: React.FC = () => {
     setSubmitError('');
 
     for (const comp of tpl.components || []) {
-      if (comp.type === 'HEADER') setTemplateHeaderType(comp.format?.toLowerCase() || '');
+      if (comp.type === 'HEADER') {
+        setTemplateHeaderType(comp.format?.toLowerCase() || '');
+        if (comp.format === 'TEXT') setTemplateHeaderText(comp.text || '');
+      }
       if (comp.type === 'BODY')   setTemplateBody(comp.text || '');
       if (comp.type === 'FOOTER') setTemplateFooter(comp.text || '');
       if (comp.type === 'BUTTONS') {
@@ -2447,7 +2452,7 @@ const AdminPanel: React.FC = () => {
                       <p className="mt-0.5 text-xs text-gray-500">Add a title or choose which type of media you'll use for this header.</p>
                       <select
                         value={templateHeaderType}
-                        onChange={(e) => { setTemplateHeaderType(e.target.value); setTemplateHeaderFile(null); setTemplateHeaderPreview(''); }}
+                        onChange={(e) => { setTemplateHeaderType(e.target.value); setTemplateHeaderText(''); setTemplateHeaderFile(null); setTemplateHeaderPreview(''); }}
                         className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                       >
                         <option value="">None</option>
@@ -2456,6 +2461,18 @@ const AdminPanel: React.FC = () => {
                         <option value="video">Video</option>
                         <option value="document">Document</option>
                       </select>
+
+                      {/* Text header input */}
+                      {templateHeaderType === 'text' && (
+                        <input
+                          type="text"
+                          value={templateHeaderText}
+                          onChange={(e) => setTemplateHeaderText(e.target.value)}
+                          maxLength={60}
+                          placeholder="Enter header text (max 60 chars)…"
+                          className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      )}
 
                       {/* File upload area for media header types */}
                       {(templateHeaderType === 'image' || templateHeaderType === 'video' || templateHeaderType === 'document') && (
@@ -2779,7 +2796,7 @@ const AdminPanel: React.FC = () => {
                                     category: templateCategory.toUpperCase(),
                                     languageCode: templateLanguage || 'en',
                                     headerType: templateHeaderType || '',
-                                    headerText: '',
+                                    headerText: templateHeaderText || '',
                                     // blob: URLs are browser-only; backend detects & falls back to a public sample
                                     headerExampleUrl: templateHeaderPreview || '',
                                     bodyText: templateBody,
@@ -2844,8 +2861,8 @@ const AdminPanel: React.FC = () => {
                           </div>
                         )}
                         {templateHeaderType === 'text' && (
-                          <div className="px-3 pt-2 pb-0">
-                            <input className="w-full rounded border border-gray-300 px-2 py-1 text-xs" placeholder="Header text..." readOnly />
+                          <div className="px-3 pt-2 pb-1">
+                            <p className="text-xs font-bold text-gray-800">{templateHeaderText || ''}<span className={templateHeaderText ? 'hidden' : 'font-normal text-gray-400'}>Header text…</span></p>
                           </div>
                         )}
                         <div className="p-2">
