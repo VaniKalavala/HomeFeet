@@ -643,6 +643,33 @@ const AdminPanel: React.FC = () => {
     setWhatsappView('campaign');
   };
 
+  // Wipe all template form fields and go back to Step 1 (blank new template).
+  const resetTemplateForm = () => {
+    setTemplateName('');
+    setTemplateCategory('marketing');
+    setTemplateLanguage('en');
+    setTemplateHeaderType('');
+    setTemplateHeaderText('');
+    setTemplateHeaderFile(null);
+    setTemplateHeaderPreview('');
+    setTemplateBody('');
+    setTemplateFooter('');
+    setWebsiteActions([]);
+    setPhoneActions([]);
+    setQuickReplies([]);
+    setActionType('');
+    setSubmitStatus('idle');
+    setSubmitError('');
+    setSubmittedTemplateName('');
+    setCampaignResult(null);
+    setEditingTemplateId('');
+    setCampaignNumbers('');
+    setCampaignName('');
+    setTemplateStep(1);
+    setCampaignStep(1);
+    setWhatsappView('campaign');
+  };
+
   // Load full template data for the send flow — same as loadTemplateForEdit but
   // keeps submitStatus = 'approved' so the Send Campaign button appears immediately.
   const prepareTemplateForSend = (tpl: any) => {
@@ -2057,6 +2084,21 @@ const AdminPanel: React.FC = () => {
                 📋 Template Jobs
               </button>
             </div>
+
+            {/* New Template button — only shown when a previous template is loaded */}
+            {whatsappView === 'campaign' && (templateName || templateBody || submittedTemplateName) && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 hidden sm:block">
+                  Editing: <strong className="text-gray-600">{templateName || submittedTemplateName || 'template'}</strong>
+                </span>
+                <button
+                  onClick={resetTemplateForm}
+                  className="flex items-center gap-1.5 rounded-lg border border-teal-600 bg-white px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 transition"
+                >
+                  + New Template
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ── Template Jobs view ─────────────────────────────────────────── */}
