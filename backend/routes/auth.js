@@ -192,7 +192,7 @@ const sendOTPViaSMS = async (phone, otp) => {
   }
 
   const endpoint = 'https://api.uniquedigitaloutreach.com/v1/sms';
-  const apiKey = process.env.SMS_API_KEY || '5iWxOC0sHJtKFgkbO2BzIHispO6IMS';
+  const apiKey = process.env.SMS_API_KEY || 'D9r9oeGFhxDiIL1PMKZABnWZUUZokI';
   const sender = process.env.SMS_SENDER || 'INVHFF';
   const templateId = process.env.SMS_TEMPLATE_ID || '1007269523823781675';
 
