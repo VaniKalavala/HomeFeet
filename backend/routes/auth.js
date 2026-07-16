@@ -182,7 +182,7 @@ router.post('/speech', speechUpload.single('file'), async (req, res) => {
   }
 });
 
-// ====== SMS Sender (uniquedigitaloutreach) ======
+// ====== SMS Sender (Airtel IQ) ======
 const sendOTPViaSMS = async (phone, otp) => {
   if (process.env.NODE_ENV === 'development' && process.env.MOCK_OTP === 'true') {
     const mock = { mock: true, note: 'Skipped SMS send in dev (MOCK_OTP=true)' };
@@ -190,30 +190,40 @@ const sendOTPViaSMS = async (phone, otp) => {
     return mock;
   }
 
-  const endpoint = 'https://api.uniquedigitaloutreach.com/v1/sms';
-  const apiKey = process.env.SMS_API_KEY || 'oZXPyKMN7FY0rwd6LV5f4P6KOoyTOR';
-  const sender = process.env.SMS_SENDER || 'INVHHF';
-  const templateId = process.env.SMS_TEMPLATE_ID || '1007269523823781675';
+  const endpoint = process.env.AIRTEL_ENDPOINT || 'https://iqsms.airtel.in/api/v1/send-prepaid-sms';
+  const username = process.env.AIRTEL_USERNAME;
+  const password = process.env.AIRTEL_PASSWORD;
+  const customerId = process.env.AIRTEL_CUSTOMER_ID;
+  const entityId = process.env.AIRTEL_ENTITY_ID;
+  const templateId = process.env.AIRTEL_TEMPLATE_ID;
+  const headerId = process.env.AIRTEL_HEADER_ID;
 
-  // The DLT-registered template uses {#var#} as the OTP placeholder.
-  const text = `${otp} One time Password(OTP) for phone verification on www.homefeet.in real estate platform`;
+  // Must match the DLT-registered template text exactly, with {{otp}} substituted.
+  const templateText = process.env.AIRTEL_TEMPLATE_TEXT
+    || '{{otp}} One time Password(OTP) for phone verification on www.homefeet.in real estate platform';
+  const text = templateText.replace('{{otp}}', otp);
 
   const payload = {
-    sender,
-    to: `91${phone}`,       // prepend country code
-    text,
-    type: 'OTP',
-    templateId
+    customerId,
+    destinationAddress: `91${phone}`,   // prepend country code
+    message: text,
+    sourceAddress: headerId,
+    entityId,
+    dltTemplateId: templateId,
+    messageType: 'OTP'
   };
 
   const headers = {
-    'Content-Type': 'application/json',
-    'apikey': apiKey
+    'Content-Type': 'application/json'
   };
 
-  console.log(`📤 Sending OTP ${otp} to 91${phone}...`);
+  console.log(`📤 Sending OTP ${otp} to 91${phone} via Airtel IQ...`);
 
-  const resp = await axios.post(endpoint, payload, { headers, timeout: 15000 });
+  const resp = await axios.post(endpoint, payload, {
+    headers,
+    auth: { username, password },
+    timeout: 15000
+  });
   console.log('SMS API response:', resp.status, JSON.stringify(resp.data));
 
   if (resp.status < 200 || resp.status >= 300) {
