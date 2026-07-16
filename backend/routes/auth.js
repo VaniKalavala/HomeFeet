@@ -193,8 +193,8 @@ const sendOTPViaSMS = async (phone, otp) => {
 
   const endpoint = 'https://api.uniquedigitaloutreach.com/v1/sms';
   const apiKey = process.env.SMS_API_KEY || 'oZXPyKMN7FY0rwd6LV5f4P6KOoyTOR';
-  const sender = process.env.SMS_SENDER || 'INVHST';
-  const templateId = process.env.SMS_TEMPLATE_ID || '1007877623645681439';
+  const sender = process.env.SMS_SENDER || 'INVHFF';
+  const templateId = process.env.SMS_TEMPLATE_ID || '1007269523823781675';
 
   // The DLT-registered template uses {#var#} as the OTP placeholder.
   const text = `${otp} One time Password(OTP) for phone verification on www.landsdevelop.com real estate platform`;
