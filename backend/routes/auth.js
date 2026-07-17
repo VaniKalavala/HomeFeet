@@ -194,11 +194,11 @@ const sendOTPViaSMS = async (phone, otp) => {
   const endpoint = 'https://api.uniquedigitaloutreach.com/v1/sms';
   const apiKey = process.env.SMS_API_KEY || 'D9r9oeGFhxDiIL1PMKZABnWZUUZokI';
   const sender = process.env.SMS_SENDER || 'INVHFF';
-  const templateId = process.env.SMS_TEMPLATE_ID || '1007269523823781675';
+  const templateId = process.env.SMS_TEMPLATE_ID || '1077080740005362498';
   const ctaId = process.env.SMS_CTA_ID || '1014991028243463071';
 
   // The DLT-registered template uses {#var#} as the OTP placeholder.
-  const text = `${otp} One time Password(OTP) for phone verification on www.homefeet.com real estate platform,Inventor Heads Animation studios Pvt Ltd`;
+  const text = `${otp} is the One time Password (OTP) for phone verification on www.homefeet.in - Inventor Heads Animation Studios Private Limited`;
 
   const payload = {
     sender,
