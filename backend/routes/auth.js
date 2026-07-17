@@ -195,6 +195,7 @@ const sendOTPViaSMS = async (phone, otp) => {
   const apiKey = process.env.SMS_API_KEY || 'D9r9oeGFhxDiIL1PMKZABnWZUUZokI';
   const sender = process.env.SMS_SENDER || 'INVHFF';
   const templateId = process.env.SMS_TEMPLATE_ID || '1007269523823781675';
+  const ctaId = process.env.SMS_CTA_ID || '1014991028243463071';
 
   // The DLT-registered template uses {#var#} as the OTP placeholder.
   const text = `${otp} One time Password(OTP) for phone verification on www.homefeet.com real estate platform,Inventor Heads Animation studios Pvt Ltd`;
@@ -204,7 +205,8 @@ const sendOTPViaSMS = async (phone, otp) => {
     to: `91${phone}`,       // prepend country code
     text,
     type: 'OTP',
-    templateId
+    templateId,
+    ctaId
   };
 
   const headers = {
