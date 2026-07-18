@@ -2070,14 +2070,18 @@ const PropertiesListingPage: React.FC = () => {
                           {isPropertyPlotDeal ? (
                             <div className="mt-1 rounded-md bg-slate-50 px-1.5 py-1 text-[12px]">
                               <span className="text-slate-500">
-                                {isPropertyApartment
+                                {property.squareFeetPrice
                                   ? 'Square Feet Price'
-                                  : propertyIntent === 'buy' ? 'Budget / Sq Yard' : 'Square Yard Price'}
+                                  : property.squareYardPrice
+                                    ? (propertyIntent === 'buy' ? 'Budget / Sq Yard' : 'Square Yard Price')
+                                    : 'Square Feet Price'}
                               </span>
                               <p className="line-clamp-1 font-bold leading-4 text-teal-700">
-                                {isPropertyApartment
-                                  ? (property.squareFeetPrice ? formatPrice(property.squareFeetPrice) : 'Price on request')
-                                  : (property.squareYardPrice ? formatPrice(property.squareYardPrice) : 'Price on request')}
+                                {property.squareFeetPrice
+                                  ? formatPrice(property.squareFeetPrice)
+                                  : property.squareYardPrice
+                                    ? formatPrice(property.squareYardPrice)
+                                    : 'Price on request'}
                               </p>
                             </div>
                           ) : (
@@ -2643,14 +2647,18 @@ const PropertiesListingPage: React.FC = () => {
                             {isPlotDealView ? (
                               <div className="text-sm">
                                 <span className="text-gray-600">
-                                  {apartmentLikeTypes.includes(String(property.developmentType || '').toLowerCase())
+                                  {property.squareFeetPrice
                                     ? 'Square Feet Price:'
-                                    : listingIntent === 'buy' ? 'Budget / Sq Yard:' : 'Square Yard Price:'}
+                                    : property.squareYardPrice
+                                      ? (listingIntent === 'buy' ? 'Budget / Sq Yard:' : 'Square Yard Price:')
+                                      : 'Square Feet Price:'}
                                 </span>
                                 <span className="font-bold text-teal-700 ml-1">
-                                  {apartmentLikeTypes.includes(String(property.developmentType || '').toLowerCase())
-                                    ? (property.squareFeetPrice ? formatPrice(property.squareFeetPrice) : 'Price on request')
-                                    : (property.squareYardPrice ? formatPrice(property.squareYardPrice) : 'Price on request')}
+                                  {property.squareFeetPrice
+                                    ? formatPrice(property.squareFeetPrice)
+                                    : property.squareYardPrice
+                                      ? formatPrice(property.squareYardPrice)
+                                      : 'Price on request'}
                                 </span>
                               </div>
                             ) : (
