@@ -286,6 +286,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  costSheetUrl: {  // Uploaded cost sheet (PDF/JPEG/PNG)
+    type: String,
+    default: ''
+  },
   videoUrl: {
     type: String,
     default: ''

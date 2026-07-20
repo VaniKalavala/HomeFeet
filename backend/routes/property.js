@@ -313,6 +313,7 @@ const propertyUpload = upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'floorPlan', maxCount: 30 },
   { name: 'propertyForm', maxCount: 1 },
+  { name: 'costSheet', maxCount: 1 },
   { name: 'companyLogo', maxCount: 1 }
 ]);
 const handlePropertyUpload = (req, res, next) => {
@@ -588,6 +589,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
     const listingImageUrl = galleryImageUrls[0] || imageUrl || (isDisplayableImageUpload(files.plotDiagram?.[0]) ? plotDiagramUrl : '');
     const videoUrl = await saveFileToGridFS(files.video?.[0], uploadNamingData);
     const propertyFormUrl = await saveFileToGridFS(files.propertyForm?.[0], uploadNamingData);
+    const costSheetUrl = await saveFileToGridFS(files.costSheet?.[0], uploadNamingData);
     const companyLogoUrl = await saveFileToGridFS(files.companyLogo?.[0], uploadNamingData);
     const floorPlanUnits = await buildFloorPlanUnits(req.body.floorPlanUnits, files.floorPlan || [], uploadNamingData);
     const floorPlanUrl = floorPlanUnits[0]?.imageUrl || '';
@@ -657,6 +659,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       floorPlanUrl,
       floorPlanUnits,
       propertyFormUrl,
+      costSheetUrl,
       videoUrl,
       contactEmail: listingOwner.email || '',
       contactPhone: listingOwner.phone,
@@ -1045,6 +1048,9 @@ router.put('/properties/:id', handlePropertyUpload, async (req, res) => {
     }
     if (files.propertyForm?.[0]) {
       updates.propertyFormUrl = await saveFileToGridFS(files.propertyForm[0], uploadNamingData);
+    }
+    if (files.costSheet?.[0]) {
+      updates.costSheetUrl = await saveFileToGridFS(files.costSheet[0], uploadNamingData);
     }
     if (files.companyLogo?.[0]) {
       updates.companyLogoUrl = await saveFileToGridFS(files.companyLogo[0], uploadNamingData);

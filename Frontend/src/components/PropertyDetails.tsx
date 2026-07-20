@@ -337,7 +337,7 @@ const PropertyDetails: React.FC = () => {
   const location = property?.locality && property?.city
     ? `${property.locality}, ${property.city}`
     : property?.city || property?.location || 'Hyderabad';
-  const sharePreviewUrl = property ? `${API_ORIGIN.replace(/\/$/, '')}/share/property/${property._id}` : '';
+  const sharePreviewUrl = property ? `${window.location.origin}/share/property/${property._id}` : '';
   const whatsappShareUrl = (() => {
     if (!property) return '';
     const priceRange = (() => {
@@ -742,6 +742,22 @@ const PropertyDetails: React.FC = () => {
                       Download Brochure
                     </a>
                   )}
+                </div>
+              )}
+
+              {property.costSheetUrl && (
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Cost Sheet</p>
+                  <a
+                    href={`${API_ORIGIN}${property.costSheetUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Cost Sheet
+                  </a>
                 </div>
               )}
 

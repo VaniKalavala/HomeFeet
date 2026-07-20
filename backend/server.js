@@ -183,8 +183,8 @@ const formatMoney = (value = '') => {
   return `Rs. ${num.toLocaleString('en-IN')}`;
 };
 
-const absoluteUrl = (origin, path = '') => {
-  if (!path) return `${origin}/HomeFeet_logo.png`;
+const absoluteUrl = (origin, path = '', fallbackOrigin = origin) => {
+  if (!path) return `${fallbackOrigin}/HomeFeet_logo.png`;
   if (/^https?:\/\//i.test(path)) return path;
   return `${origin}${path.startsWith('/') ? path : `/${path}`}`;
 };
@@ -199,7 +199,7 @@ app.get('/share/property/:id', async (req, res) => {
     const apiOrigin = process.env.API_PUBLIC_ORIGIN || `${req.protocol}://${req.get('host')}`;
     const frontendOrigin = (process.env.FRONTEND_ORIGIN || 'https://www.homefeet.in').replace(/\/$/, '');
     const propertyUrl = `${frontendOrigin}/property/${property._id}`;
-    const imageUrl = absoluteUrl(apiOrigin, property.imageUrl || property.plotDiagramUrl);
+    const imageUrl = absoluteUrl(apiOrigin, property.imageUrl || property.plotDiagramUrl, frontendOrigin);
     const type = cleanType(property.developmentType);
     const location = [property.locality, property.city, property.state].filter(Boolean).join(', ');
     const plotSize = property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}`.trim() : 'Plot size available';

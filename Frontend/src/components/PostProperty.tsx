@@ -316,6 +316,7 @@ const PostProperty = () => {
     plotDiagram: null as File | null,
     video: null as File | null,
     propertyForm: null as File | null,
+    costSheet: null as File | null,
     companyLogo: null as File | null,
   });
   const [showParcelShapePicker, setShowParcelShapePicker] = useState(false);
@@ -347,6 +348,7 @@ const PostProperty = () => {
     plotDiagramUrl: '',
     floorPlanUrl: '',
     propertyFormUrl: '',
+    costSheetUrl: '',
     videoUrl: '',
     companyLogoUrl: ''
   });
@@ -711,6 +713,7 @@ const PostProperty = () => {
           plotDiagramUrl: property.plotDiagramUrl || '',
           floorPlanUrl: property.floorPlanUrl || '',
           propertyFormUrl: property.propertyFormUrl || '',
+          costSheetUrl: property.costSheetUrl || '',
           videoUrl: property.videoUrl || '',
           companyLogoUrl: property.companyLogoUrl || ''
         });
@@ -1730,6 +1733,11 @@ const PostProperty = () => {
     setFormData(prev => ({ ...prev, propertyForm: file }));
   };
 
+  const handleCostSheetChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData(prev => ({ ...prev, costSheet: file }));
+  };
+
   const hasCompletePlotMeasurements = () =>
     [
       formData.northSideLength,
@@ -2278,6 +2286,9 @@ const PostProperty = () => {
     });
     if (formData.propertyForm) {
       data.append('propertyForm', formData.propertyForm);
+    }
+    if (formData.costSheet) {
+      data.append('costSheet', formData.costSheet);
     }
     if (formData.companyLogo) {
       data.append('companyLogo', formData.companyLogo);
@@ -3285,6 +3296,15 @@ const PostProperty = () => {
         />
         <p className="mt-1 text-xs text-slate-500">Auto-filled from the details above. Edit it any time to customize.</p>
       </div>
+      <label className="block rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+        <span className="mb-2 flex items-center gap-2 font-semibold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Cost Sheet (Optional)</span>
+        <p className="mb-2 text-xs text-slate-500">Upload your cost sheet as a PDF, JPEG, or PNG.</p>
+        {isEditMode && existingMedia.costSheetUrl && !formData.costSheet && (
+          <p className="mb-3 rounded-lg bg-white p-3 text-sm text-slate-600">Current cost sheet is saved. Upload a new one only if you want to replace it.</p>
+        )}
+        <input type="file" onChange={handleCostSheetChange} className="w-full rounded bg-white p-2" accept="image/jpeg,image/png,.pdf" />
+        {formData.costSheet && <p className="mt-2 text-sm font-semibold text-teal-700">Selected: {formData.costSheet.name}</p>}
+      </label>
       </section>
       </>
       )}
