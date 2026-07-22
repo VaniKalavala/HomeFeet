@@ -199,6 +199,7 @@ const unlockBuilderContact = async (user, interest) => {
   if (hasActiveBuilderSubscription(user)) {
     interest.contactUnlocked = true;
     interest.unlockedVia = 'subscription';
+    interest.contactUnlockedAt = new Date();
     await interest.save();
     return { unlocked: true, via: 'subscription' };
   }
@@ -207,6 +208,7 @@ const unlockBuilderContact = async (user, interest) => {
     user.contactUnlocksUsed = (user.contactUnlocksUsed || 0) + 1;
     interest.contactUnlocked = true;
     interest.unlockedVia = 'free_credit';
+    interest.contactUnlockedAt = new Date();
     await Promise.all([user.save(), interest.save()]);
     return { unlocked: true, via: 'free_credit' };
   }
@@ -222,6 +224,7 @@ const unlockBuyerContact = async (user, interest) => {
   if (hasActiveMarketplaceSubscription(user)) {
     interest.contactUnlocked = true;
     interest.unlockedVia = 'subscription';
+    interest.contactUnlockedAt = new Date();
     await interest.save();
     return { unlocked: true, via: 'subscription' };
   }
@@ -230,6 +233,7 @@ const unlockBuyerContact = async (user, interest) => {
     user.buyerFreeContactUsed = true;
     interest.contactUnlocked = true;
     interest.unlockedVia = 'buyer_free';
+    interest.contactUnlockedAt = new Date();
     await Promise.all([user.save(), interest.save()]);
     return { unlocked: true, via: 'buyer_free' };
   }
@@ -238,6 +242,7 @@ const unlockBuyerContact = async (user, interest) => {
     user.buyerContactCredits -= 1;
     interest.contactUnlocked = true;
     interest.unlockedVia = 'buyer_credit';
+    interest.contactUnlockedAt = new Date();
     await Promise.all([user.save(), interest.save()]);
     return { unlocked: true, via: 'buyer_credit' };
   }

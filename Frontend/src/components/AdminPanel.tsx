@@ -147,6 +147,7 @@ const AdminPanel: React.FC = () => {
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loginHistory, setLoginHistory] = useState<any[]>([]);
+  const [ownerContactAccess, setOwnerContactAccess] = useState<any[]>([]);
   const [whatsAppIntake, setWhatsAppIntake] = useState<any>({ intakes: [], pendingProperties: [], counts: { morningPending: 0, eveningPending: 0, totalPending: 0 } });
   const [whatsAppPeriod, setWhatsAppPeriod] = useState<'all' | 'morning' | 'evening'>('all');
   const [whatsAppForm, setWhatsAppForm] = useState({ ownerPhone: '', ownerName: '', summary: '' });
@@ -220,7 +221,7 @@ const AdminPanel: React.FC = () => {
   const [builderSeedCity, setBuilderSeedCity] = useState('Hyderabad');
   const [builderDigestSending, setBuilderDigestSending] = useState(false);
   const [builderDigestStatus, setBuilderDigestStatus] = useState('');
-  const [activeAdminPage, setActiveAdminPage] = useState<'properties' | 'builders' | 'builderContacts' | 'membership' | 'inquiries' | 'whatsapp' | 'testimonials' | 'loginHistory'>('properties');
+  const [activeAdminPage, setActiveAdminPage] = useState<'properties' | 'builders' | 'builderContacts' | 'membership' | 'inquiries' | 'whatsapp' | 'testimonials' | 'loginHistory' | 'ownerContactAccess'>('properties');
   const [activeMembershipTab, setActiveMembershipTab] = useState('all');
   const [activeMembershipTypeTab, setActiveMembershipTypeTab] = useState('all');
   const [adminLoadError, setAdminLoadError] = useState('');
@@ -259,7 +260,7 @@ const AdminPanel: React.FC = () => {
     setAdminLoadError('');
     try {
       const token = localStorage.getItem('token');
-      const [propertiesRes, usersRes, inquiriesRes, whatsAppRes, builderContactsRes, testimonialsRes, loginHistoryRes] = await Promise.all([
+      const [propertiesRes, usersRes, inquiriesRes, whatsAppRes, builderContactsRes, testimonialsRes, loginHistoryRes, ownerContactAccessRes] = await Promise.all([
         fetch(`${API_BASE}/admin/properties`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
@@ -268,7 +269,8 @@ const AdminPanel: React.FC = () => {
         fetch(`${API_BASE}/admin/whatsapp-intakes`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_BASE}/admin/builder-contacts`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_BASE}/admin/testimonials`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE}/admin/login-history`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${API_BASE}/admin/login-history`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE}/admin/owner-contact-access`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (propertiesRes.ok) {
@@ -285,6 +287,7 @@ const AdminPanel: React.FC = () => {
       if (builderContactsRes.ok) setBuilderContacts(await builderContactsRes.json());
       if (testimonialsRes.ok) setTestimonials(await testimonialsRes.json());
       if (loginHistoryRes.ok) setLoginHistory(await loginHistoryRes.json());
+      if (ownerContactAccessRes.ok) setOwnerContactAccess(await ownerContactAccessRes.json());
     } catch (error) {
       console.error('Error fetching properties:', error);
       setAdminLoadError(error instanceof Error ? error.message : 'Unable to load admin data');
@@ -1250,7 +1253,7 @@ const AdminPanel: React.FC = () => {
           <p className="mt-3 text-slate-300">Review listings, verify builders, manage inquiries, and protect marketplace quality.</p>
         </div>
 
-        <div className="mb-6 grid gap-3 rounded-lg bg-white p-3 shadow-sm md:grid-cols-8">
+        <div className="mb-6 grid gap-3 rounded-lg bg-white p-3 shadow-sm md:grid-cols-9">
           {[
             { key: 'properties', label: 'Property Approval' },
             { key: 'builders', label: 'Builder Verification' },
@@ -1259,7 +1262,8 @@ const AdminPanel: React.FC = () => {
             { key: 'whatsapp', label: 'WhatsApp Intake' },
             { key: 'testimonials', label: 'Testimonials' },
             { key: 'inquiries', label: 'Contact Inquiries' },
-            { key: 'loginHistory', label: 'Login History' }
+            { key: 'loginHistory', label: 'Login History' },
+            { key: 'ownerContactAccess', label: 'Owner Contact Access' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -2057,6 +2061,46 @@ const AdminPanel: React.FC = () => {
                       <td className="py-2 pr-3 text-slate-600">{entry.ip || '-'}</td>
                       <td className="max-w-[220px] truncate py-2 pr-3 text-slate-500" title={entry.userAgent}>{entry.userAgent || '-'}</td>
                       <td className="py-2 pr-3 text-slate-600">{formatRegistrationDate(entry.loggedInAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className={`${activeAdminPage === 'ownerContactAccess' ? 'block' : 'hidden'} bg-white rounded-lg shadow-sm p-6 mb-6`}>
+          <h2 className="text-xl font-semibold mb-4">Owner Contact Access</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Every time a buyer or builder unlocks an owner's contact details, it's logged here — {ownerContactAccess.length} record{ownerContactAccess.length === 1 ? '' : 's'}, newest first.
+          </p>
+          {ownerContactAccess.length === 0 ? (
+            <p className="text-sm text-gray-500">No owner contact has been accessed yet.</p>
+          ) : (
+            <div className="max-h-[620px] overflow-y-auto pr-2">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">Buyer / Requester</th>
+                    <th className="py-2 pr-3">Contact</th>
+                    <th className="py-2 pr-3">Property ID</th>
+                    <th className="py-2 pr-3">Property</th>
+                    <th className="py-2 pr-3">Unlocked Via</th>
+                    <th className="py-2 pr-3">Accessed At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ownerContactAccess.map((entry) => (
+                    <tr key={entry._id} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-semibold text-slate-900">{entry.buyerName || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-600">{entry.buyerPhone || entry.buyerEmail || '-'}</td>
+                      <td className="py-2 pr-3 font-mono text-xs text-slate-500">{entry.propertyId || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-600">
+                        {entry.propertyName || '-'}
+                        {entry.propertyLocation ? <span className="text-slate-400"> · {entry.propertyLocation}</span> : null}
+                      </td>
+                      <td className="py-2 pr-3 capitalize text-slate-600">{String(entry.unlockedVia || '-').replace('_', ' ')}</td>
+                      <td className="py-2 pr-3 text-slate-600">{formatRegistrationDate(entry.accessedAt)}</td>
                     </tr>
                   ))}
                 </tbody>

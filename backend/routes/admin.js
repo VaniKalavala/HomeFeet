@@ -194,6 +194,46 @@ router.get('/login-history', isAdmin, async (req, res) => {
   }
 });
 
+// GET log of buyers/builders who unlocked an owner's contact details, for admin oversight
+router.get('/owner-contact-access', isAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 200, 500);
+    const interests = await Interest.find({ contactUnlocked: true })
+      .populate('propertyId', 'projectName companyName city locality')
+      .sort({ contactUnlockedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const buyerIds = [...new Set(interests.map((entry) => entry.userId).filter(Boolean))];
+    const buyers = await User.find({ _id: { $in: buyerIds } })
+      .select('firstName lastName phone email accountType')
+      .lean();
+    const buyersById = new Map(buyers.map((buyer) => [String(buyer._id), buyer]));
+
+    const entries = interests.map((entry) => {
+      const buyer = buyersById.get(String(entry.userId));
+      const property = entry.propertyId;
+      return {
+        _id: entry._id,
+        propertyId: property?._id || entry.propertyId || null,
+        propertyName: property?.projectName || property?.companyName || 'Untitled property',
+        propertyLocation: [property?.locality, property?.city].filter(Boolean).join(', '),
+        buyerName: buyer ? `${buyer.firstName || ''} ${buyer.lastName || ''}`.trim() : '',
+        buyerPhone: buyer?.phone || '',
+        buyerEmail: buyer?.email || '',
+        buyerAccountType: buyer?.accountType || '',
+        unlockedVia: entry.unlockedVia,
+        accessedAt: entry.contactUnlockedAt || entry.respondedAt || entry.timestamp
+      };
+    });
+
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching owner contact access log:', error);
+    res.status(500).json({ error: 'Failed to fetch owner contact access log' });
+  }
+});
+
 const normalizePhone = (value = '') =>
   String(value || '').replace(/\D/g, '').slice(-10);
 

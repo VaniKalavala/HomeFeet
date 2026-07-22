@@ -18,6 +18,7 @@ const interestSchema = new mongoose.Schema({
     enum: ['none', 'free_credit', 'subscription', 'buyer_free', 'buyer_credit'],
     default: 'none'
   },
+  contactUnlockedAt: { type: Date, default: null, index: true },
   timestamp: { type: Date, default: Date.now },
   respondedAt: { type: Date, default: null }
 });
