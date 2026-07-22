@@ -255,11 +255,13 @@ const AdminPanel: React.FC = () => {
     applyFilters();
   }, [properties, filters]);
 
+  const ownerContactAccessKey = (entry: any) => entry.buyerPhone || entry.buyerEmail || entry.buyerName || 'unknown';
+
   const ownerContactAccessSummary = useMemo(() => {
-    const byBuyer = new Map<string, { buyerName: string; buyerPhone: string; buyerEmail: string; buyerAccountType: string; properties: Set<string>; totalAccesses: number; lastAccessedAt: string }>();
+    const byBuyer = new Map<string, { key: string; buyerName: string; buyerPhone: string; buyerEmail: string; buyerAccountType: string; properties: Set<string>; totalAccesses: number; lastAccessedAt: string }>();
 
     ownerContactAccess.forEach((entry) => {
-      const key = entry.buyerPhone || entry.buyerEmail || entry.buyerName || 'unknown';
+      const key = ownerContactAccessKey(entry);
       const existing = byBuyer.get(key);
       const propertyKey = String(entry.propertyId || entry._id);
       if (existing) {
@@ -270,6 +272,7 @@ const AdminPanel: React.FC = () => {
         }
       } else {
         byBuyer.set(key, {
+          key,
           buyerName: entry.buyerName || '-',
           buyerPhone: entry.buyerPhone || '',
           buyerEmail: entry.buyerEmail || '',
@@ -285,6 +288,13 @@ const AdminPanel: React.FC = () => {
       .map((row) => ({ ...row, propertiesCount: row.properties.size }))
       .sort((a, b) => b.propertiesCount - a.propertiesCount);
   }, [ownerContactAccess]);
+
+  const [ownerContactAccessFilterKey, setOwnerContactAccessFilterKey] = useState<string | null>(null);
+
+  const ownerContactAccessFilteredLog = useMemo(() => {
+    if (!ownerContactAccessFilterKey) return ownerContactAccess;
+    return ownerContactAccess.filter((entry) => ownerContactAccessKey(entry) === ownerContactAccessFilterKey);
+  }, [ownerContactAccess, ownerContactAccessFilterKey]);
 
   const fetchPendingProperties = async () => {
     setLoading(true);
@@ -2120,11 +2130,24 @@ const AdminPanel: React.FC = () => {
                 </thead>
                 <tbody>
                   {ownerContactAccessSummary.map((row) => (
-                    <tr key={row.buyerPhone || row.buyerEmail || row.buyerName} className="border-b border-slate-100">
+                    <tr
+                      key={row.key}
+                      className={`cursor-pointer border-b border-slate-100 ${ownerContactAccessFilterKey === row.key ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
+                      onClick={() => setOwnerContactAccessFilterKey((current) => (current === row.key ? null : row.key))}
+                      title="Click to see which properties this user accessed"
+                    >
                       <td className="py-2 pr-3 font-semibold text-slate-900">{row.buyerName || '-'}</td>
                       <td className="py-2 pr-3 text-slate-600">{row.buyerPhone || row.buyerEmail || '-'}</td>
                       <td className="py-2 pr-3 capitalize text-slate-600">{row.buyerAccountType || '-'}</td>
-                      <td className="py-2 pr-3 font-semibold text-teal-700">{row.propertiesCount}</td>
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setOwnerContactAccessFilterKey((current) => (current === row.key ? null : row.key)); }}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${ownerContactAccessFilterKey === row.key ? 'bg-teal-700 text-white' : 'bg-teal-100 text-teal-700 hover:bg-teal-200'}`}
+                        >
+                          {row.propertiesCount}
+                        </button>
+                      </td>
                       <td className="py-2 pr-3 text-slate-600">{row.totalAccesses}</td>
                       <td className="py-2 pr-3 text-slate-600">{formatRegistrationDate(row.lastAccessedAt)}</td>
                     </tr>
@@ -2134,11 +2157,28 @@ const AdminPanel: React.FC = () => {
             </div>
           )}
 
-          <h2 className="text-xl font-semibold mb-4">Owner Contact Access — Full Log</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">
+              {ownerContactAccessFilterKey
+                ? `Properties Accessed by ${ownerContactAccessSummary.find((row) => row.key === ownerContactAccessFilterKey)?.buyerName || 'User'}`
+                : 'Owner Contact Access — Full Log'}
+            </h2>
+            {ownerContactAccessFilterKey && (
+              <button
+                type="button"
+                onClick={() => setOwnerContactAccessFilterKey(null)}
+                className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+              >
+                Clear filter — show all users
+              </button>
+            )}
+          </div>
           <p className="mb-4 text-sm text-slate-500">
-            Every time a buyer or builder unlocks an owner's contact details, it's logged here — {ownerContactAccess.length} record{ownerContactAccess.length === 1 ? '' : 's'}, newest first.
+            {ownerContactAccessFilterKey
+              ? `${ownerContactAccessFilteredLog.length} propert${ownerContactAccessFilteredLog.length === 1 ? 'y' : 'ies'} accessed by this user, newest first.`
+              : `Every time a buyer or builder unlocks an owner's contact details, it's logged here — ${ownerContactAccess.length} record${ownerContactAccess.length === 1 ? '' : 's'}, newest first.`}
           </p>
-          {ownerContactAccess.length === 0 ? (
+          {ownerContactAccessFilteredLog.length === 0 ? (
             <p className="text-sm text-gray-500">No owner contact has been accessed yet.</p>
           ) : (
             <div className="max-h-[620px] overflow-y-auto pr-2">
@@ -2154,7 +2194,7 @@ const AdminPanel: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {ownerContactAccess.map((entry) => (
+                  {ownerContactAccessFilteredLog.map((entry) => (
                     <tr key={entry._id} className="border-b border-slate-100">
                       <td className="py-2 pr-3 font-semibold text-slate-900">{entry.buyerName || '-'}</td>
                       <td className="py-2 pr-3 text-slate-600">{entry.buyerPhone || entry.buyerEmail || '-'}</td>
