@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Check, Eye, Filter, Mail, MapPin, MessageCircle, Pencil, Phone, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
@@ -254,6 +254,37 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     applyFilters();
   }, [properties, filters]);
+
+  const ownerContactAccessSummary = useMemo(() => {
+    const byBuyer = new Map<string, { buyerName: string; buyerPhone: string; buyerEmail: string; buyerAccountType: string; properties: Set<string>; totalAccesses: number; lastAccessedAt: string }>();
+
+    ownerContactAccess.forEach((entry) => {
+      const key = entry.buyerPhone || entry.buyerEmail || entry.buyerName || 'unknown';
+      const existing = byBuyer.get(key);
+      const propertyKey = String(entry.propertyId || entry._id);
+      if (existing) {
+        existing.properties.add(propertyKey);
+        existing.totalAccesses += 1;
+        if (!existing.lastAccessedAt || new Date(entry.accessedAt) > new Date(existing.lastAccessedAt)) {
+          existing.lastAccessedAt = entry.accessedAt;
+        }
+      } else {
+        byBuyer.set(key, {
+          buyerName: entry.buyerName || '-',
+          buyerPhone: entry.buyerPhone || '',
+          buyerEmail: entry.buyerEmail || '',
+          buyerAccountType: entry.buyerAccountType || '',
+          properties: new Set([propertyKey]),
+          totalAccesses: 1,
+          lastAccessedAt: entry.accessedAt
+        });
+      }
+    });
+
+    return Array.from(byBuyer.values())
+      .map((row) => ({ ...row, propertiesCount: row.properties.size }))
+      .sort((a, b) => b.propertiesCount - a.propertiesCount);
+  }, [ownerContactAccess]);
 
   const fetchPendingProperties = async () => {
     setLoading(true);
@@ -2070,7 +2101,40 @@ const AdminPanel: React.FC = () => {
         </div>
 
         <div className={`${activeAdminPage === 'ownerContactAccess' ? 'block' : 'hidden'} bg-white rounded-lg shadow-sm p-6 mb-6`}>
-          <h2 className="text-xl font-semibold mb-4">Owner Contact Access</h2>
+          <h2 className="text-xl font-semibold mb-4">Owner Contact Access — By User</h2>
+          <p className="mb-4 text-sm text-slate-500">How many distinct properties' owner contacts each user has accessed.</p>
+          {ownerContactAccessSummary.length === 0 ? (
+            <p className="mb-6 text-sm text-gray-500">No owner contact has been accessed yet.</p>
+          ) : (
+            <div className="mb-6 max-h-[320px] overflow-y-auto pr-2">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">User</th>
+                    <th className="py-2 pr-3">Contact</th>
+                    <th className="py-2 pr-3">Account Type</th>
+                    <th className="py-2 pr-3">Properties Accessed</th>
+                    <th className="py-2 pr-3">Total Unlocks</th>
+                    <th className="py-2 pr-3">Last Accessed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ownerContactAccessSummary.map((row) => (
+                    <tr key={row.buyerPhone || row.buyerEmail || row.buyerName} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-semibold text-slate-900">{row.buyerName || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-600">{row.buyerPhone || row.buyerEmail || '-'}</td>
+                      <td className="py-2 pr-3 capitalize text-slate-600">{row.buyerAccountType || '-'}</td>
+                      <td className="py-2 pr-3 font-semibold text-teal-700">{row.propertiesCount}</td>
+                      <td className="py-2 pr-3 text-slate-600">{row.totalAccesses}</td>
+                      <td className="py-2 pr-3 text-slate-600">{formatRegistrationDate(row.lastAccessedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <h2 className="text-xl font-semibold mb-4">Owner Contact Access — Full Log</h2>
           <p className="mb-4 text-sm text-slate-500">
             Every time a buyer or builder unlocks an owner's contact details, it's logged here — {ownerContactAccess.length} record{ownerContactAccess.length === 1 ? '' : 's'}, newest first.
           </p>
