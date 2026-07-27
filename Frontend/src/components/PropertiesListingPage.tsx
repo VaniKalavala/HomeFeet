@@ -1945,7 +1945,7 @@ const PropertiesListingPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="h-[1150px] overflow-y-auto rounded-2xl bg-white p-2.5 shadow-sm sm:p-3">
+            <div className="rounded-2xl bg-white p-2.5 shadow-sm sm:p-3 md:h-[1150px] md:overflow-y-auto">
             <div className="flex flex-wrap content-start gap-3">
               {loading && Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-44 w-full animate-pulse rounded-xl bg-white shadow-sm sm:w-[calc(50%-6px)]" />
