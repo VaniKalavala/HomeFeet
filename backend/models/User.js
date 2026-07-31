@@ -120,7 +120,7 @@ const userSchema = new mongoose.Schema({
   },
   ownerPlanTier: {
     type: String,
-    enum: ['none', 'basic', 'premium_plus', 'assist', 'super_assist'],
+    enum: ['none', 'basic', 'standard', 'premium'],
     default: 'none'
   },
   ownerPlanExpiresAt: {

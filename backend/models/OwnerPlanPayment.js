@@ -9,7 +9,7 @@ const ownerPlanPaymentSchema = new mongoose.Schema({
   },
   tier: {
     type: String,
-    enum: ['basic', 'premium_plus', 'assist', 'super_assist'],
+    enum: ['basic', 'standard', 'premium'],
     required: true
   },
   amount: {
