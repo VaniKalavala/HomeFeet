@@ -472,8 +472,8 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    if (!['owner', 'mediator'].includes(accountType)) {
-      setMessage('These plans are available for Owner and Agent (Mediator) accounts only.');
+    if (!['owner', 'mediator', 'builder'].includes(accountType)) {
+      setMessage('These plans are available for Owner, Agent (Mediator), and Builder accounts only.');
       return;
     }
 
