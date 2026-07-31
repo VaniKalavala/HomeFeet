@@ -6,7 +6,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
-const { merchantKey, payuBaseUrl, isPayuConfigured, generateRequestHash, verifyResponseHash } = require('../config/payu.config');
+const { keyId, keySecret, razorpayApi, isRazorpayConfigured } = require('../config/razorpay.config');
 
 const User = require('../models/User');
 const OTP = require('../models/OTP');
@@ -577,42 +577,6 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-const apiPublicOrigin = (req) =>
-  (process.env.API_PUBLIC_ORIGIN || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-
-const frontendOrigin = () =>
-  (process.env.FRONTEND_ORIGIN || 'https://www.homefeet.in').replace(/\/$/, '');
-
-const sanitizePayuField = (value = '') => String(value || '').replace(/\|/g, '').trim();
-
-const buildPayuOrder = ({ req, txnid, price, productinfo, user, udf1, udf2 = '' }) => {
-  const amount = Number(price).toFixed(2);
-  const firstname = sanitizePayuField(user.firstName) || 'HomeFeet User';
-  const email = sanitizePayuField(user.email) || `${sanitizePayuField(user.phone) || 'user'}@homefeet.in`;
-  const phone = sanitizePayuField(user.phone);
-  const callbackUrl = `${apiPublicOrigin(req)}/api/payu/callback`;
-  const hash = generateRequestHash({ txnid, amount, productinfo, firstname, email, udf1, udf2 });
-
-  return {
-    payuUrl: payuBaseUrl,
-    params: {
-      key: merchantKey,
-      txnid,
-      amount,
-      productinfo,
-      firstname,
-      email,
-      phone,
-      surl: callbackUrl,
-      furl: callbackUrl,
-      udf1,
-      udf2,
-      hash,
-      service_provider: 'payu_paisa'
-    }
-  };
-};
-
 router.post('/membership-order', async (req, res) => {
   try {
     const user = await requireUser(req, res);
@@ -622,7 +586,7 @@ router.post('/membership-order', async (req, res) => {
       return res.status(403).json({ message: 'Only owner, builder, mediator, and buyer accounts can subscribe' });
     }
 
-    const { plan, membershipAudience, redirectTo } = req.body;
+    const { plan, membershipAudience } = req.body;
     const expectedAudience = subscriptionAudienceForAccount(user.accountType);
     if (membershipAudience && membershipAudience !== expectedAudience) {
       return res.status(403).json({
@@ -637,40 +601,108 @@ router.post('/membership-order', async (req, res) => {
       return res.status(400).json({ message: 'Please select a valid 3, 6, or 12 month plan' });
     }
 
-    if (!isPayuConfigured()) {
-      return res.status(500).json({ message: 'PayU credentials are not configured' });
+    if (!isRazorpayConfigured()) {
+      return res.status(500).json({ message: 'Razorpay credentials are not configured' });
     }
 
-    const txnid = `membership_${plan}_${user._id}_${Date.now()}`.slice(0, 40);
-    const safeRedirectTo = typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '';
-    const { payuUrl, params } = buildPayuOrder({
-      req,
-      txnid,
-      price: subscriptionPrices[plan],
-      productinfo: `${plan.replace('_', ' ')} Membership`,
-      user,
-      udf1: 'membership',
-      udf2: safeRedirectTo
+    const amount = subscriptionPrices[plan] * 100;
+    const receipt = `membership_${plan}_${user._id}_${Date.now()}`.slice(0, 40);
+    const response = await razorpayApi.post('/orders', {
+      amount,
+      currency: 'INR',
+      receipt,
+      notes: {
+        plan,
+        membershipAudience: expectedAudience,
+        accountType: user.accountType,
+        userId: String(user._id),
+        phone: user.phone || ''
+      }
     });
 
     await MembershipPayment.create({
       user: user._id,
       plan,
-      amount: subscriptionPrices[plan],
+      amount,
       currency: 'INR',
-      payuTxnId: txnid,
+      razorpayOrderId: response.data.id,
       status: 'created'
     });
 
-    res.json({ success: true, payuUrl, params, plan, amount: subscriptionPrices[plan] });
+    res.json({
+      success: true,
+      keyId,
+      order: response.data,
+      plan,
+      amount
+    });
   } catch (err) {
-    console.error('Membership order error:', err.message || err);
+    const razorpayError = err.response?.data?.error;
+    console.error('Membership order error:', razorpayError || err.message || err);
 
     if (err.name === 'MongooseError' || err.name === 'MongoServerSelectionError') {
       return res.status(503).json({ message: 'Database connection is not ready. Please try again in a moment.' });
     }
 
-    res.status(500).json({ message: 'Failed to create PayU order' });
+    if (razorpayError?.description === 'Authentication failed') {
+      return res.status(err.response?.status || 502).json({
+        message: 'Razorpay authentication failed. Please use a matching Razorpay key id and secret, then restart the backend server.'
+      });
+    }
+
+    if (razorpayError?.description) {
+      return res.status(err.response?.status || 502).json({ message: razorpayError.description });
+    }
+
+    res.status(500).json({ message: 'Failed to create Razorpay order' });
+  }
+});
+
+router.post('/membership-payment/verify', async (req, res) => {
+  try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing Razorpay payment verification data' });
+    }
+
+    if (!keySecret) {
+      return res.status(500).json({ message: 'Razorpay credentials are not configured' });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Razorpay payment verification failed' });
+    }
+
+    const payment = await MembershipPayment.findOne({
+      razorpayOrderId: razorpay_order_id,
+      user: user._id,
+      status: 'created'
+    });
+    if (!payment) {
+      return res.status(400).json({ message: 'Matching pending membership order was not found' });
+    }
+
+    payment.razorpayPaymentId = razorpay_payment_id;
+    payment.status = 'paid';
+    payment.paidAt = new Date();
+    await payment.save();
+
+    user.builderSubscriptionPlan = payment.plan;
+    user.builderSubscriptionExpiresAt = subscriptionExpiry(payment.plan);
+    await user.save();
+
+    res.json({ success: true, user: publicUser(user) });
+  } catch (err) {
+    console.error('Membership payment verify error:', err);
+    res.status(500).json({ message: 'Failed to verify Razorpay payment' });
   }
 });
 
@@ -689,38 +721,107 @@ router.post('/owner-plan-order', async (req, res) => {
       return res.status(400).json({ message: 'Please select a valid plan' });
     }
 
-    if (!isPayuConfigured()) {
-      return res.status(500).json({ message: 'PayU credentials are not configured' });
+    if (!isRazorpayConfigured()) {
+      return res.status(500).json({ message: 'Razorpay credentials are not configured' });
     }
 
-    const txnid = `ownerplan_${tier}_${user._id}_${Date.now()}`.slice(0, 40);
-    const { payuUrl, params } = buildPayuOrder({
-      req,
-      txnid,
-      price: planConfig.price,
-      productinfo: `${planConfig.label} Plan`,
-      user,
-      udf1: 'ownerplan'
+    const amount = planConfig.price * 100;
+    const receipt = `ownerplan_${tier}_${user._id}_${Date.now()}`.slice(0, 40);
+    const response = await razorpayApi.post('/orders', {
+      amount,
+      currency: 'INR',
+      receipt,
+      notes: {
+        tier,
+        accountType: user.accountType,
+        userId: String(user._id),
+        phone: user.phone || ''
+      }
     });
 
     await OwnerPlanPayment.create({
       user: user._id,
       tier,
-      amount: planConfig.price,
+      amount,
       currency: 'INR',
-      payuTxnId: txnid,
+      razorpayOrderId: response.data.id,
       status: 'created'
     });
 
-    res.json({ success: true, payuUrl, params, tier, amount: planConfig.price });
+    res.json({
+      success: true,
+      keyId,
+      order: response.data,
+      tier,
+      amount
+    });
   } catch (err) {
-    console.error('Owner plan order error:', err.message || err);
+    const razorpayError = err.response?.data?.error;
+    console.error('Owner plan order error:', razorpayError || err.message || err);
 
     if (err.name === 'MongooseError' || err.name === 'MongoServerSelectionError') {
       return res.status(503).json({ message: 'Database connection is not ready. Please try again in a moment.' });
     }
 
-    res.status(500).json({ message: 'Failed to create PayU order' });
+    if (razorpayError?.description === 'Authentication failed') {
+      return res.status(err.response?.status || 502).json({
+        message: 'Razorpay authentication failed. Please use a matching Razorpay key id and secret, then restart the backend server.'
+      });
+    }
+
+    if (razorpayError?.description) {
+      return res.status(err.response?.status || 502).json({ message: razorpayError.description });
+    }
+
+    res.status(500).json({ message: 'Failed to create Razorpay order' });
+  }
+});
+
+router.post('/owner-plan-payment/verify', async (req, res) => {
+  try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing Razorpay payment verification data' });
+    }
+
+    if (!keySecret) {
+      return res.status(500).json({ message: 'Razorpay credentials are not configured' });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Razorpay payment verification failed' });
+    }
+
+    const payment = await OwnerPlanPayment.findOne({
+      razorpayOrderId: razorpay_order_id,
+      user: user._id,
+      status: 'created'
+    });
+    if (!payment) {
+      return res.status(400).json({ message: 'Matching pending plan order was not found' });
+    }
+
+    payment.razorpayPaymentId = razorpay_payment_id;
+    payment.status = 'paid';
+    payment.paidAt = new Date();
+    await payment.save();
+
+    user.ownerPlanTier = payment.tier;
+    user.ownerPlanExpiresAt = ownerPlanExpiry(payment.tier);
+    await user.save();
+
+    res.json({ success: true, user: publicUser(user) });
+  } catch (err) {
+    console.error('Owner plan payment verify error:', err);
+    res.status(500).json({ message: 'Failed to verify Razorpay payment' });
   }
 });
 
@@ -739,109 +840,107 @@ router.post('/buyer-contact-order', async (req, res) => {
       return res.status(400).json({ message: 'Please select a valid contact pack' });
     }
 
-    if (!isPayuConfigured()) {
-      return res.status(500).json({ message: 'PayU credentials are not configured' });
+    if (!isRazorpayConfigured()) {
+      return res.status(500).json({ message: 'Razorpay credentials are not configured' });
     }
 
-    const txnid = `buyerpack_${packConfig.count}_${user._id}_${Date.now()}`.slice(0, 40);
-    const { payuUrl, params } = buildPayuOrder({
-      req,
-      txnid,
-      price: packConfig.price,
-      productinfo: `Contact Access - ${packConfig.label}`,
-      user,
-      udf1: 'buyercontact'
+    const amount = packConfig.price * 100;
+    const receipt = `buyerpack_${packConfig.count}_${user._id}_${Date.now()}`.slice(0, 40);
+    const response = await razorpayApi.post('/orders', {
+      amount,
+      currency: 'INR',
+      receipt,
+      notes: {
+        packSize: String(packConfig.count),
+        accountType: user.accountType,
+        userId: String(user._id),
+        phone: user.phone || ''
+      }
     });
 
     await BuyerContactPayment.create({
       user: user._id,
       packSize: packConfig.count,
-      amount: packConfig.price,
+      amount,
       currency: 'INR',
-      payuTxnId: txnid,
+      razorpayOrderId: response.data.id,
       status: 'created'
     });
 
-    res.json({ success: true, payuUrl, params, packSize: packConfig.count, amount: packConfig.price });
+    res.json({
+      success: true,
+      keyId,
+      order: response.data,
+      packSize: packConfig.count,
+      amount
+    });
   } catch (err) {
-    console.error('Buyer contact pack order error:', err.message || err);
+    const razorpayError = err.response?.data?.error;
+    console.error('Buyer contact pack order error:', razorpayError || err.message || err);
 
     if (err.name === 'MongooseError' || err.name === 'MongoServerSelectionError') {
       return res.status(503).json({ message: 'Database connection is not ready. Please try again in a moment.' });
     }
 
-    res.status(500).json({ message: 'Failed to create PayU order' });
+    if (razorpayError?.description === 'Authentication failed') {
+      return res.status(err.response?.status || 502).json({
+        message: 'Razorpay authentication failed. Please use a matching Razorpay key id and secret, then restart the backend server.'
+      });
+    }
+
+    if (razorpayError?.description) {
+      return res.status(err.response?.status || 502).json({ message: razorpayError.description });
+    }
+
+    res.status(500).json({ message: 'Failed to create Razorpay order' });
   }
 });
 
-// PayU posts here directly (both on success and failure) after the user completes checkout on
-// PayU's hosted page. Not behind requireUser/JWT - this is a server-to-server-via-browser
-// redirect from PayU, authenticated by the hash signature instead.
-router.post('/payu/callback', express.urlencoded({ extended: true }), async (req, res) => {
-  const origin = frontendOrigin();
-  const { txnid, amount, productinfo, firstname, email, status, udf1, udf2, hash, mihpayid } = req.body;
-
-  const redirectWithStatus = (finalStatus, extra = {}) => {
-    const target = new URL(`${origin}/payment-status`);
-    target.searchParams.set('status', finalStatus);
-    if (udf1) target.searchParams.set('type', udf1);
-    Object.entries(extra).forEach(([key, value]) => { if (value) target.searchParams.set(key, value); });
-    return res.redirect(302, target.toString());
-  };
-
+router.post('/buyer-contact-payment/verify', async (req, res) => {
   try {
-    if (!verifyResponseHash({ status, udf1, udf2, email, firstname, productinfo, amount, txnid }, hash)) {
-      console.error('PayU callback hash mismatch for txnid', txnid);
-      return redirectWithStatus('failed', { reason: 'invalid_signature' });
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing Razorpay payment verification data' });
     }
 
-    const Model = { membership: MembershipPayment, ownerplan: OwnerPlanPayment, buyercontact: BuyerContactPayment }[udf1];
-    if (!Model) return redirectWithStatus('failed', { reason: 'unknown_flow' });
-
-    const payment = await Model.findOne({ payuTxnId: txnid });
-    if (!payment) return redirectWithStatus('failed', { reason: 'not_found' });
-
-    if (payment.status !== 'created') {
-      // Duplicate PayU callback for an already-processed payment - report the stored outcome idempotently.
-      return redirectWithStatus(payment.status === 'paid' ? 'success' : 'failed', { redirectTo: udf2 });
+    if (!keySecret) {
+      return res.status(500).json({ message: 'Razorpay credentials are not configured' });
     }
 
-    if (status === 'success') {
-      payment.payuMihpayid = mihpayid || '';
-      payment.status = 'paid';
-      payment.paidAt = new Date();
-      await payment.save();
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
 
-      const user = await User.findById(payment.user);
-      if (user) {
-        if (udf1 === 'membership') {
-          user.builderSubscriptionPlan = payment.plan;
-          user.builderSubscriptionExpiresAt = subscriptionExpiry(payment.plan);
-        } else if (udf1 === 'ownerplan') {
-          user.ownerPlanTier = payment.tier;
-          user.ownerPlanExpiresAt = ownerPlanExpiry(payment.tier);
-        } else if (udf1 === 'buyercontact') {
-          user.buyerContactCredits = (user.buyerContactCredits || 0) + payment.packSize;
-        }
-        await user.save();
-      }
-
-      return redirectWithStatus('success', { redirectTo: udf2 });
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Razorpay payment verification failed' });
     }
 
-    payment.status = 'failed';
+    const payment = await BuyerContactPayment.findOne({
+      razorpayOrderId: razorpay_order_id,
+      user: user._id,
+      status: 'created'
+    });
+    if (!payment) {
+      return res.status(400).json({ message: 'Matching pending order was not found' });
+    }
+
+    payment.razorpayPaymentId = razorpay_payment_id;
+    payment.status = 'paid';
+    payment.paidAt = new Date();
     await payment.save();
-    return redirectWithStatus('failed', { redirectTo: udf2 });
-  } catch (err) {
-    console.error('PayU callback error:', err);
-    return redirectWithStatus('failed', { reason: 'server_error' });
-  }
-});
 
-router.get('/me', async (req, res) => {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  res.json({ success: true, user: publicUser(user) });
+    user.buyerContactCredits = (user.buyerContactCredits || 0) + payment.packSize;
+    await user.save();
+
+    res.json({ success: true, user: publicUser(user) });
+  } catch (err) {
+    console.error('Buyer contact payment verify error:', err);
+    res.status(500).json({ message: 'Failed to verify Razorpay payment' });
+  }
 });
 
 router.post('/builder-subscription', async (req, res) => {

@@ -9,7 +9,7 @@ const ownerPlanPaymentSchema = new mongoose.Schema({
   },
   tier: {
     type: String,
-    enum: ['basic', 'standard', 'premium'],
+    enum: ['basic', 'premium_plus', 'assist', 'super_assist'],
     required: true
   },
   amount: {
@@ -20,13 +20,13 @@ const ownerPlanPaymentSchema = new mongoose.Schema({
     type: String,
     default: 'INR'
   },
-  payuTxnId: {
+  razorpayOrderId: {
     type: String,
     required: true,
     unique: true,
     index: true
   },
-  payuMihpayid: {
+  razorpayPaymentId: {
     type: String,
     default: ''
   },

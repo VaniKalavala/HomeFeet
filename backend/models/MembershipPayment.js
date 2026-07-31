@@ -20,13 +20,13 @@ const membershipPaymentSchema = new mongoose.Schema({
     type: String,
     default: 'INR'
   },
-  payuTxnId: {
+  razorpayOrderId: {
     type: String,
     required: true,
     unique: true,
     index: true
   },
-  payuMihpayid: {
+  razorpayPaymentId: {
     type: String,
     default: ''
   },

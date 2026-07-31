@@ -27,7 +27,7 @@ import {
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getBuilderLogo, getProjectConfiguration, getProjectImage, getProjectPriceRange } from '../lib/happeningProjects';
 import LoginModal from './LoginModal';
-import { submitPayuForm } from '../lib/payu';
+import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
 
 const BUYER_CONTACT_PACKS = [
   { packSize: 1, price: 199, label: '1 Property' },
@@ -772,6 +772,19 @@ const PropertiesListingPage: React.FC = () => {
     }
   };
 
+  const loadRazorpayCheckout = () =>
+    new Promise<void>((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = RAZORPAY_CHECKOUT_URL;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Unable to load Razorpay Checkout'));
+      document.body.appendChild(script);
+    });
+
   const handleBuyPack = async (pack: { packSize: number; price: number; label: string }) => {
     if (loadingPack) return;
     const token = localStorage.getItem('token');
@@ -784,18 +797,68 @@ const PropertiesListingPage: React.FC = () => {
     setPackPurchaseMessage('');
 
     try {
+      await loadRazorpayCheckout();
+
       const orderResponse = await fetch(`${API_BASE}/buyer-contact-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ packSize: pack.packSize })
       });
       const orderData = await orderResponse.json();
-      if (!orderResponse.ok) throw new Error(orderData.message || 'Failed to create PayU order');
+      if (!orderResponse.ok) throw new Error(orderData.message || 'Failed to create Razorpay order');
+      if (!window.Razorpay) throw new Error('Razorpay Checkout is not available');
 
-      submitPayuForm(orderData.payuUrl, orderData.params);
+      const checkout = new window.Razorpay({
+        key: orderData.keyId || razorpayConfig.keyId,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency || 'INR',
+        name: razorpayConfig.businessName,
+        description: `Contact Access - ${pack.label}`,
+        image: `${window.location.origin}${razorpayConfig.logoPath}`,
+        order_id: orderData.order.id,
+        prefill: {
+          name: localStorage.getItem('name') || 'HomeFeet User',
+          email: localStorage.getItem('email') || '',
+          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
+        },
+        notes: {
+          packSize: String(pack.packSize),
+          address: razorpayConfig.notesAddress
+        },
+        theme: { color: razorpayConfig.themeColor },
+        handler: async (response) => {
+          try {
+            const verifyResponse = await fetch(`${API_BASE}/buyer-contact-payment/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+              body: JSON.stringify(response)
+            });
+            const verifyData = await verifyResponse.json();
+            if (!verifyResponse.ok) throw new Error(verifyData.message || 'Payment verification failed');
+
+            localStorage.setItem('buyerContactCredits', String(verifyData.user.buyerContactCredits || 0));
+            localStorage.setItem('buyerFreeContactUsed', String(Boolean(verifyData.user.buyerFreeContactUsed)));
+            setPackPurchaseMessage(`Payment successful. You now have ${verifyData.user.buyerContactCredits || 0} contact-reveal credit(s).`);
+            if (contactModalProperty) {
+              await handleCardContact(contactModalProperty);
+            }
+          } catch (error) {
+            setPackPurchaseMessage(error instanceof Error ? error.message : 'Payment verification failed');
+          } finally {
+            setLoadingPack(0);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setLoadingPack(0);
+          }
+        }
+      });
+
+      checkout.open();
     } catch (error) {
       setLoadingPack(0);
-      setPackPurchaseMessage(error instanceof Error ? error.message : 'Unable to start PayU payment');
+      setPackPurchaseMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
     }
   };
 

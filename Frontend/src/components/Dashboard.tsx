@@ -4,7 +4,7 @@ import { AlertCircle, Check, KeyRound, MapPin, Pencil, X } from 'lucide-react';
 import ListingsSidebar from './ListingsSidebar';
 import LoginModal from './LoginModal';
 import { API_BASE, API_ORIGIN } from '../lib/api';
-import { submitPayuForm } from '../lib/payu';
+import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
 import { isAdminUser } from '../lib/admin';
 
 type PlanTier = {
@@ -450,6 +450,19 @@ const Dashboard: React.FC = () => {
   const isActiveTier = (tierValue: string) =>
     currentTier === tierValue && currentExpiresAt && new Date(currentExpiresAt) > new Date();
 
+  const loadRazorpayCheckout = () =>
+    new Promise<void>((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = RAZORPAY_CHECKOUT_URL;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Unable to load Razorpay Checkout'));
+      document.body.appendChild(script);
+    });
+
   const handleUpgrade = async (tier: PlanTier) => {
     if (paymentInProgressRef.current) return;
 
@@ -469,6 +482,8 @@ const Dashboard: React.FC = () => {
     setMessage('');
 
     try {
+      await loadRazorpayCheckout();
+
       const orderResponse = await fetch(`${API_BASE}/owner-plan-order`, {
         method: 'POST',
         headers: {
@@ -479,14 +494,72 @@ const Dashboard: React.FC = () => {
       });
       const orderData = await orderResponse.json();
       if (!orderResponse.ok) {
-        throw new Error(orderData.message || 'Failed to create PayU order');
+        throw new Error(orderData.message || 'Failed to create Razorpay order');
+      }
+      if (!window.Razorpay) {
+        throw new Error('Razorpay Checkout is not available');
       }
 
-      submitPayuForm(orderData.payuUrl, orderData.params);
+      const checkout = new window.Razorpay({
+        key: orderData.keyId || razorpayConfig.keyId,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency || 'INR',
+        name: razorpayConfig.businessName,
+        description: `${tier.label} Plan`,
+        image: `${window.location.origin}${razorpayConfig.logoPath}`,
+        order_id: orderData.order.id,
+        prefill: {
+          name: localStorage.getItem('name') || 'HomeFeet User',
+          email: localStorage.getItem('email') || '',
+          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
+        },
+        notes: {
+          tier: tier.value,
+          address: razorpayConfig.notesAddress
+        },
+        theme: {
+          color: razorpayConfig.themeColor
+        },
+        handler: async (response) => {
+          try {
+            const verifyResponse = await fetch(`${API_BASE}/owner-plan-payment/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('token') || ''}`
+              },
+              body: JSON.stringify(response)
+            });
+            const verifyData = await verifyResponse.json();
+            if (!verifyResponse.ok) {
+              throw new Error(verifyData.message || 'Payment verification failed');
+            }
+
+            localStorage.setItem('ownerPlanTier', verifyData.user.ownerPlanTier || 'none');
+            localStorage.setItem('ownerPlanExpiresAt', verifyData.user.ownerPlanExpiresAt || '');
+            setCurrentTier(verifyData.user.ownerPlanTier || 'none');
+            setCurrentExpiresAt(verifyData.user.ownerPlanExpiresAt || '');
+            setMessage('Payment successful. Your plan is now active.');
+          } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'Payment verification failed');
+          } finally {
+            paymentInProgressRef.current = false;
+            setLoadingTier('');
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            paymentInProgressRef.current = false;
+            setLoadingTier('');
+          }
+        }
+      });
+
+      checkout.open();
     } catch (error) {
       paymentInProgressRef.current = false;
       setLoadingTier('');
-      setMessage(error instanceof Error ? error.message : 'Unable to start PayU payment');
+      setMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
     }
   };
 
@@ -503,19 +576,70 @@ const Dashboard: React.FC = () => {
     setBuyerPlanMessage('');
 
     try {
+      await loadRazorpayCheckout();
+
       const orderResponse = await fetch(`${API_BASE}/buyer-contact-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ packSize: pack.packSize })
       });
       const orderData = await orderResponse.json();
-      if (!orderResponse.ok) throw new Error(orderData.message || 'Failed to create PayU order');
+      if (!orderResponse.ok) throw new Error(orderData.message || 'Failed to create Razorpay order');
+      if (!window.Razorpay) throw new Error('Razorpay Checkout is not available');
 
-      submitPayuForm(orderData.payuUrl, orderData.params);
+      const checkout = new window.Razorpay({
+        key: orderData.keyId || razorpayConfig.keyId,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency || 'INR',
+        name: razorpayConfig.businessName,
+        description: `Contact Access - ${pack.label}`,
+        image: `${window.location.origin}${razorpayConfig.logoPath}`,
+        order_id: orderData.order.id,
+        prefill: {
+          name: localStorage.getItem('name') || 'HomeFeet User',
+          email: localStorage.getItem('email') || '',
+          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
+        },
+        notes: {
+          packSize: String(pack.packSize),
+          address: razorpayConfig.notesAddress
+        },
+        theme: { color: razorpayConfig.themeColor },
+        handler: async (response) => {
+          try {
+            const verifyResponse = await fetch(`${API_BASE}/buyer-contact-payment/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+              body: JSON.stringify(response)
+            });
+            const verifyData = await verifyResponse.json();
+            if (!verifyResponse.ok) throw new Error(verifyData.message || 'Payment verification failed');
+
+            localStorage.setItem('buyerContactCredits', String(verifyData.user.buyerContactCredits || 0));
+            localStorage.setItem('buyerFreeContactUsed', String(Boolean(verifyData.user.buyerFreeContactUsed)));
+            setBuyerContactCredits(verifyData.user.buyerContactCredits || 0);
+            setBuyerFreeContactUsed(Boolean(verifyData.user.buyerFreeContactUsed));
+            setBuyerPlanMessage(`Payment successful. You now have ${verifyData.user.buyerContactCredits || 0} contact-reveal credit(s).`);
+          } catch (error) {
+            setBuyerPlanMessage(error instanceof Error ? error.message : 'Payment verification failed');
+          } finally {
+            buyerPaymentInProgressRef.current = false;
+            setLoadingPack(0);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            buyerPaymentInProgressRef.current = false;
+            setLoadingPack(0);
+          }
+        }
+      });
+
+      checkout.open();
     } catch (error) {
       buyerPaymentInProgressRef.current = false;
       setLoadingPack(0);
-      setBuyerPlanMessage(error instanceof Error ? error.message : 'Unable to start PayU payment');
+      setBuyerPlanMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
     }
   };
 

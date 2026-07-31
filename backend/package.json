@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check:payu": "node scripts/check-payu-config.js"
+    "check:razorpay": "node scripts/check-razorpay-config.js"
   },
   "license": "ISC",
   "engines": {
