@@ -20,13 +20,13 @@ const buyerContactPaymentSchema = new mongoose.Schema({
     type: String,
     default: 'INR'
   },
-  razorpayOrderId: {
+  payuTxnId: {
     type: String,
     required: true,
     unique: true,
     index: true
   },
-  razorpayPaymentId: {
+  payuMihpayid: {
     type: String,
     default: ''
   },

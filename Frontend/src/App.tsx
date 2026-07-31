@@ -28,6 +28,7 @@ import {
 
 import Navbar from './components/Navbar';
 import ResetPassword from './components/ResetPassword';
+import PaymentStatusPage from './components/PaymentStatusPage';
 import PostProperty from './components/PostProperty';
 import PostPropertyChoice from './components/PostPropertyChoice';
 import BuyerExpectedPropertyForm from './components/BuyerExpectedPropertyForm';
@@ -55,43 +56,8 @@ import SubscriptionPlansPage from './components/SubscriptionPlansPage';
 import ComparisonPage from './components/ComparisonPage';
 import AgentDirectory from './components/AgentDirectory';
 import AgentProfile from './components/AgentProfile';
-import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from './config/razorpay.config';
+import { submitPayuForm } from './lib/payu';
 import { API_BASE, API_ORIGIN } from './lib/api';
-
-type RazorpayCheckoutResponse = {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-};
-
-type RazorpayCheckoutOptions = {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  image?: string;
-  order_id: string;
-  prefill: {
-    name?: string;
-    email?: string;
-    contact?: string;
-  };
-  notes?: Record<string, string>;
-  theme?: {
-    color: string;
-  };
-  handler: (response: RazorpayCheckoutResponse) => void;
-  modal?: {
-    ondismiss?: () => void;
-  };
-};
-
-declare global {
-  interface Window {
-    Razorpay?: new (options: RazorpayCheckoutOptions) => { open: () => void };
-  }
-}
 
 type SeoConfig = {
   title: string;
@@ -3297,21 +3263,7 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
     window.scrollTo({ top: 0, left: 0 });
   }, []);
 
-  const loadRazorpayCheckout = () =>
-    new Promise<void>((resolve, reject) => {
-      if (window.Razorpay) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = RAZORPAY_CHECKOUT_URL;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Unable to load Razorpay Checkout'));
-      document.body.appendChild(script);
-    });
-
-  const openRazorpayCheckout = async (plan: typeof plans[number]) => {
+  const openPayuCheckout = async (plan: typeof plans[number]) => {
     if (paymentInProgressRef.current) return;
 
     const token = localStorage.getItem('token');
@@ -3335,87 +3287,23 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
     setMessage('');
 
     try {
-      await loadRazorpayCheckout();
-
       const orderResponse = await fetch(`${API_BASE}/membership-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ plan: plan.value, membershipAudience: selectedAudience })
+        body: JSON.stringify({ plan: plan.value, membershipAudience: selectedAudience, redirectTo })
       });
       const orderData = await orderResponse.json();
       if (!orderResponse.ok) {
-        throw new Error(orderData.message || 'Failed to create Razorpay order');
-      }
-      if (!window.Razorpay) {
-        throw new Error('Razorpay Checkout is not available');
+        throw new Error(orderData.message || 'Failed to create PayU order');
       }
 
-      const checkout = new window.Razorpay({
-        key: orderData.keyId || razorpayConfig.keyId,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency || 'INR',
-        name: razorpayConfig.businessName,
-        description: `${plan.label} Membership`,
-        image: `${window.location.origin}${razorpayConfig.logoPath}`,
-        order_id: orderData.order.id,
-        prefill: {
-          name: localStorage.getItem('name') || 'HomeFeet User',
-          email: localStorage.getItem('email') || '',
-          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
-        },
-        notes: {
-          plan: plan.value,
-          membershipAudience: selectedAudience,
-          redirectTo,
-          address: razorpayConfig.notesAddress
-        },
-        theme: {
-          color: razorpayConfig.themeColor
-        },
-        handler: async (response) => {
-          try {
-            const verifyResponse = await fetch(`${API_BASE}/membership-payment/verify`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem('token') || ''}`
-              },
-              body: JSON.stringify({
-                plan: plan.value,
-                ...response
-              })
-            });
-            const verifyData = await verifyResponse.json();
-            if (!verifyResponse.ok) {
-              throw new Error(verifyData.message || 'Payment verification failed');
-            }
-
-            localStorage.setItem('builderSubscriptionPlan', verifyData.user.builderSubscriptionPlan || 'none');
-            localStorage.setItem('builderSubscriptionExpiresAt', verifyData.user.builderSubscriptionExpiresAt || '');
-            setMessage('Payment successful. Membership activated.');
-            window.setTimeout(() => navigate(redirectTo), 800);
-          } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'Payment verification failed');
-          } finally {
-            paymentInProgressRef.current = false;
-            setLoadingPlan('');
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            paymentInProgressRef.current = false;
-            setLoadingPlan('');
-          }
-        }
-      });
-
-      checkout.open();
+      submitPayuForm(orderData.payuUrl, orderData.params);
     } catch (error) {
       paymentInProgressRef.current = false;
-      setMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
+      setMessage(error instanceof Error ? error.message : 'Unable to start PayU payment');
       setLoadingPlan('');
     }
   };
@@ -3433,7 +3321,7 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
       return;
     }
 
-    openRazorpayCheckout(plan);
+    openPayuCheckout(plan);
   };
 
   return (
@@ -3508,17 +3396,17 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
             disabled={Boolean(loadingPlan)}
             className="mx-auto mt-5 flex min-h-9 w-full max-w-[176px] items-center justify-center gap-2 rounded-lg bg-[#0877C9] px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#0665aa] disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loadingPlan ? 'Opening Razorpay...' : 'Subscribe Now'}
+            {loadingPlan ? 'Redirecting to PayU...' : 'Subscribe Now'}
             <ArrowRight className="h-4 w-4" />
           </button>
           <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-slate-600">
             <span>Secured by</span>
-            <span className="inline-flex items-center gap-0.5 font-black italic text-[#1f5fbf]">
-              <svg className="h-5 w-4" viewBox="0 0 64 80" aria-hidden="true">
-                <polygon points="6,72 24,40 37,35 24,72" fill="#0b2d5b" />
-                <polygon points="26,38 60,6 43,72 28,72 39,35 28,45" fill="#3395ff" />
+            <span className="inline-flex items-center gap-1 font-black italic text-[#0b3b7a]">
+              <svg className="h-5 w-5" viewBox="0 0 40 40" aria-hidden="true">
+                <circle cx="20" cy="20" r="20" fill="#0b3b7a" />
+                <path d="M12 28V12h6.5c3.6 0 6 2.2 6 5.6s-2.4 5.6-6 5.6H16v4.8h-4Zm4-8.4h2.2c1.6 0 2.6-1 2.6-2.4s-1-2.4-2.6-2.4H16v4.8Z" fill="#7ed957" />
               </svg>
-              Razorpay
+              PayU
             </span>
           </p>
         </div>
@@ -3541,7 +3429,7 @@ function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' 
             setShowLoginModal(false);
             if (selectedPlan) {
               const plan = plans.find((item) => item.value === selectedPlan);
-              if (plan) openRazorpayCheckout(plan);
+              if (plan) openPayuCheckout(plan);
             } else {
               setMessage('Please select a membership plan to continue.');
             }
@@ -3622,6 +3510,7 @@ function App() {
           <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
           <Route path="/refund-and-cancellation" element={<LegalPage type="refund" />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/payment-status" element={<PaymentStatusPage />} />
           <Route path="/post-property-options" element={<PostPropertyChoice />} />
           <Route path="/buyer-requirement" element={<BuyerExpectedPropertyForm />} />
           <Route path="/post-property-summary" element={<RequireLogin><PropertySummary /></RequireLogin>} />
