@@ -20,9 +20,11 @@ import {
   Download,
   Droplet,
   Dumbbell,
+  ExternalLink,
   Flower2,
   Heart,
   IndianRupee,
+  Layers,
   Lock,
   Mail,
   MapPin,
@@ -137,6 +139,8 @@ const PropertyDetails: React.FC = () => {
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const contactCardRef = useRef<HTMLDivElement | null>(null);
   const [activeBhkGroupIndex, setActiveBhkGroupIndex] = useState(0);
   const [isShortlisted, setIsShortlisted] = useState(false);
   const [shortlistLoading, setShortlistLoading] = useState(false);
@@ -403,12 +407,13 @@ const PropertyDetails: React.FC = () => {
   const apartmentLikeTypes = ['apartment', 'standalone', 'high-rise', 'gated-community', 'group-house'];
   const isApartmentLikeListing = apartmentLikeTypes.includes(String(property?.developmentType || '').toLowerCase());
 
-  const categoryDetails = property ? [
-    { label: 'Category', value: property.propertyCategory ? cleanType(property.propertyCategory) : '' },
-    { label: 'Property Type', value: cleanType(property.developmentType) },
-    { label: 'Total Area', value: property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '' },
-    { label: 'Facing', value: property.facing },
-  ].filter((item) => item.value) : [];
+  const heroAreaText = property
+    ? (property.flatSizeMin && property.flatSizeMax
+      ? `${property.flatSizeMin}–${property.flatSizeMax} Sq Ft`
+      : (property.totalArea && !isApartmentLikeListing
+        ? `${property.totalArea} ${property.areaUnit || ''}`
+        : (property.flatSize ? `${property.flatSize} Sq Ft` : '')))
+    : '';
 
   const details = property ? [
     { label: 'Project Name', value: property.projectName },
@@ -617,167 +622,246 @@ const PropertyDetails: React.FC = () => {
         </div>
 
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-          <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="relative h-72 bg-slate-200 md:h-96 lg:h-full lg:min-h-[420px]">
-              <img
-                src={heroImageUrl ? `${API_ORIGIN}${heroImageUrl}` : fallbackPropertyImage}
-                alt={title}
-                className={`h-full w-full ${isGeneratedDiagramHero ? 'bg-white object-contain p-4' : 'object-cover'}`}
-                onError={(e) => {
-                  e.currentTarget.src = fallbackPropertyImage;
-                  e.currentTarget.className = 'h-full w-full object-cover';
-                }}
-              />
-              <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-teal-800 shadow">
-                  <BadgeCheck className="h-4 w-4" /> Verified Listing
+          <div className="p-6 md:p-8">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {property.developmentType && (
+                <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800">
+                  {cleanType(property.developmentType)}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow">
-                  <ShieldCheck className="h-4 w-4" /> Admin Reviewed
+              )}
+              {property.zoningClassification && (
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
+                  {property.zoningClassification}
                 </span>
+              )}
+              <span
+                className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-800 shadow-sm"
+                title={`Property number ${propertyNumber(property)}`}
+              >
+                Property No: {propertyNumber(property)}
+              </span>
+            </div>
+
+            {/* Heading + builder logo badge */}
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">{title}</h1>
+              {property.companyLogoUrl && (
+                <img
+                  src={`${API_ORIGIN}${property.companyLogoUrl}`}
+                  alt={property.companyName || 'Builder logo'}
+                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 object-contain p-1"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              )}
+            </div>
+            {property.companyName && (
+              <p className="mt-1 text-sm font-semibold text-slate-600">By {property.companyName}</p>
+            )}
+
+            {/* Location block */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <MapPin className="h-4 w-4 shrink-0 text-teal-700" />
+              <span>{location}</span>
+              {property.map && (
+                <a
+                  href={property.map}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-bold text-teal-700 hover:text-teal-900"
+                  title="View on Map"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
+            {property.landmark && <p className="mt-1 text-sm text-slate-500">Near {property.landmark}</p>}
+            {(property.bedrooms || heroAreaText) && (
+              <p className="mt-1 text-sm font-semibold text-slate-700">
+                {[property.bedrooms, heroAreaText].filter(Boolean).join(' · ')}
+              </p>
+            )}
+
+            {/* Action row */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => contactCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
+              >
+                <Phone className="h-4 w-4" />
+                Request Callback
+              </button>
+              <a
+                href={whatsappShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Share on WhatsApp"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-green-700 transition hover:bg-green-50"
+              >
+                <Share2 className="h-4 w-4" />
+              </a>
+              <button
+                type="button"
+                onClick={toggleShortlist}
+                disabled={shortlistLoading}
+                title={isShortlisted ? 'Shortlisted' : 'Shortlist'}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  isShortlisted ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+                }`}
+              >
+                <Heart className={`h-4 w-4 ${isShortlisted ? 'fill-rose-600' : ''}`} />
+              </button>
+            </div>
+
+            {/* Gallery: large hero image + thumbnail row */}
+            <div className="mt-5">
+              <div className="relative h-72 overflow-hidden rounded-lg bg-slate-200 md:h-[420px]">
+                <img
+                  src={heroImageUrl ? `${API_ORIGIN}${heroImageUrl}` : fallbackPropertyImage}
+                  alt={title}
+                  className={`h-full w-full ${isGeneratedDiagramHero ? 'bg-white object-contain p-4' : 'object-cover'}`}
+                  onError={(e) => {
+                    e.currentTarget.src = fallbackPropertyImage;
+                    e.currentTarget.className = 'h-full w-full object-cover';
+                  }}
+                />
+                <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-teal-800 shadow">
+                    <BadgeCheck className="h-4 w-4" /> Verified Listing
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow">
+                    <ShieldCheck className="h-4 w-4" /> Admin Reviewed
+                  </span>
+                </div>
               </div>
               {galleryImages.length > 1 && (
-                <div className="absolute bottom-3 left-3 right-3 flex gap-2 overflow-x-auto">
-                  {galleryImages.map((url, index) => (
-                    <button
-                      key={url}
-                      type="button"
-                      onClick={() => setActiveImageIndex(index)}
-                      className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${
-                        index === activeImageIndex ? 'border-teal-500' : 'border-white/70'
-                      }`}
-                    >
-                      <img
-                        src={`${API_ORIGIN}${url}`}
-                        alt={`${title} photo ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </button>
-                  ))}
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  {galleryImages.slice(0, 4).map((url, index) => {
+                    const remaining = galleryImages.length - 4;
+                    const isLastVisible = index === 3 && remaining > 0;
+                    return (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => setActiveImageIndex(index)}
+                        className={`relative aspect-square overflow-hidden rounded-lg border-2 ${
+                          index === activeImageIndex ? 'border-teal-500' : 'border-transparent'
+                        }`}
+                      >
+                        <img
+                          src={`${API_ORIGIN}${url}`}
+                          alt={`${title} photo ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {isLastVisible && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-black text-white">
+                            +{remaining}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            <div className="p-6 md:p-8">
-              <div className="mb-4 flex flex-wrap gap-2">
-                {property.developmentType && (
-                  <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800">
-                    {cleanType(property.developmentType)}
-                  </span>
-                )}
-                {property.zoningClassification && (
-                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
-                    {property.zoningClassification}
-                  </span>
-                )}
-                <span
-                  className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-800 shadow-sm"
-                  title={`Property number ${propertyNumber(property)}`}
-                >
-                  Property No: {propertyNumber(property)}
-                </span>
-              </div>
-
-              <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">{title}</h1>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-teal-700" />
-                  {location}
-                </span>
-                {property.map && (
-                  <a href={property.map} target="_blank" rel="noopener noreferrer" className="font-bold text-teal-700 hover:text-teal-900">
-                    View on Map
-                  </a>
-                )}
-                {property && (
-                  <a href={whatsappShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-green-700 hover:text-green-900">
-                    <Share2 className="h-4 w-4" />
-                    Share on WhatsApp
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={toggleShortlist}
-                  disabled={shortlistLoading}
-                  className={`inline-flex items-center gap-1 font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                    isShortlisted ? 'text-rose-600 hover:text-rose-700' : 'text-slate-500 hover:text-rose-600'
-                  }`}
-                >
-                  <Heart className={`h-4 w-4 ${isShortlisted ? 'fill-rose-600' : ''}`} />
-                  {isShortlisted ? 'Shortlisted' : 'Shortlist'}
-                </button>
-              </div>
-              {property.landmark && <p className="mt-2 text-sm text-slate-500">Near {property.landmark}</p>}
-
-              {categoryDetails.length > 0 && (
-                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Property Category</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {categoryDetails.map((item) => (
-                      <div key={item.label}>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
-                        <p className="mt-1 font-black text-slate-950">{item.value}</p>
-                      </div>
-                    ))}
+            {/* RERA + Budget cards */}
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {property.reraId && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-500">
+                    <ShieldCheck className="h-3.5 w-3.5" /> RERA Registration No.
+                  </p>
+                  <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
+                </div>
+              )}
+              {property.totalBudget && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-500">Budget</p>
+                      <p className="mt-1 text-xl font-black text-[#0AA6A6]">{formatMoney(property.totalBudget)}</p>
+                      {(property.squareFeetPrice || property.squareYardPrice) && (
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                          {formatMoney(property.squareFeetPrice || property.squareYardPrice)} PER {property.squareFeetPrice ? 'SFT' : 'SQ YD'}
+                        </p>
+                      )}
+                    </div>
+                    {property.totalBudgetOnwards && (
+                      <span className="shrink-0 rounded-full bg-teal-100 px-2 py-1 text-xs font-bold text-teal-800">Minimum</span>
+                    )}
                   </div>
                 </div>
               )}
-
-              {property.projectName && (
-                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Project Name Overview</p>
-                  <p className="mt-2 text-lg font-black text-slate-950">{property.projectName}</p>
-                  {property.companyName && (
-                    <p className="mt-1 text-sm font-semibold text-slate-600">By {property.companyName}</p>
-                  )}
-                  {property.propertyFormUrl && (
-                    <a
-                      href={`${API_ORIGIN}${property.propertyFormUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download Brochure
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {property.costSheetUrl && (
-                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Cost Sheet</p>
-                  <a
-                    href={`${API_ORIGIN}${property.costSheetUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download Cost Sheet
-                  </a>
-                </div>
-              )}
-
-              {(property.advance || property.goodwill) && (
-                <div className="mt-5 grid gap-3 rounded-lg bg-teal-50 p-4 sm:grid-cols-2">
-                  {property.goodwill && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Goodwill Amount</p>
-                      <p className="text-xl font-black text-teal-950">{formatMoney(property.goodwill)}</p>
-                    </div>
-                  )}
-                  {property.advance && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Advance Required</p>
-                      <p className="text-xl font-black text-blue-950">{formatMoney(property.advance)}</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
+
+            {/* Compact project stats */}
+            {((!isApartmentLikeListing && property.totalArea) || property.projectTotalUnits) && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {!isApartmentLikeListing && property.totalArea && (
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
+                    <Ruler className="h-4 w-4 shrink-0 text-teal-700" />
+                    <p className="text-sm text-slate-700">
+                      <span className="font-black text-slate-950">{property.totalArea} {property.areaUnit}</span> of project area
+                    </p>
+                  </div>
+                )}
+                {property.projectTotalUnits && (
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
+                    <Layers className="h-4 w-4 shrink-0 text-teal-700" />
+                    <p className="text-sm text-slate-700">
+                      <span className="font-black text-slate-950">{property.projectTotalUnits}</span> Units
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {property.propertyFormUrl && (
+              <a
+                href={`${API_ORIGIN}${property.propertyFormUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
+              >
+                <Download className="h-4 w-4" />
+                Download Brochure
+              </a>
+            )}
+
+            {property.costSheetUrl && (
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">Cost Sheet</p>
+                <a
+                  href={`${API_ORIGIN}${property.costSheetUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Cost Sheet
+                </a>
+              </div>
+            )}
+
+            {(property.advance || property.goodwill) && (
+              <div className="mt-4 grid gap-3 rounded-lg bg-teal-50 p-4 sm:grid-cols-2">
+                {property.goodwill && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Goodwill Amount</p>
+                    <p className="text-xl font-black text-teal-950">{formatMoney(property.goodwill)}</p>
+                  </div>
+                )}
+                {property.advance && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Advance Required</p>
+                    <p className="text-xl font-black text-blue-950">{formatMoney(property.advance)}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
@@ -786,7 +870,19 @@ const PropertyDetails: React.FC = () => {
             {property.description && (
               <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">Description</h2>
-                <p className="mt-3 leading-7 text-slate-600">{property.description}</p>
+                <p className={`mt-3 leading-7 text-slate-600 ${showFullDescription ? '' : 'line-clamp-3'}`}>
+                  {property.description}
+                </p>
+                {property.description.length > 220 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFullDescription((prev) => !prev)}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-teal-700 hover:text-teal-900"
+                  >
+                    {showFullDescription ? 'Read less' : 'Read more'}
+                    {showFullDescription ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                )}
               </section>
             )}
 
@@ -873,28 +969,32 @@ const PropertyDetails: React.FC = () => {
 
                 <div className="p-6">
                   {floorPlanGroups.length > 1 && (
-                    <div className="flex flex-wrap gap-3">
-                      {floorPlanGroups.map((group, groupIndex) => (
+                    <div>
+                      <p className="mb-2 text-sm font-black text-slate-950">Configurations</p>
+                      <div className="flex flex-wrap gap-2">
                         <button
-                          key={group.label}
                           type="button"
-                          onClick={() => { setActiveBhkGroupIndex(groupIndex); setActiveFloorPlanUnitIndex(0); setActiveFloorPlanImageIndex(0); }}
-                          className={`inline-flex flex-col items-start rounded-lg border px-4 py-2 text-left transition ${
-                            groupIndex === activeBhkGroupIndex
-                              ? 'border-teal-600 bg-teal-50'
-                              : 'border-slate-200 bg-white hover:border-teal-300'
-                          }`}
+                          onClick={() => { setActiveBhkGroupIndex(0); setActiveFloorPlanUnitIndex(0); setActiveFloorPlanImageIndex(0); }}
+                          title="Show the first configuration"
+                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300"
                         >
-                          <span className={`text-sm font-black ${groupIndex === activeBhkGroupIndex ? 'text-teal-800' : 'text-slate-700'}`}>
-                            {group.label} Apartment
-                          </span>
-                          {groupPriceRange(group) && (
-                            <span className={`text-xs font-semibold ${groupIndex === activeBhkGroupIndex ? 'text-teal-700' : 'text-slate-500'}`}>
-                              {groupPriceRange(group)}
-                            </span>
-                          )}
+                          All ({floorPlanUnits.length})
                         </button>
-                      ))}
+                        {floorPlanGroups.map((group, groupIndex) => (
+                          <button
+                            key={group.label}
+                            type="button"
+                            onClick={() => { setActiveBhkGroupIndex(groupIndex); setActiveFloorPlanUnitIndex(0); setActiveFloorPlanImageIndex(0); }}
+                            className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
+                              groupIndex === activeBhkGroupIndex
+                                ? 'border-teal-600 bg-teal-600 text-white'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300'
+                            }`}
+                          >
+                            {group.label} ({group.units.length})
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -1169,7 +1269,7 @@ const PropertyDetails: React.FC = () => {
             )}
           </div>
 
-          <aside className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-xl lg:sticky lg:top-28">
+          <aside ref={contactCardRef} className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-xl lg:sticky lg:top-28">
             <h2 className="text-xl font-black text-slate-950">Contact {contactPartyLabel}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {contactPartyLabel} contact stays locked by default. Active membership is required to access complete contact details from other listings.
