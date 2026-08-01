@@ -370,5 +370,6 @@ propertySchema.index({ city: 1, locality: 1 });
 propertySchema.index({ developmentType: 1 });
 propertySchema.index({ dealStatus: 1 });
 propertySchema.index({ status: 1 });
+propertySchema.index({ listingIntent: 1, status: 1, city: 1 });
 
 module.exports = mongoose.model('Property', propertySchema);

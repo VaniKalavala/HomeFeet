@@ -92,6 +92,24 @@ const escapeRegex = (value = '') =>
 // expiresAt is null for listings with no plan-based expiry (unaffected).
 const notExpiredCondition = () => ({ $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] });
 
+// Parses "1200 - 1800" (or a bare "1200") into {min, max}; returns null if unparseable.
+const parseRange = (value) => {
+  if (!value) return null;
+  const cleaned = String(value).replace(/,/g, '').trim();
+  const rangeMatch = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)$/);
+  if (rangeMatch) return { min: parseFloat(rangeMatch[1]), max: parseFloat(rangeMatch[2]) };
+  const single = parseFloat(cleaned);
+  return Number.isFinite(single) ? { min: single, max: single } : null;
+};
+
+// Fails open: returns true when either side can't be parsed, so a formatting quirk never hides a lead.
+const rangesOverlapOrUnknown = (a, b) => {
+  const rangeA = parseRange(a);
+  const rangeB = parseRange(b);
+  if (!rangeA || !rangeB) return true;
+  return rangeA.min <= rangeB.max && rangeB.min <= rangeA.max;
+};
+
 const findUserByPhone = (value) => {
   const phone = normalizePhone(value);
   if (!/^\d{10}$/.test(phone)) return null;
@@ -135,15 +153,15 @@ const resolveListingOwnerForAdminUpload = async (req, adminUser) => {
     throw err;
   }
 
-  if (!['owner', 'mediator', 'builder'].includes(assistedAccountType)) {
-    const err = new Error('Admin-assisted upload can only be assigned to an owner, mediator, or builder');
+  if (!['owner', 'mediator', 'builder', 'buyer'].includes(assistedAccountType)) {
+    const err = new Error('Admin-assisted upload can only be assigned to an owner, mediator, builder, or buyer');
     err.statusCode = 400;
     throw err;
   }
 
   let listingOwner = await findUserByPhone(req.body.assistedOwnerPhone || assistedPhone);
   if (listingOwner) {
-    if (!['owner', 'mediator', 'builder'].includes(listingOwner.accountType)) {
+    if (!['owner', 'mediator', 'builder', 'buyer'].includes(listingOwner.accountType)) {
       const err = new Error('This phone number belongs to an admin account');
       err.statusCode = 400;
       throw err;
@@ -159,7 +177,7 @@ const resolveListingOwnerForAdminUpload = async (req, adminUser) => {
     return { listingOwner, createdAssistedUser: false };
   }
 
-  const fallbackFirstName = assistedAccountType === 'mediator' ? 'Mediator' : assistedAccountType === 'builder' ? 'Builder' : 'Owner';
+  const fallbackFirstName = assistedAccountType === 'mediator' ? 'Mediator' : assistedAccountType === 'builder' ? 'Builder' : assistedAccountType === 'buyer' ? 'Buyer' : 'Owner';
   const fallbackLastName = assistedPhone.slice(-4);
 
   listingOwner = await User.create({
@@ -815,11 +833,98 @@ router.get('/user-properties', async (req, res) => {
     const properties = await Property.find({ $or: ownerMatch });
 
     console.log(`Found ${properties.length} properties for user ${user.phone || user.email}`);
-    
+
     res.json(properties);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch user properties' });
+  }
+});
+
+// GET /api/prospect-buyers - Buyer requirements matching this owner/builder/agent's own
+// listings, included with an active Owner Plan subscription (Basic/Standard/Premium).
+router.get('/prospect-buyers', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const hasOwnerAccountType = ['owner', 'mediator', 'builder'].includes(user.accountType);
+    const hasActivePlan = user.ownerPlanTier && user.ownerPlanTier !== 'none' &&
+      user.ownerPlanExpiresAt && new Date(user.ownerPlanExpiresAt) > new Date();
+    if (!hasOwnerAccountType || !hasActivePlan) {
+      return res.status(403).json({
+        error: 'Prospect Buyers is available to Owner Plan subscribers.',
+        accessRequired: 'owner_plan_required'
+      });
+    }
+
+    const ownerMatch = [{ userId: user._id.toString() }];
+    if (user.phone) ownerMatch.push({ phone: user.phone });
+    const myListings = await Property.find({
+      $or: ownerMatch,
+      listingIntent: { $in: ['development', 'sell'] },
+      status: 'approved'
+    }).select('city locality developmentType totalArea areaUnit squareYardPrice squareFeetPrice totalBudget projectName');
+
+    if (myListings.length === 0) {
+      return res.json({ buyers: [] });
+    }
+
+    const myCities = [...new Set(myListings.map((p) => (p.city || '').trim().toLowerCase()).filter(Boolean))];
+    const cityRegexes = myCities.map((city) => new RegExp(`^${escapeRegex(city)}$`, 'i'));
+
+    const buyerRequirements = await Property.find({
+      listingIntent: 'buy',
+      status: 'approved',
+      userId: { $ne: user._id.toString() },
+      city: { $in: cityRegexes }
+    }).sort({ createdAt: -1 });
+
+    const cityMatches = (a, b) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+    const typeMatches = (a, b) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+
+    const matchesListing = (buyerReq, listing) => {
+      if (!cityMatches(buyerReq.city, listing.city)) return false;
+      if (!typeMatches(buyerReq.developmentType, listing.developmentType)) return false;
+
+      if (buyerReq.areaUnit && listing.areaUnit && buyerReq.areaUnit.toLowerCase() === listing.areaUnit.toLowerCase()) {
+        if (!rangesOverlapOrUnknown(buyerReq.totalArea, listing.totalArea)) return false;
+      }
+
+      const priceField = buyerReq.squareYardPrice ? 'squareYardPrice' : buyerReq.squareFeetPrice ? 'squareFeetPrice' : null;
+      if (priceField && listing[priceField]) {
+        if (!rangesOverlapOrUnknown(buyerReq[priceField], listing[priceField])) return false;
+      } else if (buyerReq.totalBudget && listing.totalBudget) {
+        if (!rangesOverlapOrUnknown(buyerReq.totalBudget, listing.totalBudget)) return false;
+      }
+
+      return true;
+    };
+
+    const buyers = buyerRequirements
+      .map((buyerReq) => {
+        const matchedListings = myListings.filter((listing) => matchesListing(buyerReq, listing));
+        if (!matchedListings.length) return null;
+        return {
+          ...buyerReq.toObject(),
+          matchedListings: matchedListings.map((listing) => ({
+            _id: listing._id,
+            projectName: listing.projectName,
+            locality: listing.locality,
+            city: listing.city
+          }))
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ buyers });
+  } catch (err) {
+    console.error('Prospect buyers error:', err);
+    res.status(500).json({ error: 'Failed to fetch prospect buyers' });
   }
 });
 

@@ -1,7 +1,8 @@
-import React, { FormEvent, useState } from 'react';
+import React, { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Image, IndianRupee, MapPin, Ruler, Search, Upload } from 'lucide-react';
 import { API_BASE } from '../lib/api';
+import { isAdminUser } from '../lib/admin';
 import LoginModal from './LoginModal';
 
 const cityOptions = [
@@ -43,12 +44,23 @@ const timelineOptions = [
 ];
 
 const normalizeMoney = (value = '') => value.replace(/[^\d]/g, '');
+const normalizeAssistedPhone = (value = '') => value.replace(/\D/g, '').slice(-10);
 
 const BuyerExpectedPropertyForm: React.FC = () => {
   const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [areaMode, setAreaMode] = useState<'sqYards' | 'acres' | 'sqft'>('sqft');
+  const canUseAssistedUpload = isAdminUser(
+    localStorage.getItem('phone'),
+    localStorage.getItem('accountType'),
+    localStorage.getItem('email')
+  );
+  const [assistedBuyer, setAssistedBuyer] = useState({ phone: '', firstName: '', lastName: '', email: '' });
+  const [assistedBuyerLookup, setAssistedBuyerLookup] = useState<{
+    status: 'idle' | 'checking' | 'found' | 'not_found' | 'blocked' | 'error';
+    message: string;
+  }>({ status: 'idle', message: '' });
   const [formData, setFormData] = useState({
     landType: 'apartment',
     minArea: areaPresets.sqft.min,
@@ -91,6 +103,76 @@ const BuyerExpectedPropertyForm: React.FC = () => {
     }));
   };
 
+  const handleAssistedBuyerChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setAssistedBuyer(prev => ({ ...prev, [name]: name === 'phone' ? normalizeAssistedPhone(value) : value }));
+  };
+
+  useEffect(() => {
+    if (!canUseAssistedUpload) return;
+
+    const phone = normalizeAssistedPhone(assistedBuyer.phone);
+    if (phone.length < 10) {
+      setAssistedBuyerLookup({ status: 'idle', message: '' });
+      return;
+    }
+
+    let cancelled = false;
+    const token = localStorage.getItem('token');
+    setAssistedBuyerLookup({ status: 'checking', message: 'Checking registration...' });
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/users/lookup/${phone}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Unable to check this mobile number');
+        }
+
+        if (!data.exists) {
+          setAssistedBuyerLookup({
+            status: 'not_found',
+            message: 'No registered account found. Fill the details below to create the buyer profile.'
+          });
+          setAssistedBuyer(prev => ({ ...prev, firstName: '', lastName: '', email: '' }));
+          return;
+        }
+
+        if (!data.canAssignProperty) {
+          setAssistedBuyerLookup({
+            status: 'blocked',
+            message: 'This mobile number belongs to an admin account. Use the buyer\'s own mobile number.'
+          });
+          return;
+        }
+
+        setAssistedBuyer(prev => ({
+          ...prev,
+          firstName: data.user.firstName || '',
+          lastName: data.user.lastName || '',
+          email: data.user.email || ''
+        }));
+        setAssistedBuyerLookup({
+          status: 'found',
+          message: `Registered ${data.user.accountType} found. This requirement will be saved under ${data.user.firstName || 'this user'}'s account.`
+        });
+      } catch (err) {
+        if (!cancelled) {
+          setAssistedBuyerLookup({ status: 'error', message: err instanceof Error ? err.message : 'Unable to check this mobile number' });
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [assistedBuyer.phone, canUseAssistedUpload]);
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -98,6 +180,18 @@ const BuyerExpectedPropertyForm: React.FC = () => {
     if (!token) {
       setShowLoginModal(true);
       return;
+    }
+
+    if (canUseAssistedUpload) {
+      const assistedPhone = normalizeAssistedPhone(assistedBuyer.phone);
+      if (assistedPhone.length !== 10) {
+        alert('Please enter the buyer\'s 10-digit mobile number');
+        return;
+      }
+      if (assistedBuyerLookup.status === 'blocked') {
+        alert(assistedBuyerLookup.message);
+        return;
+      }
     }
 
     const minArea = Number(formData.minArea);
@@ -178,6 +272,17 @@ const BuyerExpectedPropertyForm: React.FC = () => {
     payload.append('description', description);
     payload.append('address', locationText);
     payload.append('selectedAmenities', JSON.stringify([]));
+    if (canUseAssistedUpload) {
+      const assistedPhone = normalizeAssistedPhone(assistedBuyer.phone);
+      payload.append('adminAssistedUpload', 'true');
+      payload.append('assistedOwnerAccountType', 'buyer');
+      payload.append('assistedOwnerPhone', assistedPhone);
+      payload.append('assistedOwnerFirstName', assistedBuyer.firstName.trim() || 'Buyer');
+      payload.append('assistedOwnerLastName', assistedBuyer.lastName.trim() || assistedPhone.slice(-4));
+      if (assistedBuyer.email.trim()) {
+        payload.append('assistedOwnerEmail', assistedBuyer.email.trim());
+      }
+    }
     if (formData.avatar) {
       payload.append('image', formData.avatar);
     }
@@ -217,6 +322,84 @@ const BuyerExpectedPropertyForm: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 grid gap-5">
+            {canUseAssistedUpload && (
+              <section className="space-y-4 rounded-lg border border-teal-200 bg-teal-50/60 p-5 shadow-sm sm:p-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Admin-assisted buyer requirement</p>
+                  <h2 className="mt-1 text-xl font-bold text-slate-900">Buyer contact details</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                    Fill this in when submitting on behalf of a buyer (e.g. a phone or WhatsApp inquiry). The buyer's
+                    profile will be created or reused, and this requirement will appear under their account. These
+                    contact details are only visible to admins.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="space-y-1 text-sm font-semibold text-slate-700">
+                    Mobile Number *
+                    <input
+                      name="phone"
+                      value={normalizeAssistedPhone(assistedBuyer.phone)}
+                      onChange={handleAssistedBuyerChange}
+                      placeholder="10-digit mobile number"
+                      className="w-full rounded border border-slate-300 bg-white p-2 font-normal tracking-normal"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      pattern="[0-9]*"
+                      required
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-semibold text-slate-700">
+                    First Name
+                    <input
+                      name="firstName"
+                      value={assistedBuyer.firstName}
+                      onChange={handleAssistedBuyerChange}
+                      placeholder="Optional buyer first name"
+                      className="w-full rounded border border-slate-300 bg-white p-2 font-normal"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-semibold text-slate-700">
+                    Last Name
+                    <input
+                      name="lastName"
+                      value={assistedBuyer.lastName}
+                      onChange={handleAssistedBuyerChange}
+                      placeholder="Buyer last name"
+                      className="w-full rounded border border-slate-300 bg-white p-2 font-normal"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-semibold text-slate-700">
+                    Email
+                    <input
+                      name="email"
+                      value={assistedBuyer.email}
+                      onChange={handleAssistedBuyerChange}
+                      placeholder="Optional email"
+                      className="w-full rounded border border-slate-300 bg-white p-2 font-normal"
+                      type="email"
+                    />
+                  </label>
+                </div>
+
+                {assistedBuyerLookup.message && (
+                  <div
+                    className={`rounded-md border px-3 py-2 text-sm font-semibold ${
+                      assistedBuyerLookup.status === 'found'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : assistedBuyerLookup.status === 'blocked' || assistedBuyerLookup.status === 'error'
+                        ? 'border-red-200 bg-red-50 text-red-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    {assistedBuyerLookup.message}
+                  </div>
+                )}
+              </section>
+            )}
+
             <div>
               <p className="mb-2 text-sm font-black text-slate-900">Property Type</p>
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">

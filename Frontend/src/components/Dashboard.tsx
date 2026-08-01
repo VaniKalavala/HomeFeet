@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AlertCircle, Check, KeyRound, MapPin, Pencil, X } from 'lucide-react';
+import { AlertCircle, Check, KeyRound, Mail, MapPin, Pencil, Phone, Users, X } from 'lucide-react';
 import ListingsSidebar from './ListingsSidebar';
 import LoginModal from './LoginModal';
 import { API_BASE, API_ORIGIN } from '../lib/api';
@@ -23,7 +23,7 @@ type PlanTier = {
   socialMedia: boolean;
   shorts: boolean;
   propertyReport: boolean;
-  matchingBuyers: string;
+  matchingBuyers: boolean;
   mostPopular?: boolean;
 };
 
@@ -44,7 +44,7 @@ const PLAN_TIERS: PlanTier[] = [
     socialMedia: false,
     shorts: false,
     propertyReport: false,
-    matchingBuyers: ''
+    matchingBuyers: true
   },
   {
     value: 'standard',
@@ -62,7 +62,7 @@ const PLAN_TIERS: PlanTier[] = [
     socialMedia: false,
     shorts: false,
     propertyReport: false,
-    matchingBuyers: ''
+    matchingBuyers: true
   },
   {
     value: 'premium',
@@ -80,7 +80,7 @@ const PLAN_TIERS: PlanTier[] = [
     socialMedia: false,
     shorts: false,
     propertyReport: false,
-    matchingBuyers: '',
+    matchingBuyers: true,
     mostPopular: true
   }
 ];
@@ -101,7 +101,7 @@ const FEATURE_ROWS: Array<{
   { label: 'Assured 1st Rank in Search Results', render: (tier) => tier.assuredRank || <X className="mx-auto h-4 w-4 text-slate-300" /> },
   { label: 'Social Media Marketing', render: (tier) => (tier.socialMedia ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Property Report', render: (tier) => (tier.propertyReport ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
-  { label: 'Matching Buyers', render: (tier) => tier.matchingBuyers || <X className="mx-auto h-4 w-4 text-slate-300" /> }
+  { label: 'Matching Buyers', render: (tier) => (tier.matchingBuyers ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) }
 ];
 
 const COMMERCIAL_TYPES = ['office-space', 'retail', 'hospitality', 'industrial', 'commercial-plot'];
@@ -117,6 +117,12 @@ const STATUS_LABELS: Record<string, string> = {
   expired: 'Expired',
   under_review: 'Under Review',
   rejected: 'Rejected'
+};
+
+const timelineLabels: Record<string, string> = {
+  immediate: 'Property Looking Immediately',
+  '3_months': '3 Months Time',
+  '1_year': '1 Year Time'
 };
 
 type StatusBucket = 'active' | 'expired' | 'under_review' | 'rejected';
@@ -168,7 +174,7 @@ const Dashboard: React.FC = () => {
   const paymentInProgressRef = useRef(false);
   const isAdmin = isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
 
-  const [activeTab, setActiveTab] = useState<'posted' | 'subscription' | 'shortlisted' | 'contacted'>('posted');
+  const [activeTab, setActiveTab] = useState<'posted' | 'subscription' | 'shortlisted' | 'contacted' | 'prospectBuyers'>('posted');
   const [defaultTabApplied, setDefaultTabApplied] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [accountType, setAccountType] = useState('owner');
@@ -196,6 +202,9 @@ const Dashboard: React.FC = () => {
   const [loadingShortlist, setLoadingShortlist] = useState(true);
   const [contactedEntries, setContactedEntries] = useState<any[]>([]);
   const [loadingContacted, setLoadingContacted] = useState(true);
+  const [prospectBuyers, setProspectBuyers] = useState<any[]>([]);
+  const [loadingProspectBuyers, setLoadingProspectBuyers] = useState(true);
+  const [prospectBuyersAccessRequired, setProspectBuyersAccessRequired] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -323,11 +332,38 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const fetchProspectBuyers = async () => {
+    try {
+      setLoadingProspectBuyers(true);
+      setProspectBuyersAccessRequired(false);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/prospect-buyers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if (data.accessRequired === 'owner_plan_required') {
+          setProspectBuyersAccessRequired(true);
+        }
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      setProspectBuyers(data.buyers || []);
+    } catch (err) {
+      console.error('Error fetching prospect buyers:', err);
+    } finally {
+      setLoadingProspectBuyers(false);
+    }
+  };
+
   useEffect(() => {
     fetchProperties();
     fetchInterestCounts();
     fetchShortlist();
     fetchContacted();
+    fetchProspectBuyers();
   }, []);
 
   const handleCloseDeal = async (id: string) => {
@@ -449,6 +485,8 @@ const Dashboard: React.FC = () => {
 
   const isActiveTier = (tierValue: string) =>
     currentTier === tierValue && currentExpiresAt && new Date(currentExpiresAt) > new Date();
+
+  const hasActiveOwnerPlan = currentTier !== 'none' && Boolean(currentExpiresAt) && new Date(currentExpiresAt) > new Date();
 
   const loadRazorpayCheckout = () =>
     new Promise<void>((resolve, reject) => {
@@ -679,6 +717,17 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 Posted Properties
+              </button>
+            )}
+            {['owner', 'mediator', 'builder'].includes(accountType) && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('prospectBuyers')}
+                className={`px-4 py-2 text-sm font-bold transition ${
+                  activeTab === 'prospectBuyers' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Prospect Buyers
               </button>
             )}
             <button
@@ -1075,6 +1124,97 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'prospectBuyers' && (
+            <div>
+              <h1 className="text-2xl font-black text-slate-950">Prospect Buyers</h1>
+              <p className="mt-1 text-sm text-slate-600">Buyer requirements that match your listings, newest first.</p>
+
+              {loadingProspectBuyers ? (
+                <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+                  <p className="text-sm text-slate-500">Loading...</p>
+                </div>
+              ) : prospectBuyersAccessRequired || !hasActiveOwnerPlan ? (
+                <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+                  <Users className="mx-auto h-8 w-8 text-teal-700" />
+                  <p className="mt-3 text-lg font-bold text-slate-800">Upgrade to see matching buyers</p>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Subscribe to an Owner Plan (Basic/Standard/Premium) to unlock prospect buyer
+                    contact details matched to your listings.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('subscription')}
+                    className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#0AA6A6] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
+                  >
+                    View Plans
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="mt-4 rounded-lg bg-teal-50 p-4 text-sm font-semibold text-teal-800">
+                    Your {PLAN_TIERS.find((tier) => tier.value === currentTier)?.label || currentTier} plan is active
+                    {currentExpiresAt ? ` until ${formatDate(currentExpiresAt)}` : ''}.
+                  </div>
+
+                  {prospectBuyers.length === 0 ? (
+                    <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+                      <p className="text-sm text-slate-500">No matching buyer requirements yet. Check back soon.</p>
+                    </div>
+                  ) : (
+                    <div className="mt-5 space-y-4">
+                      {prospectBuyers.map((buyer) => (
+                        <div key={buyer._id} className="overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                                <MapPin className="h-4 w-4 text-slate-400" />
+                                {buyer.locality}, {buyer.city}
+                              </p>
+                              <p className="mt-1 text-sm text-slate-600">
+                                Looking for {buyer.totalArea} {buyer.areaUnit} · {buyer.developmentType}
+                                {buyer.bedrooms ? ` · ${buyer.bedrooms}` : ''}
+                              </p>
+                              {(buyer.squareYardPrice || buyer.squareFeetPrice || buyer.totalBudget) && (
+                                <p className="mt-1 text-sm font-semibold text-teal-700">
+                                  Budget: {(buyer.squareYardPrice || buyer.squareFeetPrice || buyer.totalBudget)
+                                    .split('-')
+                                    .map((value: string) => formatPrice(value.trim()))
+                                    .join(' – ')}
+                                </p>
+                              )}
+                              {buyer.purchaseTimeline && (
+                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                  {timelineLabels[buyer.purchaseTimeline] || buyer.purchaseTimeline}
+                                </p>
+                              )}
+                              {buyer.matchedListings?.length > 0 && (
+                                <p className="mt-2 inline-block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                  Matches your listing: {buyer.matchedListings[0].projectName || buyer.matchedListings[0].locality}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5">
+                              {buyer.phone && (
+                                <a href={`tel:${buyer.phone}`} className="flex items-center gap-1.5 text-sm font-bold text-teal-700 hover:underline">
+                                  <Phone className="h-4 w-4" /> {buyer.phone}
+                                </a>
+                              )}
+                              {(buyer.contactEmail || buyer.email) && (
+                                <a href={`mailto:${buyer.contactEmail || buyer.email}`} className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:underline">
+                                  <Mail className="h-4 w-4" /> {buyer.contactEmail || buyer.email}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {!isAdmin && activeTab === 'subscription' && ['owner', 'mediator', 'buyer'].includes(accountType) && (
             <div>
               <h1 className="text-2xl font-black text-slate-950">Owner Contact Access</h1>
@@ -1129,7 +1269,7 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'subscription' && (isAdmin || accountType === 'builder') && (
+          {activeTab === 'subscription' && (isAdmin || ['owner', 'mediator', 'builder'].includes(accountType)) && (
             <div>
               <h1 className="text-2xl font-black text-slate-950">Subscription Plans</h1>
               <p className="mt-1 text-sm text-slate-600">Boost your property's visibility with a plan built for Owners and Agents.</p>
