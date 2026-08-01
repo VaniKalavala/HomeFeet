@@ -29,7 +29,6 @@ import {
   MapPin,
   MessageCircle,
   Phone,
-  Ruler,
   Share2,
   Shield,
   ShieldCheck,
@@ -667,8 +666,8 @@ const PropertyDetails: React.FC = () => {
                 )}
 
                 {/* Location block */}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-base text-slate-600">
-                  <MapPin className="h-5 w-5 shrink-0 text-orange-700" />
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[2rem] text-slate-600">
+                  <MapPin className="h-8 w-8 shrink-0 text-orange-700" />
                   <span>{location}</span>
                   {property.map && (
                     <a
@@ -725,33 +724,57 @@ const PropertyDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* Gallery: large hero image + thumbnail row */}
+            {/* Gallery: mosaic - big image left, up to 2 stacked top-right, thumbnail row below */}
             <div className="mt-5">
-              <div className="relative h-72 overflow-hidden rounded-lg bg-slate-200 md:h-[420px]">
-                <img
-                  src={heroImageUrl ? `${API_ORIGIN}${heroImageUrl}` : fallbackPropertyImage}
-                  alt={title}
+              <div className="grid grid-cols-2 gap-2 h-72 md:h-[420px]">
+                <div
                   onClick={() => galleryImages.length && setIsLightboxOpen(true)}
-                  className={`h-full w-full ${galleryImages.length ? 'cursor-zoom-in' : ''} ${isGeneratedDiagramHero ? 'bg-white object-contain p-4' : 'object-cover'}`}
-                  onError={(e) => {
-                    e.currentTarget.src = fallbackPropertyImage;
-                    e.currentTarget.className = 'h-full w-full object-cover';
-                  }}
-                />
-                <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-orange-800 shadow">
-                    <BadgeCheck className="h-4 w-4" /> Verified Listing
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow">
-                    <ShieldCheck className="h-4 w-4" /> Admin Reviewed
-                  </span>
+                  className={`relative h-full overflow-hidden rounded-lg bg-slate-200 ${galleryImages.length > 2 ? '' : 'col-span-2'} ${galleryImages.length ? 'cursor-zoom-in' : ''}`}
+                >
+                  <img
+                    src={galleryImages[0] ? `${API_ORIGIN}${galleryImages[0]}` : (heroImageUrl ? `${API_ORIGIN}${heroImageUrl}` : fallbackPropertyImage)}
+                    alt={title}
+                    className={`h-full w-full ${isGeneratedDiagramHero ? 'bg-white object-contain p-4' : 'object-cover'}`}
+                    onError={(e) => {
+                      e.currentTarget.src = fallbackPropertyImage;
+                      e.currentTarget.className = 'h-full w-full object-cover';
+                    }}
+                  />
+                  <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-orange-800 shadow">
+                      <BadgeCheck className="h-4 w-4" /> Verified Listing
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow">
+                      <ShieldCheck className="h-4 w-4" /> Admin Reviewed
+                    </span>
+                  </div>
                 </div>
+
+                {galleryImages.length > 1 && (
+                  <div className="grid h-full grid-cols-1 gap-2 sm:grid-cols-2">
+                    {galleryImages.slice(1, 3).map((url, i) => {
+                      const index = i + 1;
+                      return (
+                        <button
+                          key={url}
+                          type="button"
+                          onClick={() => { setActiveImageIndex(index); setIsLightboxOpen(true); }}
+                          className="relative h-full overflow-hidden rounded-lg bg-slate-200"
+                        >
+                          <img src={`${API_ORIGIN}${url}`} alt={`${title} photo ${index + 1}`} className="h-full w-full object-cover" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {galleryImages.length > 1 && (
+
+              {galleryImages.length > 3 && (
                 <div className="mt-2 grid grid-cols-4 gap-2">
-                  {galleryImages.slice(0, 4).map((url, index) => {
-                    const remaining = galleryImages.length - 4;
-                    const isLastVisible = index === 3 && remaining > 0;
+                  {galleryImages.slice(3, 7).map((url, i) => {
+                    const index = i + 3;
+                    const remaining = galleryImages.length - 7;
+                    const isLastVisible = index === 6 && remaining > 0;
                     return (
                       <button
                         key={url}
@@ -777,18 +800,6 @@ const PropertyDetails: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Compact project stats */}
-            {!isApartmentLikeListing && property.totalArea && (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
-                  <Ruler className="h-4 w-4 shrink-0 text-orange-700" />
-                  <p className="text-sm text-slate-700">
-                    <span className="font-black text-slate-950">{property.totalArea} {property.areaUnit}</span> of project area
-                  </p>
-                </div>
-              </div>
-            )}
 
             {property.floorToFloorHeight && (
               <div className="mt-3 rounded-lg border border-slate-200 p-3">
@@ -1274,8 +1285,8 @@ const PropertyDetails: React.FC = () => {
                 )}
                 {property.reraId && (
                   <div className={property.permissionNo ? 'pt-3' : ''}>
-                    <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-500">
-                      <ShieldCheck className="h-3.5 w-3.5" /> RERA Registration No.
+                    <p className="flex items-center gap-1.5 text-2xl font-black uppercase tracking-wide text-slate-500">
+                      <ShieldCheck className="h-6 w-6" /> RERA Registration No.
                     </p>
                     <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
                   </div>
