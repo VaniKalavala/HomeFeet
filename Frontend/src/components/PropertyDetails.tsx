@@ -24,12 +24,12 @@ import {
   Flower2,
   Heart,
   IndianRupee,
-  Layers,
   Lock,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
+  Ruler,
   Share2,
   Shield,
   ShieldCheck,
@@ -429,8 +429,6 @@ const PropertyDetails: React.FC = () => {
     : '';
 
   const details = property ? [
-    { label: 'Project Name', value: property.projectName },
-    { label: 'Company Name', value: property.companyName },
     { label: 'Project Total Units', value: property.projectTotalUnits },
     { label: 'Total Area', value: isApartmentLikeListing ? '' : (property.totalArea ? `${property.totalArea} ${property.areaUnit || ''}` : '') },
     { label: 'Square Feet Price', value: formatMoney(property.squareFeetPrice) },
@@ -444,9 +442,6 @@ const PropertyDetails: React.FC = () => {
     { label: 'Flat Facing', value: property.flatFacing },
     { label: 'Floor', value: property.floorNumber ? `${property.floorNumber}${property.totalFloors ? ` of ${property.totalFloors}` : ''}` : '' },
     { label: 'Furnishing', value: property.furnishingStatus },
-    { label: 'Possession Status', value: property.possessionStatus },
-    { label: 'Possession Date', value: property.possessionDate },
-    { label: 'RERA ID', value: property.reraId },
     { label: 'Road Size', value: property.roadSize ? `${property.roadSize} ft` : '' },
     { label: 'Frontage', value: property.frontageWidth ? `${property.frontageWidth} ft` : '' },
     { label: 'Road Facing Direction', value: property.roadFacingDirection },
@@ -476,15 +471,6 @@ const PropertyDetails: React.FC = () => {
 
   const activeFloorPlanGroup = floorPlanGroups[activeBhkGroupIndex] || floorPlanGroups[0];
   const selectedFloorPlanUnit = activeFloorPlanGroup?.units[activeFloorPlanUnitIndex] || activeFloorPlanGroup?.units[0];
-  const moneyValue = (value?: string) => Number(String(value || '').replace(/,/g, '')) || 0;
-  const groupPriceRange = (group?: { units: typeof floorPlanUnits }) => {
-    if (!group) return '';
-    const prices = group.units.map((unit) => moneyValue(unit.price)).filter(Boolean);
-    if (!prices.length) return '';
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    return min === max ? formatMoney(String(min)) : `${formatMoney(String(min))} - ${formatMoney(String(max))}`;
-  };
   const localityHighlights = property?.localityHighlights || '';
   const projectHighlights = property?.projectHighlights || '';
 
@@ -793,24 +779,14 @@ const PropertyDetails: React.FC = () => {
             </div>
 
             {/* Compact project stats */}
-            {((!isApartmentLikeListing && property.totalArea) || property.projectTotalUnits) && (
+            {!isApartmentLikeListing && property.totalArea && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {!isApartmentLikeListing && property.totalArea && (
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
-                    <Ruler className="h-4 w-4 shrink-0 text-orange-700" />
-                    <p className="text-sm text-slate-700">
-                      <span className="font-black text-slate-950">{property.totalArea} {property.areaUnit}</span> of project area
-                    </p>
-                  </div>
-                )}
-                {property.projectTotalUnits && (
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
-                    <Layers className="h-4 w-4 shrink-0 text-orange-700" />
-                    <p className="text-sm text-slate-700">
-                      <span className="font-black text-slate-950">{property.projectTotalUnits}</span> Units
-                    </p>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
+                  <Ruler className="h-4 w-4 shrink-0 text-orange-700" />
+                  <p className="text-sm text-slate-700">
+                    <span className="font-black text-slate-950">{property.totalArea} {property.areaUnit}</span> of project area
+                  </p>
+                </div>
               </div>
             )}
 
@@ -951,14 +927,28 @@ const PropertyDetails: React.FC = () => {
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   {projectHighlights && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Project Highlights</p>
-                      <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700">{projectHighlights}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Project Highlights</p>
+                      <ul className="mt-1 space-y-1">
+                        {projectHighlights.split(/\r?\n/).filter((line) => line.trim()).map((line, index) => (
+                          <li key={index} className="flex gap-2 text-sm leading-6 text-slate-700">
+                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" />
+                            <span>{line.trim()}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                   {localityHighlights && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Locality Top Highlights</p>
-                      <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700">{localityHighlights}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Locality Top Highlights</p>
+                      <ul className="mt-1 space-y-1">
+                        {localityHighlights.split(/\r?\n/).filter((line) => line.trim()).map((line, index) => (
+                          <li key={index} className="flex gap-2 text-sm leading-6 text-slate-700">
+                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" />
+                            <span>{line.trim()}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
@@ -1484,7 +1474,7 @@ const PropertyDetails: React.FC = () => {
           </div>
 
           {galleryImages.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto px-4 py-4">
+            <div className="flex justify-center gap-2 overflow-x-auto px-4 py-4">
               {galleryImages.map((url, index) => (
                 <button
                   key={url}
