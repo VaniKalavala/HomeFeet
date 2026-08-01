@@ -51,6 +51,24 @@ export const getProjectConfiguration = (property: any) => {
   return property.developmentType || 'Property';
 };
 
+export const getProjectAreaRange = (property: any) => {
+  if (property.floorPlanUnits && property.floorPlanUnits.length) {
+    const sizes = property.floorPlanUnits
+      .map((unit: any) => Number(String(unit.size || '').replace(/,/g, '')))
+      .filter((value: number) => value > 0);
+    if (sizes.length) {
+      const min = Math.min(...sizes);
+      const max = Math.max(...sizes);
+      return min === max ? `${min.toLocaleString('en-IN')} Sq Ft` : `${min.toLocaleString('en-IN')} - ${max.toLocaleString('en-IN')} Sq Ft`;
+    }
+  }
+  if (property.flatSizeMin && property.flatSizeMax) {
+    return `${property.flatSizeMin} - ${property.flatSizeMax} Sq Ft`;
+  }
+  if (property.flatSize) return `${property.flatSize} Sq Ft`;
+  return '';
+};
+
 const SALE_FLAT_TYPES = ['apartment', 'standalone', 'high-rise', 'gated-community', 'group-house', 'newly-launched'];
 
 export const fetchHappeningProjects = async (city: string, limit = 8) => {

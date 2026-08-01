@@ -44,7 +44,7 @@ import AdminPanel from './components/AdminPanel';
 import AdminChatbot from './components/AdminChatbot';
 import PropertiesListingPage from './components/PropertiesListingPage';
 import Dashboard from './components/Dashboard';
-import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getBuilderLogo, getProjectConfiguration, getProjectImage, getProjectPriceRange } from './lib/happeningProjects';
+import { fetchHappeningProjects, getBuilderInitial, getBuilderLabel, getBuilderLogo, getProjectAreaRange, getProjectConfiguration, getProjectImage, getProjectPriceRange } from './lib/happeningProjects';
 import ContactPage from './components/ContactPage';
 import ChatPage from './components/ChatPage';
 import LoginModal from './components/LoginModal';
@@ -847,7 +847,6 @@ function HomePage() {
   const [selectedHotSellingZone, setSelectedHotSellingZone] = useState('All');
   const hotSellingScrollRef = useRef<HTMLDivElement>(null);
   const newlyLaunchedScrollRef = useRef<HTMLDivElement>(null);
-  const housingPicksScrollRef = useRef<HTMLDivElement>(null);
   const [marketplaceStats, setMarketplaceStats] = useState<MarketplaceStats>({
     builders: 0,
     owners: 0,
@@ -1134,31 +1133,6 @@ function HomePage() {
     setExclusiveImageIndex((current) => (current + direction + exclusiveGalleryImages.length) % exclusiveGalleryImages.length);
   };
 
-  const scrollHousingPicks = (direction: 1 | -1) => {
-    const container = housingPicksScrollRef.current;
-    const card = container?.firstElementChild as HTMLElement | null;
-    if (!container || !card) return;
-    const gap = parseFloat(getComputedStyle(container).columnGap || '0') || 16;
-    container.scrollBy({ left: direction * (card.offsetWidth + gap), behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    if (happeningProjects.length <= 1) return;
-    const interval = setInterval(() => {
-      const container = housingPicksScrollRef.current;
-      const card = container?.firstElementChild as HTMLElement | null;
-      if (!container || !card) return;
-      const gap = parseFloat(getComputedStyle(container).columnGap || '0') || 16;
-      const atEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 10;
-      if (atEnd) {
-        container.scrollTo({ left: 0, behavior: 'smooth' });
-      } else {
-        container.scrollBy({ left: card.offsetWidth + gap, behavior: 'smooth' });
-      }
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [happeningProjects]);
-
   const visibleHotSellingProjects = selectedHotSellingZone === 'All'
     ? hotSellingProjects
     : hotSellingProjects.filter((project) => project.zone === selectedHotSellingZone);
@@ -1229,20 +1203,18 @@ function HomePage() {
 
       <section className="bg-white py-12">
         <div className="ld-container">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex items-end justify-between">
             <div>
               <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">HomeFeet's <span className="text-[#0AA6A6]">Happening</span> Projects</h2>
               <p className="mt-1 text-slate-600">Explore top living options with us</p>
             </div>
-            {happeningProjects[0] && (
-              <div className="hidden text-center sm:block">
-                <img
-                  src={getProjectImage(happeningProjects[0])}
-                  alt={happeningProjects[0].projectName}
-                  className="h-16 w-16 rounded-lg border border-slate-200 object-cover"
-                />
-                <p className="mt-1 max-w-[6rem] truncate text-xs font-semibold text-slate-700">{happeningProjects[0].projectName}</p>
-              </div>
+            {happeningProjects.length > 0 && (
+              <Link
+                to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`}
+                className="flex shrink-0 items-center gap-1 text-sm font-bold text-[#0AA6A6] hover:underline"
+              >
+                See All <ChevronRight className="h-4 w-4" />
+              </Link>
             )}
           </div>
 
@@ -1251,94 +1223,50 @@ function HomePage() {
               No active Sale Property listings in {selectedCity} yet.
             </div>
           ) : (
-          <div className="relative">
-            <div
-              ref={housingPicksScrollRef}
-              className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [-webkit-mask-image:linear-gradient(to_right,black_82%,transparent_100%)] [mask-image:linear-gradient(to_right,black_82%,transparent_100%)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
               {happeningProjects.map((pick) => (
-                <div
+                <Link
                   key={pick._id}
-                  className="flex w-[min(90vw,820px)] shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-slate-200 sm:grid sm:h-[340px] sm:flex-none sm:grid-cols-[260px_1fr]"
+                  to={`/property/${pick._id}`}
+                  className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
                 >
-                  {/* Info panel — below image on mobile, left column on sm+ */}
-                  <div className="flex flex-col gap-3 p-4 sm:justify-between sm:gap-0 sm:p-5">
-                    {/* Builder */}
-                    <div className="flex items-center gap-2.5">
+                  {/* Image with builder logo badge overlapping top-left */}
+                  <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
+                    <img
+                      src={getProjectImage(pick)}
+                      alt={pick.projectName}
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow ring-1 ring-slate-200">
                       {getBuilderLogo(pick) ? (
                         <img
                           src={getBuilderLogo(pick)}
                           alt={getBuilderLabel(pick)}
-                          className="h-10 w-10 shrink-0 rounded-lg object-contain"
+                          className="h-full w-full object-contain"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0AA6A6] text-base font-black text-white">
-                          {getBuilderInitial(pick)}
-                        </div>
+                        <span className="text-sm font-black text-[#0AA6A6]">{getBuilderInitial(pick)}</span>
                       )}
-                      <div className="min-w-0">
-                        <p className="line-clamp-1 text-sm font-black text-slate-900">{getBuilderLabel(pick)}</p>
-                        <Link
-                          to={`/properties?view=marketplace&city=${encodeURIComponent(selectedCity)}`}
-                          className="text-xs font-semibold text-[#0AA6A6] hover:underline"
-                        >
-                          View Projects →
-                        </Link>
-                      </div>
                     </div>
-
-                    {/* Project name & location */}
-                    <div>
-                      <p className="line-clamp-1 text-base font-black leading-tight text-slate-950">{pick.projectName || pick.developmentType}</p>
-                      <p className="mt-0.5 line-clamp-1 text-sm text-slate-500">{pick.locality}, {pick.city}</p>
-                    </div>
-
-                    {/* Price & config */}
-                    <div>
-                      <p className="line-clamp-1 font-black text-[#0AA6A6]">{getProjectPriceRange(pick)}</p>
-                      <p className="mt-0.5 line-clamp-1 text-sm text-slate-500">{getProjectConfiguration(pick)}</p>
-                    </div>
-
-                    {/* Contact button */}
-                    <Link
-                      to={`/property/${pick._id}`}
-                      className="block rounded-lg bg-[#0AA6A6] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#088f8f]"
-                    >
-                      Contact
-                    </Link>
                   </div>
 
-                  {/* Image — order-first on mobile (shows above info), right column on sm+ */}
-                  <div className="relative order-first h-40 overflow-hidden bg-slate-100 sm:order-none sm:h-full">
-                    <img
-                      src={getProjectImage(pick)}
-                      alt={pick.projectName}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/30 to-transparent" />
+                  {/* Details */}
+                  <div className="flex flex-1 flex-col gap-1 p-3">
+                    <p className="line-clamp-1 text-sm font-black leading-tight text-slate-950">{pick.projectName || pick.developmentType}</p>
+                    <p className="line-clamp-1 text-sm font-black text-[#0AA6A6]">{getProjectPriceRange(pick)}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-500">
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="line-clamp-1">{pick.locality}, {pick.city}</span>
+                    </p>
+                    <p className="line-clamp-1 text-xs text-slate-500">{getProjectConfiguration(pick)}</p>
+                    {getProjectAreaRange(pick) && (
+                      <p className="line-clamp-1 text-xs text-slate-500">{getProjectAreaRange(pick)}</p>
+                    )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={() => scrollHousingPicks(-1)}
-              aria-label="Previous top pick"
-              className="absolute left-0 top-1/2 hidden h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 lg:flex"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollHousingPicks(1)}
-              aria-label="Next top pick"
-              className="absolute right-0 top-1/2 hidden h-10 w-10 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 lg:flex"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
           )}
         </div>
       </section>
