@@ -490,6 +490,32 @@ const AdminPanel: React.FC = () => {
     navigate(`/edit-property/${id}?admin=true`);
   };
 
+  const handleDeleteProperty = async (id: string, projectName?: string) => {
+    const confirmed = window.confirm(
+      `Delete ${projectName || 'this property'}? This cannot be undone — use this when the listing details are not proper (spam, duplicate, incomplete, etc.).`
+    );
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/admin/properties/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setProperties(prev => prev.filter(p => p._id !== id));
+        setShowModal(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete property');
+      }
+    } catch (error) {
+      console.error('Error deleting property:', error);
+      alert('Failed to delete property');
+    }
+  };
+
   const verifyBuilder = async (id: string, status: 'approved' | 'rejected') => {
     const token = localStorage.getItem('token');
     const reason = status === 'rejected' ? prompt('Reason for rejecting builder verification:') : '';
@@ -3324,7 +3350,18 @@ const AdminPanel: React.FC = () => {
                             {property.locality}, {property.city}{property.state ? `, ${property.state}` : ''}
                           </div>
                         </div>
-                        {getStatusBadge(property.status)}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProperty(property._id, property.projectName || property.societyName)}
+                            title="Delete property (e.g. if details are not proper)"
+                            className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                          {getStatusBadge(property.status)}
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-3 text-sm">
@@ -3609,6 +3646,13 @@ const AdminPanel: React.FC = () => {
                   </button>
                   </>
                 )}
+                <button
+                  onClick={() => handleDeleteProperty(selectedProperty._id, selectedProperty.projectName || selectedProperty.societyName)}
+                  className="flex items-center justify-center gap-2 px-6 py-3 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 font-semibold"
+                >
+                  <Trash2 className="h-5 w-5" />
+                  Delete
+                </button>
               </div>
             </div>
           </div>

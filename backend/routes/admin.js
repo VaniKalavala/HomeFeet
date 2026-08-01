@@ -129,6 +129,21 @@ router.patch('/properties/:id/reject', isAdmin, async (req, res) => {
   }
 });
 
+// DELETE property (admin-only, e.g. when listing details are not proper)
+router.delete('/properties/:id', isAdmin, async (req, res) => {
+  try {
+    const property = await Property.findByIdAndDelete(req.params.id);
+    if (!property) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
+    res.json({ success: true, message: 'Property deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting property:', error);
+    res.status(500).json({ error: 'Failed to delete property' });
+  }
+});
+
 router.get('/users', isAdmin, async (req, res) => {
   try {
     const autoApprovalCutoff = new Date(Date.now() - 60 * 1000);
