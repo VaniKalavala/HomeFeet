@@ -1282,7 +1282,7 @@ function HomePage() {
                     {/* Details */}
                     <div className="flex flex-1 flex-col gap-1 p-3">
                       <p className="line-clamp-1 text-sm font-black leading-tight text-slate-950">{pick.projectName || pick.developmentType}</p>
-                      <p className="line-clamp-1 text-sm font-black text-[#0AA6A6]">{getProjectPriceRange(pick)}</p>
+                      <p className="line-clamp-1 text-sm font-black text-orange-600">{getProjectPriceRange(pick)}</p>
                       <p className="flex items-center gap-1 text-xs text-slate-500">
                         <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                         <span className="line-clamp-1">{pick.locality}, {pick.city}</span>
@@ -1342,7 +1342,7 @@ function HomePage() {
 
                         {/* Price & config */}
                         <div>
-                          <p className="line-clamp-1 font-black text-[#0AA6A6]">{getProjectPriceRange(pick)}</p>
+                          <p className="line-clamp-1 font-black text-orange-600">{getProjectPriceRange(pick)}</p>
                           <p className="mt-0.5 line-clamp-1 text-sm text-slate-500">{getProjectConfiguration(pick)}</p>
                         </div>
 
@@ -1522,7 +1522,7 @@ function HomePage() {
 
                   <div className="mt-10">
                     <p className="text-sm text-slate-500">Starting price</p>
-                    <p className="mt-1 text-3xl font-black text-slate-950">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
+                    <p className="mt-1 text-3xl font-black text-orange-600">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
 
                     <div className="mt-5 flex flex-wrap gap-3">
                       {activeExclusiveProject.propertyFormUrl && (

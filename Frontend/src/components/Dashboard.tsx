@@ -933,7 +933,7 @@ const Dashboard: React.FC = () => {
                                   <MapPin className="h-4 w-4 shrink-0" />
                                   <span className="truncate">{property.locality}, {property.city}</span>
                                 </div>
-                                <p className="mt-2 text-lg font-black text-[#0AA6A6]">{getDisplayPrice(property)}</p>
+                                <p className="mt-2 text-lg font-black text-orange-600">{getDisplayPrice(property)}</p>
 
                                 {property.status === 'rejected' && (
                                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -1033,7 +1033,7 @@ const Dashboard: React.FC = () => {
                           <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
                             <MapPin className="h-3.5 w-3.5 shrink-0" /> {property.locality}, {property.city}
                           </p>
-                          <p className="mt-2 text-base font-black text-[#0AA6A6]">{getDisplayPrice(property)}</p>
+                          <p className="mt-2 text-base font-black text-orange-600">{getDisplayPrice(property)}</p>
                           <div className="mt-3 flex gap-2">
                             <Link to={`/property/${property._id}`} className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">
                               View Details

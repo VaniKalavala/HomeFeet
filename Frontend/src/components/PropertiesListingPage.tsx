@@ -2076,7 +2076,7 @@ const PropertiesListingPage: React.FC = () => {
                                     ? (propertyIntent === 'buy' ? 'Budget / Sq Yard' : 'Square Yard Price')
                                     : 'Square Feet Price'}
                               </span>
-                              <p className="line-clamp-1 font-bold leading-4 text-teal-700">
+                              <p className="line-clamp-1 font-bold leading-4 text-orange-600">
                                 {property.squareFeetPrice
                                   ? formatPrice(property.squareFeetPrice)
                                   : property.squareYardPrice
@@ -2653,7 +2653,7 @@ const PropertiesListingPage: React.FC = () => {
                                       ? (listingIntent === 'buy' ? 'Budget / Sq Yard:' : 'Square Yard Price:')
                                       : 'Square Feet Price:'}
                                 </span>
-                                <span className="font-bold text-teal-700 ml-1">
+                                <span className="font-bold text-orange-600 ml-1">
                                   {property.squareFeetPrice
                                     ? formatPrice(property.squareFeetPrice)
                                     : property.squareYardPrice
