@@ -623,28 +623,8 @@ const PropertyDetails: React.FC = () => {
           <div className="p-6 md:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {property.developmentType && (
-                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
-                      {cleanType(property.developmentType)}
-                    </span>
-                  )}
-                  {property.zoningClassification && (
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
-                      {property.zoningClassification}
-                    </span>
-                  )}
-                  <span
-                    className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-800 shadow-sm"
-                    title={`Property number ${propertyNumber(property)}`}
-                  >
-                    Property No: {propertyNumber(property)}
-                  </span>
-                </div>
-
-                {/* Heading + builder logo badge */}
+                {/* Heading with builder logo before the project name */}
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">{title}</h1>
                   {property.companyLogoUrl && (
                     <img
                       src={`${API_ORIGIN}${property.companyLogoUrl}`}
@@ -653,6 +633,7 @@ const PropertyDetails: React.FC = () => {
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   )}
+                  <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">{title}</h1>
                 </div>
                 {property.companyName && (
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
@@ -689,6 +670,26 @@ const PropertyDetails: React.FC = () => {
                     {[property.bedrooms, heroAreaText].filter(Boolean).join(' · ')}
                   </p>
                 )}
+
+                {/* Project type / Property No - below a horizontal divider */}
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                  {property.developmentType && (
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
+                      {cleanType(property.developmentType)}
+                    </span>
+                  )}
+                  {property.zoningClassification && (
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
+                      {property.zoningClassification}
+                    </span>
+                  )}
+                  <span
+                    className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-800 shadow-sm"
+                    title={`Property number ${propertyNumber(property)}`}
+                  >
+                    Property No: {propertyNumber(property)}
+                  </span>
+                </div>
               </div>
 
               {/* Action row */}
