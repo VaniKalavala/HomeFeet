@@ -555,7 +555,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
     const {
       listingIntent = 'development',
       projectName, companyName, propertyShareOption,
-      developmentType, totalArea, areaUnit, flatSize, flatSizeMin, flatSizeMax, flatFacing, projectTotalUnits,
+      developmentType, totalArea, areaUnit, flatSize, flatSizeMin, flatSizeMax, flatFacing, projectTotalUnits, floorToFloorHeight,
       northSideLength, southSideLength, eastSideLength, westSideLength,
       facing, roadFacingDirection, roadSize, frontageWidth, pincode, zoningClassification,
       developerRatio, partlySale, partlySaleUnit, partlySaleValue, partlySalePrice,
@@ -631,6 +631,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       flatSizeMax: flatSizeMax || '',
       flatFacing: flatFacing || '',
       projectTotalUnits: projectTotalUnits || '',
+      floorToFloorHeight: floorToFloorHeight || '',
       northSideLength,
       southSideLength,
       eastSideLength,
@@ -808,7 +809,14 @@ router.get('/properties/:id', async (req, res) => {
     }
 
     const canSeeContact = await canSeePropertyOwnerContact(user, project);
-    res.json({ project: canSeeContact ? project : stripOwnerContact(project) });
+    const responseProject = canSeeContact ? project.toObject() : stripOwnerContact(project);
+    if (project.companyName) {
+      responseProject.companyProjectCount = await Property.countDocuments({
+        companyName: project.companyName,
+        status: 'approved'
+      });
+    }
+    res.json({ project: responseProject });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error fetching project' });

@@ -264,6 +264,7 @@ const PostProperty = () => {
     companyName: '',
     propertyShareOption: '',
     projectTotalUnits: '',
+    floorToFloorHeight: '',
     northSideLength: '',
     southSideLength: '',
     eastSideLength: '',
@@ -424,6 +425,7 @@ const PostProperty = () => {
       projectName: prefill.projectName || prev.projectName,
       companyName: prefill.companyName || prev.companyName,
       projectTotalUnits: prefill.projectTotalUnits || prev.projectTotalUnits,
+      floorToFloorHeight: prefill.floorToFloorHeight || prev.floorToFloorHeight,
       northSideLength: prefill.northSideLength || prev.northSideLength,
       southSideLength: prefill.southSideLength || prev.southSideLength,
       eastSideLength: prefill.eastSideLength || prev.eastSideLength,
@@ -651,6 +653,7 @@ const PostProperty = () => {
           companyName: property.companyName || '',
           propertyShareOption: property.propertyShareOption || '',
           projectTotalUnits: property.projectTotalUnits || '',
+          floorToFloorHeight: property.floorToFloorHeight || '',
           northSideLength: property.northSideLength || '',
           southSideLength: property.southSideLength || '',
           eastSideLength: property.eastSideLength || '',
@@ -2181,6 +2184,7 @@ const PostProperty = () => {
     data.append('companyName', formData.companyName);
     data.append('propertyShareOption', formData.propertyShareOption);
     data.append('projectTotalUnits', formData.projectTotalUnits);
+    data.append('floorToFloorHeight', formData.floorToFloorHeight);
     data.append('northSideLength', formData.northSideLength);
     data.append('southSideLength', formData.southSideLength);
     data.append('eastSideLength', formData.eastSideLength);
@@ -2974,6 +2978,16 @@ const PostProperty = () => {
               type="number"
               min="0"
               step="1"
+            />
+            <input
+              name="floorToFloorHeight"
+              value={formData.floorToFloorHeight}
+              onChange={handleChange}
+              placeholder="Floor to Floor Height (ft)"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+              type="number"
+              min="0"
+              step="0.1"
             />
             <input
               name="flatSize"

@@ -56,6 +56,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  floorToFloorHeight: {  // Vertical ceiling/floor-to-floor height in feet, e.g. "10.3"
+    type: String,
+    default: ''
+  },
   // Plot dimensions for all four sides (in feet)
   northSideLength: { 
     type: String, 

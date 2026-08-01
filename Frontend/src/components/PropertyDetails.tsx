@@ -540,7 +540,7 @@ const PropertyDetails: React.FC = () => {
       <div className="min-h-screen bg-slate-50 py-16">
         <div className="ld-container">
           <div className="mx-auto max-w-2xl rounded-lg border border-slate-200 bg-white p-8 text-center shadow-xl">
-            <Lock className="mx-auto mb-4 h-10 w-10 text-teal-700" />
+            <Lock className="mx-auto mb-4 h-10 w-10 text-orange-700" />
             <h1 className="text-3xl font-black text-slate-950">Login required</h1>
             <p className="mt-3 text-slate-600">Property details are available only to logged-in users.</p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -569,7 +569,7 @@ const PropertyDetails: React.FC = () => {
       <div className="min-h-screen bg-slate-50 py-16">
         <div className="ld-container">
           <div className="mx-auto w-full max-w-lg rounded-lg border border-slate-200 bg-white p-7 text-center shadow-2xl">
-            <Lock className="mx-auto h-11 w-11 text-teal-700" />
+            <Lock className="mx-auto h-11 w-11 text-orange-700" />
             <p className="ld-eyebrow mt-5">Membership Required</p>
             <h1 className="mt-2 text-3xl font-black text-slate-950">Upgrade your membership</h1>
             <p className="mt-4 leading-7 text-slate-600">
@@ -607,9 +607,9 @@ const PropertyDetails: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 py-8">
-      <div className="ld-container">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-          <Link to="/properties" className="inline-flex items-center gap-2 text-sm font-bold text-teal-700 hover:text-teal-900">
+          <Link to="/properties" className="inline-flex items-center gap-2 text-sm font-bold text-orange-700 hover:text-orange-900">
             <ArrowLeft className="h-4 w-4" />
             Back to Properties
           </Link>
@@ -625,7 +625,7 @@ const PropertyDetails: React.FC = () => {
           <div className="p-6 md:p-8">
             <div className="mb-3 flex flex-wrap gap-2">
               {property.developmentType && (
-                <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800">
+                <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
                   {cleanType(property.developmentType)}
                 </span>
               )}
@@ -655,19 +655,26 @@ const PropertyDetails: React.FC = () => {
               )}
             </div>
             {property.companyName && (
-              <p className="mt-1 text-sm font-semibold text-slate-600">By {property.companyName}</p>
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
+                By {property.companyName}
+                {property.companyProjectCount > 1 && (
+                  <span className="text-xs font-bold text-orange-700">
+                    · {property.companyProjectCount} Total projects
+                  </span>
+                )}
+              </p>
             )}
 
             {/* Location block */}
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-              <MapPin className="h-4 w-4 shrink-0 text-teal-700" />
+              <MapPin className="h-4 w-4 shrink-0 text-orange-700" />
               <span>{location}</span>
               {property.map && (
                 <a
                   href={property.map}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-bold text-teal-700 hover:text-teal-900"
+                  className="inline-flex items-center gap-1 font-bold text-orange-700 hover:text-orange-900"
                   title="View on Map"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -726,7 +733,7 @@ const PropertyDetails: React.FC = () => {
                   }}
                 />
                 <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-teal-800 shadow">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-orange-800 shadow">
                     <BadgeCheck className="h-4 w-4" /> Verified Listing
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow">
@@ -745,7 +752,7 @@ const PropertyDetails: React.FC = () => {
                         type="button"
                         onClick={() => setActiveImageIndex(index)}
                         className={`relative aspect-square overflow-hidden rounded-lg border-2 ${
-                          index === activeImageIndex ? 'border-teal-500' : 'border-transparent'
+                          index === activeImageIndex ? 'border-orange-500' : 'border-transparent'
                         }`}
                       >
                         <img
@@ -780,7 +787,7 @@ const PropertyDetails: React.FC = () => {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-slate-500">Budget</p>
-                      <p className="mt-1 text-xl font-black text-[#0AA6A6]">{formatMoney(property.totalBudget)}</p>
+                      <p className="mt-1 text-xl font-black text-[#F97316]">{formatMoney(property.totalBudget)}</p>
                       {(property.squareFeetPrice || property.squareYardPrice) && (
                         <p className="mt-0.5 text-xs font-semibold text-slate-500">
                           {formatMoney(property.squareFeetPrice || property.squareYardPrice)} PER {property.squareFeetPrice ? 'SFT' : 'SQ YD'}
@@ -788,7 +795,7 @@ const PropertyDetails: React.FC = () => {
                       )}
                     </div>
                     {property.totalBudgetOnwards && (
-                      <span className="shrink-0 rounded-full bg-teal-100 px-2 py-1 text-xs font-bold text-teal-800">Minimum</span>
+                      <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800">Minimum</span>
                     )}
                   </div>
                 </div>
@@ -800,7 +807,7 @@ const PropertyDetails: React.FC = () => {
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {!isApartmentLikeListing && property.totalArea && (
                   <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
-                    <Ruler className="h-4 w-4 shrink-0 text-teal-700" />
+                    <Ruler className="h-4 w-4 shrink-0 text-orange-700" />
                     <p className="text-sm text-slate-700">
                       <span className="font-black text-slate-950">{property.totalArea} {property.areaUnit}</span> of project area
                     </p>
@@ -808,12 +815,32 @@ const PropertyDetails: React.FC = () => {
                 )}
                 {property.projectTotalUnits && (
                   <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-3">
-                    <Layers className="h-4 w-4 shrink-0 text-teal-700" />
+                    <Layers className="h-4 w-4 shrink-0 text-orange-700" />
                     <p className="text-sm text-slate-700">
                       <span className="font-black text-slate-950">{property.projectTotalUnits}</span> Units
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {property.floorToFloorHeight && (
+              <div className="mt-3 rounded-lg border border-slate-200 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700">
+                      <ArrowUpDown className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="font-black text-slate-950">Floor to floor height</p>
+                      <p className="text-xs text-slate-500">More height means more space</p>
+                    </div>
+                  </div>
+                  <p className="shrink-0 text-lg font-black text-slate-950">{property.floorToFloorHeight} ft</p>
+                </div>
+                <p className="mt-2 rounded-md bg-orange-50 px-3 py-1.5 text-center text-xs font-semibold text-orange-800">
+                  Average height in Indian apartments is 9.8 ft
+                </p>
               </div>
             )}
 
@@ -823,7 +850,7 @@ const PropertyDetails: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 download
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#F97316] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
               >
                 <Download className="h-4 w-4" />
                 Download Brochure
@@ -838,7 +865,7 @@ const PropertyDetails: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   download
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#088f8f]"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#F97316] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
                 >
                   <Download className="h-4 w-4" />
                   Download Cost Sheet
@@ -847,11 +874,11 @@ const PropertyDetails: React.FC = () => {
             )}
 
             {(property.advance || property.goodwill) && (
-              <div className="mt-4 grid gap-3 rounded-lg bg-teal-50 p-4 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3 rounded-lg bg-orange-50 p-4 sm:grid-cols-2">
                 {property.goodwill && (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Goodwill Amount</p>
-                    <p className="text-xl font-black text-teal-950">{formatMoney(property.goodwill)}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Goodwill Amount</p>
+                    <p className="text-xl font-black text-orange-950">{formatMoney(property.goodwill)}</p>
                   </div>
                 )}
                 {property.advance && (
@@ -877,7 +904,7 @@ const PropertyDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowFullDescription((prev) => !prev)}
-                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-teal-700 hover:text-teal-900"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-orange-700 hover:text-orange-900"
                   >
                     {showFullDescription ? 'Read less' : 'Read more'}
                     {showFullDescription ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -910,7 +937,7 @@ const PropertyDetails: React.FC = () => {
                     const AmenityIcon = AMENITY_ICONS[amenity] || Sparkles;
                     return (
                       <div key={amenity} className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-orange-700">
                           <AmenityIcon className="h-5 w-5" />
                         </div>
                         <p className="text-xs font-semibold leading-tight text-slate-700">{amenity}</p>
@@ -921,7 +948,7 @@ const PropertyDetails: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowAllAmenities(true)}
-                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-teal-200 bg-teal-50 p-3 text-center text-teal-700 transition hover:bg-teal-100"
+                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-orange-700 transition hover:bg-orange-100"
                     >
                       <span className="text-sm font-black">+{amenities.length - AMENITY_PREVIEW_COUNT} more</span>
                       <ChevronDown className="h-4 w-4" />
@@ -931,7 +958,7 @@ const PropertyDetails: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowAllAmenities(false)}
-                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-teal-200 bg-teal-50 p-3 text-center text-teal-700 transition hover:bg-teal-100"
+                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-orange-700 transition hover:bg-orange-100"
                     >
                       <span className="text-sm font-black">Show less</span>
                       <ChevronUp className="h-4 w-4" />
@@ -976,7 +1003,7 @@ const PropertyDetails: React.FC = () => {
                           type="button"
                           onClick={() => { setActiveBhkGroupIndex(0); setActiveFloorPlanUnitIndex(0); setActiveFloorPlanImageIndex(0); }}
                           title="Show the first configuration"
-                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300"
+                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-orange-300"
                         >
                           All ({floorPlanUnits.length})
                         </button>
@@ -987,8 +1014,8 @@ const PropertyDetails: React.FC = () => {
                             onClick={() => { setActiveBhkGroupIndex(groupIndex); setActiveFloorPlanUnitIndex(0); setActiveFloorPlanImageIndex(0); }}
                             className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
                               groupIndex === activeBhkGroupIndex
-                                ? 'border-teal-600 bg-teal-600 text-white'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300'
+                                ? 'border-orange-600 bg-orange-600 text-white'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-orange-300'
                             }`}
                           >
                             {group.label} ({group.units.length})
@@ -1015,7 +1042,7 @@ const PropertyDetails: React.FC = () => {
                             onClick={() => { setActiveFloorPlanUnitIndex(unitIndex); setActiveFloorPlanImageIndex(0); }}
                             className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold ${
                               unitIndex === activeFloorPlanUnitIndex
-                                ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-600'
+                                ? 'bg-orange-50 text-orange-800 ring-1 ring-orange-600'
                                 : 'text-slate-500 hover:bg-slate-50'
                             }`}
                           >
@@ -1046,7 +1073,7 @@ const PropertyDetails: React.FC = () => {
                               type="button"
                               onClick={() => setFloorPlanView(mode)}
                               className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                floorPlanView === mode ? 'bg-teal-700 text-white' : 'text-slate-500'
+                                floorPlanView === mode ? 'bg-orange-700 text-white' : 'text-slate-500'
                               }`}
                             >
                               {mode}
@@ -1065,7 +1092,7 @@ const PropertyDetails: React.FC = () => {
                           if (!currentImg && !selectedFloorPlanUnit.imageUrl) return null;
                           if (!currentImg && selectedFloorPlanUnit.imageUrl) {
                             return (
-                              <a href={`${API_ORIGIN}${selectedFloorPlanUnit.imageUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-teal-700 hover:text-teal-900">
+                              <a href={`${API_ORIGIN}${selectedFloorPlanUnit.imageUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-orange-700 hover:text-orange-900">
                                 <Download className="h-4 w-4" /> View floor plan document
                               </a>
                             );
@@ -1167,14 +1194,14 @@ const PropertyDetails: React.FC = () => {
                       <label
                         key={candidate._id}
                         className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${
-                          checked ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-teal-300'
+                          checked ? 'border-orange-600 bg-orange-50' : 'border-slate-200 hover:border-orange-300'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleCompareSelection(candidate._id)}
-                          className="h-4 w-4 accent-teal-700"
+                          className="h-4 w-4 accent-orange-700"
                         />
                         <img
                           src={candidate.imageUrl ? `${API_ORIGIN}${candidate.imageUrl}` : fallbackPropertyImage}
@@ -1198,7 +1225,7 @@ const PropertyDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowComparison(true)}
-                    className="mt-4 inline-flex items-center justify-center rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800"
+                    className="mt-4 inline-flex items-center justify-center rounded-lg bg-orange-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-800"
                   >
                     Compare Selected ({comparisonProperties.length})
                   </button>
@@ -1225,7 +1252,7 @@ const PropertyDetails: React.FC = () => {
                                 {item.bedrooms}{item.flatSize ? ` - ${item.flatSize} Sq Ft` : ''}
                               </p>
                             )}
-                            <p className="mt-2 text-base font-black text-teal-700">{formatMoney(item.totalBudget) || formatMoney(item.squareFeetPrice)}</p>
+                            <p className="mt-2 text-base font-black text-orange-700">{formatMoney(item.totalBudget) || formatMoney(item.squareFeetPrice)}</p>
                             {item.squareFeetPrice && <p className="text-xs text-slate-500">{formatMoney(item.squareFeetPrice)}/sq.ft</p>}
                             <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
                             <p className="text-sm font-bold text-slate-900">{item.possessionStatus || '-'}</p>
@@ -1241,7 +1268,7 @@ const PropertyDetails: React.FC = () => {
                                   const AmenityIcon = AMENITY_ICONS[amenity] || Sparkles;
                                   return (
                                     <div key={amenity} className="flex flex-col items-center gap-1 text-center">
-                                      <AmenityIcon className="h-4 w-4 text-teal-700" />
+                                      <AmenityIcon className="h-4 w-4 text-orange-700" />
                                       <p className="text-[10px] leading-tight text-slate-600">{amenity}</p>
                                     </div>
                                   );
@@ -1249,12 +1276,12 @@ const PropertyDetails: React.FC = () => {
                               </div>
                             )}
                             {itemAmenities.length > 6 && (
-                              <p className="mt-1 text-center text-xs font-semibold text-teal-700">+{itemAmenities.length - 6} more</p>
+                              <p className="mt-1 text-center text-xs font-semibold text-orange-700">+{itemAmenities.length - 6} more</p>
                             )}
                             {item._id !== property._id && (
                               <Link
                                 to={`/property/${item._id}`}
-                                className="mt-3 block rounded-lg border border-teal-200 px-3 py-1.5 text-center text-xs font-bold text-teal-800 hover:bg-teal-50"
+                                className="mt-3 block rounded-lg border border-orange-200 px-3 py-1.5 text-center text-xs font-bold text-orange-800 hover:bg-orange-50"
                               >
                                 View Details
                               </Link>
@@ -1282,7 +1309,7 @@ const PropertyDetails: React.FC = () => {
             ) : !showContact ? (
               <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-4 flex gap-3">
-                  <Lock className="mt-1 h-5 w-5 shrink-0 text-teal-700" />
+                  <Lock className="mt-1 h-5 w-5 shrink-0 text-orange-700" />
                   <div>
                     <h3 className="font-black text-slate-950">
                       {isOwnerOrMediator
@@ -1302,13 +1329,13 @@ const PropertyDetails: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button onClick={handleShowContact} className="ld-btn-primary w-full bg-[#0AA6A6] hover:bg-[#088f8f]">
+                <button onClick={handleShowContact} className="ld-btn-primary w-full bg-[#F97316] hover:bg-[#C2410C]">
                   {isOwnerOrMediator
                     ? buyerHasInstantAccess ? 'Unlock Contact Now' : `Send Request to ${contactPartyLabel}`
                     : `Request / Unlock ${contactPartyLabel} Contact`}
                 </button>
                 {isOwnerOrMediator && !buyerHasInstantAccess && (
-                  <Link to="/profile" className="mt-3 block text-center text-sm font-bold text-teal-700 underline">
+                  <Link to="/profile" className="mt-3 block text-center text-sm font-bold text-orange-700 underline">
                     Buy a contact-reveal pack for instant access
                   </Link>
                 )}
@@ -1318,14 +1345,14 @@ const PropertyDetails: React.FC = () => {
               <div className="mt-5 space-y-3">
                 <div className="rounded-lg bg-slate-50 p-4">
                   <p className="flex items-center gap-2 font-black text-slate-950">
-                    <Phone className="h-5 w-5 text-teal-700" />
+                    <Phone className="h-5 w-5 text-orange-700" />
                     {contact?.phone || `${contactPartyLabel} phone unlocked`}
                   </p>
                 </div>
                 {contact?.email && (
                   <div className="rounded-lg bg-slate-50 p-4">
                     <p className="flex items-center gap-2 font-black text-slate-950">
-                      <Mail className="h-5 w-5 text-teal-700" />
+                      <Mail className="h-5 w-5 text-orange-700" />
                       {contact.email}
                     </p>
                   </div>
@@ -1344,7 +1371,7 @@ const PropertyDetails: React.FC = () => {
       {membershipAccessRequired && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-24 pointer-events-none">
           <div className="pointer-events-auto w-full max-w-lg rounded-lg border border-slate-200 bg-white p-7 text-center shadow-2xl">
-            <Lock className="mx-auto h-11 w-11 text-teal-700" />
+            <Lock className="mx-auto h-11 w-11 text-orange-700" />
             <p className="ld-eyebrow mt-5">Membership Required</p>
             <h1 className="mt-2 text-3xl font-black text-slate-950">Upgrade your membership</h1>
             <p className="mt-4 leading-7 text-slate-600">
@@ -1384,15 +1411,15 @@ const PropertyDetails: React.FC = () => {
                   type="button"
                   onClick={() => chooseBuilderPlan(plan.value)}
                   disabled={Boolean(subscriptionLoading)}
-                  className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-teal-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-orange-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-semibold text-slate-950">{plan.label}</p>
-                    <Check className="h-5 w-5 text-teal-700" />
+                    <Check className="h-5 w-5 text-orange-700" />
                   </div>
                   <p className="mt-3 font-sans text-lg font-semibold tracking-normal text-slate-900">{plan.price}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{plan.note}</p>
-                  <span className="mt-5 inline-flex rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white">
+                  <span className="mt-5 inline-flex rounded-lg bg-orange-700 px-4 py-2 text-sm font-semibold text-white">
                     {subscriptionLoading === plan.value ? 'Activating...' : 'Select Plan'}
                   </span>
                 </button>
