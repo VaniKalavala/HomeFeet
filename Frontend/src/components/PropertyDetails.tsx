@@ -680,8 +680,10 @@ const PropertyDetails: React.FC = () => {
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               )}
+              {property.landmark && (
+                <span className="text-slate-500">· Near {property.landmark.replace(/^near\s+/i, '')}</span>
+              )}
             </div>
-            {property.landmark && <p className="mt-1 text-sm text-slate-500">Near {property.landmark}</p>}
             {(property.bedrooms || heroAreaText) && (
               <p className="mt-1 text-sm font-semibold text-slate-700">
                 {[property.bedrooms, heroAreaText].filter(Boolean).join(' · ')}
