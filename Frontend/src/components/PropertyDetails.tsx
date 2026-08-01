@@ -647,8 +647,8 @@ const PropertyDetails: React.FC = () => {
                 )}
 
                 {/* Location block */}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[2rem] text-slate-600">
-                  <MapPin className="h-8 w-8 shrink-0 text-orange-700" />
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-2xl text-slate-600">
+                  <MapPin className="h-6 w-6 shrink-0 text-orange-700" />
                   <span>{location}</span>
                   {property.map && (
                     <a
@@ -666,20 +666,20 @@ const PropertyDetails: React.FC = () => {
                   )}
                 </div>
                 {(property.bedrooms || heroAreaText) && (
-                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                  <p className="mt-1 text-[17.5px] font-semibold text-slate-700">
                     {[property.bedrooms, heroAreaText].filter(Boolean).join(' · ')}
                   </p>
                 )}
 
-                {/* Project type / Property No - below a horizontal divider */}
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                {/* Project type / Property No */}
+                <div className="mt-3 flex flex-wrap gap-2">
                   {property.developmentType && (
                     <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
                       {cleanType(property.developmentType)}
                     </span>
                   )}
                   {property.zoningClassification && (
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
                       {property.zoningClassification}
                     </span>
                   )}
@@ -771,7 +771,9 @@ const PropertyDetails: React.FC = () => {
               </div>
 
               {galleryImages.length > 3 && (
-                <div className="mt-2 grid grid-cols-4 gap-2">
+                <div className={`mt-2 grid gap-2 ${
+                  { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' }[Math.min(galleryImages.slice(3, 7).length, 4)]
+                }`}>
                   {galleryImages.slice(3, 7).map((url, i) => {
                     const index = i + 3;
                     const remaining = galleryImages.length - 7;
@@ -1286,8 +1288,8 @@ const PropertyDetails: React.FC = () => {
                 )}
                 {property.reraId && (
                   <div className={property.permissionNo ? 'pt-3' : ''}>
-                    <p className="flex items-center gap-1.5 text-2xl font-black uppercase tracking-wide text-slate-500">
-                      <ShieldCheck className="h-6 w-6" /> RERA Registration No.
+                    <p className="flex items-center gap-1.5 whitespace-nowrap text-lg font-black uppercase tracking-wide text-slate-500">
+                      <ShieldCheck className="h-5 w-5 shrink-0" /> RERA Registration No.
                     </p>
                     <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
                   </div>
@@ -1299,7 +1301,7 @@ const PropertyDetails: React.FC = () => {
               <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Budget</p>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Price Range</p>
                     <p className="mt-1 text-xl font-black text-[#F97316]">{formatMoney(property.totalBudget)}</p>
                     {(property.squareFeetPrice || property.squareYardPrice) && (
                       <p className="mt-0.5 text-xs font-semibold text-slate-500">
@@ -1324,7 +1326,7 @@ const PropertyDetails: React.FC = () => {
                     )}
                     {property.amenitiesChargeExtra && (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Other charges</span>
+                        <span className="text-slate-500">Amenities Charges</span>
                         <span className="font-bold text-slate-950">{property.amenitiesChargeExtra}</span>
                       </div>
                     )}
