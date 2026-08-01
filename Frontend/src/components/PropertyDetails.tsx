@@ -43,6 +43,7 @@ import {
   Users,
   UtensilsCrossed,
   Waves,
+  X,
   Zap
 } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
@@ -135,6 +136,7 @@ const PropertyDetails: React.FC = () => {
   const [accessListingIntent, setAccessListingIntent] = useState('');
   const [accessPropertyType, setAccessPropertyType] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [compareCandidates, setCompareCandidates] = useState<any[]>([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
@@ -398,6 +400,17 @@ const PropertyDetails: React.FC = () => {
     ? galleryImages[activeImageIndex] || property.imageUrl || (isDisplayableImage(property.plotDiagramUrl) ? property.plotDiagramUrl : '')
     : '';
   const isGeneratedDiagramHero = property ? !galleryImages.length && !property.imageUrl && Boolean(heroImageUrl) : false;
+
+  useEffect(() => {
+    if (!isLightboxOpen || !galleryImages.length) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsLightboxOpen(false);
+      if (event.key === 'ArrowRight') setActiveImageIndex((current) => (current + 1) % galleryImages.length);
+      if (event.key === 'ArrowLeft') setActiveImageIndex((current) => (current - 1 + galleryImages.length) % galleryImages.length);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, galleryImages.length]);
   const isKarnatakaListing = property
     ? /\b(?:karnataka|bengaluru|bangalore)\b/i.test(`${property.state || ''} ${property.city || ''} ${property.location || ''}`)
     : false;
@@ -623,103 +636,107 @@ const PropertyDetails: React.FC = () => {
 
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
           <div className="p-6 md:p-8">
-            <div className="mb-3 flex flex-wrap gap-2">
-              {property.developmentType && (
-                <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
-                  {cleanType(property.developmentType)}
-                </span>
-              )}
-              {property.zoningClassification && (
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
-                  {property.zoningClassification}
-                </span>
-              )}
-              <span
-                className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-800 shadow-sm"
-                title={`Property number ${propertyNumber(property)}`}
-              >
-                Property No: {propertyNumber(property)}
-              </span>
-            </div>
-
-            {/* Heading + builder logo badge */}
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">{title}</h1>
-              {property.companyLogoUrl && (
-                <img
-                  src={`${API_ORIGIN}${property.companyLogoUrl}`}
-                  alt={property.companyName || 'Builder logo'}
-                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 object-contain p-1"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              )}
-            </div>
-            {property.companyName && (
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
-                By {property.companyName}
-                {property.companyProjectCount > 1 && (
-                  <span className="text-xs font-bold text-orange-700">
-                    · {property.companyProjectCount} Total projects
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {property.developmentType && (
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
+                      {cleanType(property.developmentType)}
+                    </span>
+                  )}
+                  {property.zoningClassification && (
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">
+                      {property.zoningClassification}
+                    </span>
+                  )}
+                  <span
+                    className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-800 shadow-sm"
+                    title={`Property number ${propertyNumber(property)}`}
+                  >
+                    Property No: {propertyNumber(property)}
                   </span>
-                )}
-              </p>
-            )}
+                </div>
 
-            {/* Location block */}
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-              <MapPin className="h-4 w-4 shrink-0 text-orange-700" />
-              <span>{location}</span>
-              {property.map && (
+                {/* Heading + builder logo badge */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">{title}</h1>
+                  {property.companyLogoUrl && (
+                    <img
+                      src={`${API_ORIGIN}${property.companyLogoUrl}`}
+                      alt={property.companyName || 'Builder logo'}
+                      className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 object-contain p-1"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                </div>
+                {property.companyName && (
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
+                    By {property.companyName}
+                    {property.companyProjectCount > 1 && (
+                      <span className="text-xs font-bold text-orange-700">
+                        · {property.companyProjectCount} Total projects
+                      </span>
+                    )}
+                  </p>
+                )}
+
+                {/* Location block */}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-base text-slate-600">
+                  <MapPin className="h-5 w-5 shrink-0 text-orange-700" />
+                  <span>{location}</span>
+                  {property.map && (
+                    <a
+                      href={property.map}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-bold text-orange-700 hover:text-orange-900"
+                      title="View on Map"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                  {property.landmark && (
+                    <span className="text-slate-500">· Near {property.landmark.replace(/^near\s+/i, '')}</span>
+                  )}
+                </div>
+                {(property.bedrooms || heroAreaText) && (
+                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                    {[property.bedrooms, heroAreaText].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+
+              {/* Action row */}
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => contactCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
+                >
+                  <Phone className="h-4 w-4" />
+                  Request Callback
+                </button>
                 <a
-                  href={property.map}
+                  href={whatsappShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-bold text-orange-700 hover:text-orange-900"
-                  title="View on Map"
+                  title="Share on WhatsApp"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-green-700 transition hover:bg-green-50"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  <Share2 className="h-4 w-4" />
                 </a>
-              )}
-              {property.landmark && (
-                <span className="text-slate-500">· Near {property.landmark.replace(/^near\s+/i, '')}</span>
-              )}
-            </div>
-            {(property.bedrooms || heroAreaText) && (
-              <p className="mt-1 text-sm font-semibold text-slate-700">
-                {[property.bedrooms, heroAreaText].filter(Boolean).join(' · ')}
-              </p>
-            )}
-
-            {/* Action row */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => contactCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
-              >
-                <Phone className="h-4 w-4" />
-                Request Callback
-              </button>
-              <a
-                href={whatsappShareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Share on WhatsApp"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-green-700 transition hover:bg-green-50"
-              >
-                <Share2 className="h-4 w-4" />
-              </a>
-              <button
-                type="button"
-                onClick={toggleShortlist}
-                disabled={shortlistLoading}
-                title={isShortlisted ? 'Shortlisted' : 'Shortlist'}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  isShortlisted ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
-                }`}
-              >
-                <Heart className={`h-4 w-4 ${isShortlisted ? 'fill-rose-600' : ''}`} />
-              </button>
+                <button
+                  type="button"
+                  onClick={toggleShortlist}
+                  disabled={shortlistLoading}
+                  title={isShortlisted ? 'Shortlisted' : 'Shortlist'}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isShortlisted ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${isShortlisted ? 'fill-rose-600' : ''}`} />
+                </button>
+              </div>
             </div>
 
             {/* Gallery: large hero image + thumbnail row */}
@@ -728,7 +745,8 @@ const PropertyDetails: React.FC = () => {
                 <img
                   src={heroImageUrl ? `${API_ORIGIN}${heroImageUrl}` : fallbackPropertyImage}
                   alt={title}
-                  className={`h-full w-full ${isGeneratedDiagramHero ? 'bg-white object-contain p-4' : 'object-cover'}`}
+                  onClick={() => galleryImages.length && setIsLightboxOpen(true)}
+                  className={`h-full w-full ${galleryImages.length ? 'cursor-zoom-in' : ''} ${isGeneratedDiagramHero ? 'bg-white object-contain p-4' : 'object-cover'}`}
                   onError={(e) => {
                     e.currentTarget.src = fallbackPropertyImage;
                     e.currentTarget.className = 'h-full w-full object-cover';
@@ -752,7 +770,7 @@ const PropertyDetails: React.FC = () => {
                       <button
                         key={url}
                         type="button"
-                        onClick={() => setActiveImageIndex(index)}
+                        onClick={() => { setActiveImageIndex(index); setIsLightboxOpen(true); }}
                         className={`relative aspect-square overflow-hidden rounded-lg border-2 ${
                           index === activeImageIndex ? 'border-orange-500' : 'border-transparent'
                         }`}
@@ -770,36 +788,6 @@ const PropertyDetails: React.FC = () => {
                       </button>
                     );
                   })}
-                </div>
-              )}
-            </div>
-
-            {/* RERA + Budget cards */}
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {property.reraId && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-500">
-                    <ShieldCheck className="h-3.5 w-3.5" /> RERA Registration No.
-                  </p>
-                  <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
-                </div>
-              )}
-              {property.totalBudget && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-slate-500">Budget</p>
-                      <p className="mt-1 text-xl font-black text-[#F97316]">{formatMoney(property.totalBudget)}</p>
-                      {(property.squareFeetPrice || property.squareYardPrice) && (
-                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
-                          {formatMoney(property.squareFeetPrice || property.squareYardPrice)} PER {property.squareFeetPrice ? 'SFT' : 'SQ YD'}
-                        </p>
-                      )}
-                    </div>
-                    {property.totalBudgetOnwards && (
-                      <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800">Minimum</span>
-                    )}
-                  </div>
                 </div>
               )}
             </div>
@@ -844,19 +832,6 @@ const PropertyDetails: React.FC = () => {
                   Average height in Indian apartments is 9.8 ft
                 </p>
               </div>
-            )}
-
-            {property.propertyFormUrl && (
-              <a
-                href={`${API_ORIGIN}${property.propertyFormUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#F97316] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
-              >
-                <Download className="h-4 w-4" />
-                Download Brochure
-              </a>
             )}
 
             {property.costSheetUrl && (
@@ -1298,7 +1273,107 @@ const PropertyDetails: React.FC = () => {
             )}
           </div>
 
-          <aside ref={contactCardRef} className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-xl lg:sticky lg:top-28">
+          <div className="space-y-4 lg:sticky lg:top-28 lg:self-start">
+            {(property.reraId || property.permissionNo) && (
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                {property.permissionNo && (
+                  <div className={property.reraId ? 'border-b border-slate-100 pb-3' : ''}>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Layout / Building / Permission No.</p>
+                    <p className="mt-1 font-black text-slate-950">{property.permissionNo}</p>
+                  </div>
+                )}
+                {property.reraId && (
+                  <div className={property.permissionNo ? 'pt-3' : ''}>
+                    <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-500">
+                      <ShieldCheck className="h-3.5 w-3.5" /> RERA Registration No.
+                    </p>
+                    <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {property.totalBudget && (
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Budget</p>
+                    <p className="mt-1 text-xl font-black text-[#F97316]">{formatMoney(property.totalBudget)}</p>
+                    {(property.squareFeetPrice || property.squareYardPrice) && (
+                      <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                        {formatMoney(property.squareFeetPrice || property.squareYardPrice)} PER {property.squareFeetPrice ? 'SFT' : 'SQ YD'}
+                      </p>
+                    )}
+                  </div>
+                  {property.totalBudgetOnwards && (
+                    <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800">Minimum</span>
+                  )}
+                </div>
+
+                {(property.squareFeetPrice || property.squareYardPrice || property.amenitiesChargeExtra) && (
+                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
+                    {(property.squareFeetPrice || property.squareYardPrice) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Base price</span>
+                        <span className="font-bold text-slate-950">
+                          {formatMoney(property.squareFeetPrice || property.squareYardPrice)}/{property.squareFeetPrice ? 'sft' : 'sq yd'}
+                        </span>
+                      </div>
+                    )}
+                    {property.amenitiesChargeExtra && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Other charges</span>
+                        <span className="font-bold text-slate-950">{property.amenitiesChargeExtra}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">GST</span>
+                      <span className="font-bold text-slate-950">As applicable</span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleShowContact}
+                  className="mt-4 w-full rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
+                >
+                  Get instant pricesheet
+                </button>
+
+                {(property.possessionStatus || property.possessionDate) && (
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-sm">
+                    {property.possessionStatus && (
+                      <div>
+                        <p className="text-xs text-slate-500">Status</p>
+                        <p className="font-black text-slate-950">{property.possessionStatus}</p>
+                      </div>
+                    )}
+                    {property.possessionDate && (
+                      <div>
+                        <p className="text-xs text-slate-500">Possession</p>
+                        <p className="text-lg font-black text-slate-950">{property.possessionDate}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {property.propertyFormUrl && (
+                  <a
+                    href={`${API_ORIGIN}${property.propertyFormUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download brochure
+                  </a>
+                )}
+              </div>
+            )}
+
+          <aside ref={contactCardRef} className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
             <h2 className="text-xl font-black text-slate-950">Contact {contactPartyLabel}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {contactPartyLabel} contact stays locked by default. Active membership is required to access complete contact details from other listings.
@@ -1367,9 +1442,65 @@ const PropertyDetails: React.FC = () => {
               </div>
             )}
           </aside>
+          </div>
         </div>
       </div>
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} onLoginSuccess={() => window.location.reload()} />}
+      {isLightboxOpen && galleryImages.length > 0 && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-black">
+          <div className="flex items-center justify-between px-4 py-3 text-white">
+            <span className="text-sm font-semibold">{activeImageIndex + 1} / {galleryImages.length}</span>
+            <button type="button" onClick={() => setIsLightboxOpen(false)} aria-label="Close" className="rounded-full p-1 hover:bg-white/10">
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="relative flex flex-1 items-center justify-center overflow-hidden px-4">
+            {galleryImages.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setActiveImageIndex((current) => (current - 1 + galleryImages.length) % galleryImages.length)}
+                aria-label="Previous photo"
+                className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-6"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            )}
+            <img
+              src={`${API_ORIGIN}${galleryImages[activeImageIndex]}`}
+              alt={`${title} photo ${activeImageIndex + 1}`}
+              className="max-h-full max-w-full object-contain"
+            />
+            {galleryImages.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setActiveImageIndex((current) => (current + 1) % galleryImages.length)}
+                aria-label="Next photo"
+                className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-6"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            )}
+          </div>
+
+          {galleryImages.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto px-4 py-4">
+              {galleryImages.map((url, index) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setActiveImageIndex(index)}
+                  className={`h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 ${
+                    index === activeImageIndex ? 'border-orange-500' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img src={`${API_ORIGIN}${url}`} alt={`${title} thumbnail ${index + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {membershipAccessRequired && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-24 pointer-events-none">
           <div className="pointer-events-auto w-full max-w-lg rounded-lg border border-slate-200 bg-white p-7 text-center shadow-2xl">

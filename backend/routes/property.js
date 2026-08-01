@@ -562,7 +562,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       state, city, locality, societyName, landmark, map, goodwill, advance,
       squareYardPrice, squareFeetPrice, totalBudget, totalBudgetOnwards, amenitiesChargeExtra, priceRange, purchaseTimeline, description, address, selectedAmenities, coordinates,
       bedrooms, bathrooms, bhkBathrooms, floorNumber, totalFloors, furnishingStatus, possessionStatus,
-      possessionDate, reraId, localityHighlights, projectHighlights
+      possessionDate, reraId, permissionNo, localityHighlights, projectHighlights
     } = req.body;
 
     // Get user details from token
@@ -651,6 +651,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       possessionStatus: possessionStatus || '',
       possessionDate: possessionDate || '',
       reraId: reraId || '',
+      permissionNo: permissionNo || '',
       localityHighlights: localityHighlights || '',
       projectHighlights: projectHighlights || '',
       developerRatio: listingIntent === 'development' ? developerRatio : '',

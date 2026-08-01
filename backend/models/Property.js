@@ -226,6 +226,10 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  permissionNo: {  // Layout/building/permission number issued by the local development authority (e.g. HMDA)
+    type: String,
+    default: ''
+  },
   localityHighlights: {
     type: String,
     default: ''

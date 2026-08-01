@@ -285,6 +285,7 @@ const PostProperty = () => {
     possessionStatus: '',
     possessionDate: '',
     reraId: '',
+    permissionNo: '',
     localityHighlights: '',
     projectHighlights: '',
     developerRatio: '',
@@ -445,6 +446,7 @@ const PostProperty = () => {
       furnishingStatus: prefill.furnishingStatus || prev.furnishingStatus,
       possessionStatus: prefill.possessionStatus || prev.possessionStatus,
       reraId: prefill.reraId || prev.reraId,
+      permissionNo: prefill.permissionNo || prev.permissionNo,
       developerRatio: prefill.developerRatio || prev.developerRatio,
       state: prefill.state || prev.state,
       city: prefill.city || prev.city,
@@ -674,6 +676,7 @@ const PostProperty = () => {
           possessionStatus: property.possessionStatus || '',
           possessionDate: property.possessionDate || '',
           reraId: property.reraId || '',
+          permissionNo: property.permissionNo || '',
           localityHighlights: property.localityHighlights || '',
           projectHighlights: property.projectHighlights || '',
           developerRatio: property.developerRatio || '',
@@ -2205,6 +2208,7 @@ const PostProperty = () => {
     data.append('possessionStatus', formData.possessionStatus);
     data.append('possessionDate', formData.possessionDate);
     data.append('reraId', formData.reraId);
+    data.append('permissionNo', formData.permissionNo);
     data.append('localityHighlights', formData.localityHighlights);
     data.append('projectHighlights', formData.projectHighlights);
     data.append('developerRatio', formData.listingIntent === 'development' ? formData.developerRatio : '');
@@ -3583,6 +3587,17 @@ const PostProperty = () => {
               onChange={handleChange}
               type="text"
               placeholder="RERA registration ID (if applicable)"
+              className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-800">Permission No.</label>
+            <input
+              name="permissionNo"
+              value={formData.permissionNo}
+              onChange={handleChange}
+              type="text"
+              placeholder="Layout/building permission number (if applicable)"
               className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
             />
           </div>
