@@ -674,12 +674,12 @@ const PropertyDetails: React.FC = () => {
                 {/* Project type / Property No */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {property.developmentType && (
-                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-600">
                       {cleanType(property.developmentType)}
                     </span>
                   )}
                   {property.zoningClassification && (
-                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-800">
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-600">
                       {property.zoningClassification}
                     </span>
                   )}
@@ -1342,7 +1342,7 @@ const PropertyDetails: React.FC = () => {
                   onClick={handleShowContact}
                   className="mt-4 w-full rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
                 >
-                  Get instant pricesheet
+                  Request Cost Sheet
                 </button>
 
                 {(property.possessionStatus || property.possessionDate) && (
