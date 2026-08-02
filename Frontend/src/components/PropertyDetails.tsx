@@ -904,7 +904,7 @@ const PropertyDetails: React.FC = () => {
                     const AmenityIcon = AMENITY_ICONS[amenity] || Sparkles;
                     return (
                       <div key={amenity} className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-orange-700">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-[#F97316]">
                           <AmenityIcon className="h-5 w-5" />
                         </div>
                         <p className="text-xs font-semibold leading-tight text-slate-700">{amenity}</p>
@@ -915,7 +915,7 @@ const PropertyDetails: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowAllAmenities(true)}
-                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-orange-700 transition hover:bg-orange-100"
+                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-[#F97316] transition hover:bg-orange-100"
                     >
                       <span className="text-sm font-black">+{amenities.length - AMENITY_PREVIEW_COUNT} more</span>
                       <ChevronDown className="h-4 w-4" />
@@ -925,7 +925,7 @@ const PropertyDetails: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowAllAmenities(false)}
-                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-orange-700 transition hover:bg-orange-100"
+                      className="flex flex-col items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 p-3 text-center text-[#F97316] transition hover:bg-orange-100"
                     >
                       <span className="text-sm font-black">Show less</span>
                       <ChevronUp className="h-4 w-4" />
@@ -941,7 +941,7 @@ const PropertyDetails: React.FC = () => {
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   {projectHighlights && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Project Highlights</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#F97316]">Project Highlights</p>
                       <ul className="mt-1 space-y-1">
                         {projectHighlights.split(/\r?\n/).filter((line) => line.trim()).map((line, index) => (
                           <li key={index} className="flex gap-2 text-sm leading-6 text-slate-700">
@@ -954,7 +954,7 @@ const PropertyDetails: React.FC = () => {
                   )}
                   {localityHighlights && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Locality Top Highlights</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#F97316]">Locality Top Highlights</p>
                       <ul className="mt-1 space-y-1">
                         {localityHighlights.split(/\r?\n/).filter((line) => line.trim()).map((line, index) => (
                           <li key={index} className="flex gap-2 text-sm leading-6 text-slate-700">
@@ -1310,7 +1310,7 @@ const PropertyDetails: React.FC = () => {
                     )}
                   </div>
                   {property.totalBudgetOnwards && (
-                    <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800">Minimum</span>
+                    <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-[#F97316]">Minimum</span>
                   )}
                 </div>
 
