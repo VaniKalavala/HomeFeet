@@ -1335,10 +1335,11 @@ const PropertyDetails: React.FC = () => {
                 )}
                 {property.reraId && (
                   <div className={property.permissionNo ? 'pt-3' : ''}>
-                    <p className="flex items-center gap-1.5 whitespace-nowrap text-lg font-black uppercase tracking-wide text-slate-500">
-                      <ShieldCheck className="h-5 w-5 shrink-0" /> RERA No:
+                    <p className="flex flex-wrap items-center gap-1.5 whitespace-nowrap text-sm">
+                      <ShieldCheck className="h-5 w-5 shrink-0 text-slate-500" />
+                      <span className="font-black text-slate-500">Rera No:</span>
+                      <span className="font-black text-slate-950">{property.reraId}</span>
                     </p>
-                    <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
                   </div>
                 )}
               </div>
