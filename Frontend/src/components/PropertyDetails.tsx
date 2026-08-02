@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  Armchair,
   ArrowLeft,
   ArrowUpDown,
   BadgeCheck,
   Bath,
   Bike,
   Car,
-  Castle,
   Check,
   ChevronDown,
   ChevronUp,
@@ -18,9 +16,11 @@ import {
   Clapperboard,
   Compass,
   Download,
+  Drama,
   Droplet,
   Dumbbell,
   ExternalLink,
+  FireExtinguisher,
   Flower2,
   Heart,
   IndianRupee,
@@ -32,8 +32,8 @@ import {
   Share2,
   Shield,
   ShieldCheck,
-  ShowerHead,
   Snowflake,
+  Sofa,
   Sparkles,
   Sprout,
   Tag,
@@ -106,15 +106,15 @@ const AMENITY_ICONS: Record<string, typeof Sparkles> = {
   'Badminton Court': Trophy,
   'Cricket Court': CircleDot,
   'Food Court': UtensilsCrossed,
-  'Waiting Lounge': Armchair,
-  Amphitheater: Castle,
+  'Waiting Lounge': Sofa,
+  Amphitheater: Drama,
   'Sauna Bath': Bath,
   Spa: Flower2,
   'Skating Rink': Snowflake,
   'Vastu Compliant': Compass,
   'Landscaping & Tree Park': Sprout,
   'Mini Theatre': Clapperboard,
-  'Fire Fighting System': ShowerHead
+  'Fire Fighting System': FireExtinguisher
 };
 
 const AMENITY_PREVIEW_COUNT = 11;
@@ -343,6 +343,34 @@ const PropertyDetails: React.FC = () => {
     ? `${property.locality}, ${property.city}`
     : property?.city || property?.location || 'Hyderabad';
   const sharePreviewUrl = property ? `${window.location.origin}/share/property/${property._id}` : '';
+
+  const mapEmbedSrc = useMemo(() => {
+    if (!property) return '';
+    let lat: number | null = null;
+    let lng: number | null = null;
+    if (property.coordinates) {
+      try {
+        const parsed = JSON.parse(property.coordinates);
+        if (parsed?.lat && parsed?.lng) {
+          lat = Number(parsed.lat);
+          lng = Number(parsed.lng);
+        }
+      } catch {
+        // property.coordinates isn't JSON — fall through to the map-link regex below
+      }
+    }
+    if ((lat === null || lng === null) && property.map) {
+      const match = property.map.match(/(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+      if (match) {
+        lat = Number(match[1]);
+        lng = Number(match[2]);
+      }
+    }
+    const query = lat !== null && lng !== null && !Number.isNaN(lat) && !Number.isNaN(lng)
+      ? `${lat},${lng}`
+      : location;
+    return `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`;
+  }, [property, location]);
   const whatsappShareUrl = (() => {
     if (!property) return '';
     const priceRange = (() => {
@@ -885,7 +913,7 @@ const PropertyDetails: React.FC = () => {
                 <h2 className="text-xl font-black text-slate-950">
                   {property.projectName ? `${property.projectName} Overview` : 'Property Details'}
                 </h2>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-5 grid grid-cols-3 gap-3">
                   {details.map((detail) => (
                     <div key={detail.label} className="rounded-lg bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{detail.label}</p>
@@ -903,7 +931,7 @@ const PropertyDetails: React.FC = () => {
                   {(showAllAmenities ? amenities : amenities.slice(0, AMENITY_PREVIEW_COUNT)).map((amenity) => {
                     const AmenityIcon = AMENITY_ICONS[amenity] || Sparkles;
                     return (
-                      <div key={amenity} className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                      <div key={amenity} className="flex flex-col items-center gap-2 text-center">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-[#F97316]">
                           <AmenityIcon className="h-5 w-5" />
                         </div>
@@ -1155,6 +1183,25 @@ const PropertyDetails: React.FC = () => {
               </section>
             )}
 
+            <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-xl font-black text-slate-950">Location</h2>
+              <div className="overflow-hidden rounded-lg border border-slate-200">
+                <iframe
+                  title={`${title} location map`}
+                  src={mapEmbedSrc}
+                  className="h-80 w-full"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+              <p className="mt-3 flex items-center gap-1.5 text-sm text-slate-600">
+                <MapPin className="h-4 w-4 shrink-0 text-orange-700" />
+                {location}
+                {property.landmark && ` · Near ${property.landmark.replace(/^near\s+/i, '')}`}
+              </p>
+            </section>
+
             {property.videoUrl && (
               <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="mb-4 text-xl font-black text-slate-950">Video Walkthrough</h2>
@@ -1289,7 +1336,7 @@ const PropertyDetails: React.FC = () => {
                 {property.reraId && (
                   <div className={property.permissionNo ? 'pt-3' : ''}>
                     <p className="flex items-center gap-1.5 whitespace-nowrap text-lg font-black uppercase tracking-wide text-slate-500">
-                      <ShieldCheck className="h-5 w-5 shrink-0" /> RERA Registration No.
+                      <ShieldCheck className="h-5 w-5 shrink-0" /> RERA No:
                     </p>
                     <p className="mt-1 font-black text-slate-950">{property.reraId}</p>
                   </div>
