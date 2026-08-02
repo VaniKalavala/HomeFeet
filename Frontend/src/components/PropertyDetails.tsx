@@ -607,7 +607,7 @@ const PropertyDetails: React.FC = () => {
     <div className="min-h-screen bg-slate-50 py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-          <Link to="/properties" className="inline-flex items-center gap-2 text-sm font-bold text-orange-700 hover:text-orange-900">
+          <Link to="/properties" className="inline-flex items-center gap-2 text-sm font-bold text-[#F97316] hover:text-orange-900">
             <ArrowLeft className="h-4 w-4" />
             Back to Properties
           </Link>
@@ -674,12 +674,12 @@ const PropertyDetails: React.FC = () => {
                 {/* Project type / Property No */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {property.developmentType && (
-                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-600">
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-[#F97316]">
                       {cleanType(property.developmentType)}
                     </span>
                   )}
                   {property.zoningClassification && (
-                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-600">
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-[#F97316]">
                       {property.zoningClassification}
                     </span>
                   )}
@@ -742,7 +742,7 @@ const PropertyDetails: React.FC = () => {
                     }}
                   />
                   <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-orange-800 shadow">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-[#F97316] shadow">
                       <BadgeCheck className="h-4 w-4" /> Verified Listing
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow">
@@ -871,7 +871,7 @@ const PropertyDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowFullDescription((prev) => !prev)}
-                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-orange-700 hover:text-orange-900"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-[#F97316] hover:text-orange-900"
                   >
                     {showFullDescription ? 'Read less' : 'Read more'}
                     {showFullDescription ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
