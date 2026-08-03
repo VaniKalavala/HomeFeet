@@ -1176,7 +1176,7 @@ const PropertyDetails: React.FC = () => {
                       ].filter((item) => item.value).map((item) => (
                         <div key={item.label}>
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
-                          <p className="mt-1 text-sm font-black text-slate-950">{item.value}</p>
+                          <p className="mt-1 text-sm text-slate-950">{item.value}</p>
                         </div>
                       ))}
                     </div>
