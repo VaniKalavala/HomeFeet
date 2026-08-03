@@ -676,8 +676,8 @@ const PropertyDetails: React.FC = () => {
 
                 {/* Location block */}
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-2xl text-slate-600">
-                  <MapPin className="h-6 w-6 shrink-0 text-orange-700" />
                   <span>{location}</span>
+                  <MapPin className="h-6 w-6 shrink-0 text-orange-700" />
                   {property.map && (
                     <a
                       href={property.map}
@@ -919,7 +919,7 @@ const PropertyDetails: React.FC = () => {
                   {details.map((detail) => (
                     <div key={detail.label}>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{detail.label}</p>
-                      <p className="mt-1 font-black text-slate-950">{detail.value}</p>
+                      <p className="mt-1 text-slate-950">{detail.value}</p>
                     </div>
                   ))}
                 </div>
@@ -1174,7 +1174,7 @@ const PropertyDetails: React.FC = () => {
                         { label: 'Furnishing', value: property.furnishingStatus },
                         { label: 'Possession', value: property.possessionStatus },
                       ].filter((item) => item.value).map((item) => (
-                        <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <div key={item.label}>
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
                           <p className="mt-1 text-sm font-black text-slate-950">{item.value}</p>
                         </div>
