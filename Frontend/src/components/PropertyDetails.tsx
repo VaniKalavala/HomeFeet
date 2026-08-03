@@ -1351,7 +1351,7 @@ const PropertyDetails: React.FC = () => {
               <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Price Range</p>
+                    <p className="text-[0.9rem] font-black uppercase tracking-wide text-slate-500">Price Range</p>
                     <p className="mt-1 text-xl font-black text-[#F97316]">{formatMoney(property.totalBudget)}</p>
                     {(property.squareFeetPrice || property.squareYardPrice) && (
                       <p className="mt-0.5 text-xs font-semibold text-slate-500">
@@ -1400,13 +1400,13 @@ const PropertyDetails: React.FC = () => {
                     {property.possessionStatus && (
                       <div>
                         <p className="text-xs text-slate-500">Status</p>
-                        <p className="font-black text-slate-950">{property.possessionStatus}</p>
+                        <p className="text-slate-950">{property.possessionStatus}</p>
                       </div>
                     )}
                     {property.possessionDate && (
                       <div>
                         <p className="text-xs text-slate-500">Possession</p>
-                        <p className="text-lg font-black text-slate-950">{property.possessionDate}</p>
+                        <p className="text-lg text-slate-950">{property.possessionDate}</p>
                       </div>
                     )}
                   </div>
