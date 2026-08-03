@@ -887,8 +887,8 @@ const PropertyDetails: React.FC = () => {
           </div>
         </section>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
-          <div className="space-y-6">
+        <div className="property-detail-grid mt-6 grid gap-6">
+          <div className="space-y-6" style={{ gridArea: 'description' }}>
             {property.description && (
               <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">Description</h2>
@@ -907,7 +907,9 @@ const PropertyDetails: React.FC = () => {
                 )}
               </section>
             )}
+          </div>
 
+          <div className="space-y-6" style={{ gridArea: 'rest' }}>
             {details.length > 0 && (
               <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">
@@ -915,7 +917,7 @@ const PropertyDetails: React.FC = () => {
                 </h2>
                 <div className="mt-5 grid grid-cols-3 gap-3">
                   {details.map((detail) => (
-                    <div key={detail.label} className="rounded-lg bg-slate-50 p-4">
+                    <div key={detail.label}>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{detail.label}</p>
                       <p className="mt-1 font-black text-slate-950">{detail.value}</p>
                     </div>
@@ -1324,7 +1326,7 @@ const PropertyDetails: React.FC = () => {
             )}
           </div>
 
-          <div className="space-y-4 lg:sticky lg:top-28 lg:self-start">
+          <div className="space-y-4 lg:sticky lg:top-28 lg:self-start" style={{ gridArea: 'aside' }}>
             {(property.reraId || property.permissionNo) && (
               <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 {property.permissionNo && (
@@ -1388,7 +1390,7 @@ const PropertyDetails: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleShowContact}
-                  className="mt-4 w-full rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
+                  className="mx-auto mt-4 block w-4/5 rounded-lg bg-[#F97316] px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
                 >
                   Request Cost Sheet
                 </button>
@@ -1458,7 +1460,7 @@ const PropertyDetails: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button onClick={handleShowContact} className="ld-btn-primary w-full bg-[#F97316] hover:bg-[#C2410C]">
+                <button onClick={handleShowContact} className="ld-btn-primary mx-auto block w-4/5 text-center bg-[#F97316] hover:bg-[#C2410C]">
                   {isOwnerOrMediator
                     ? buyerHasInstantAccess ? 'Unlock Contact Now' : `Send Request to ${contactPartyLabel}`
                     : `Request / Unlock ${contactPartyLabel} Contact`}

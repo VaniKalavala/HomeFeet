@@ -238,6 +238,23 @@ button, input, select, textarea {
     @apply text-sm font-bold uppercase tracking-wide text-teal-700;
   }
 
+  .property-detail-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "description"
+      "aside"
+      "rest";
+  }
+
+  @media (min-width: 1024px) {
+    .property-detail-grid {
+      grid-template-columns: 1fr 380px;
+      grid-template-areas:
+        "description aside"
+        "rest aside";
+    }
+  }
+
   .ld-range-field {
     @apply relative h-8;
   }
