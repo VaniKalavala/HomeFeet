@@ -1008,7 +1008,7 @@ const PropertyDetails: React.FC = () => {
                 <div className="p-6">
                   {floorPlanGroups.length > 1 && (
                     <div>
-                      <p className="mb-2 text-sm font-black text-slate-950">Configurations</p>
+                      <p className="mb-2 text-lg font-black text-slate-950">Available Configurations</p>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
@@ -1164,11 +1164,12 @@ const PropertyDetails: React.FC = () => {
                     </>
                   )}
 
-                  {(property.bedrooms || property.bathrooms || property.floorNumber || property.furnishingStatus || property.possessionStatus || selectedFloorPlanUnit?.unitFacing || property.flatFacing) && (
+                  {(property.bedrooms || property.bathrooms || property.floorNumber || property.furnishingStatus || property.possessionStatus || selectedFloorPlanUnit?.unitFacing || property.flatFacing || selectedFloorPlanUnit?.size) && (
                     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       {[
                         { label: 'Bedrooms', value: activeFloorPlanGroup?.label || property.bedrooms },
                         { label: 'Bathrooms', value: (property.bhkBathrooms && activeFloorPlanGroup?.label && property.bhkBathrooms[activeFloorPlanGroup.label]) || property.bathrooms },
+                        { label: isApartmentLikeListing ? 'Flat Size' : 'Villa Unit Size', value: selectedFloorPlanUnit?.size ? `${selectedFloorPlanUnit.size} Sq Ft` : '' },
                         { label: 'Facing', value: selectedFloorPlanUnit?.unitFacing || property.flatFacing },
                         { label: 'Floor', value: property.floorNumber ? `${property.floorNumber}${property.totalFloors ? ` of ${property.totalFloors}` : ''}` : '' },
                         { label: 'Furnishing', value: property.furnishingStatus },
