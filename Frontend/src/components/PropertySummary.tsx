@@ -243,6 +243,10 @@ const extractTotalBudget = (text: string) =>
     /(?:rs\.?|₹)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?\s*(?:only|onwards|negotiable|fixed)?\b(?!\s*\/?\s*(?:per\s*)?sq)/i
   ]);
 
+// Matches every amenity the Property Form actually offers (PostProperty.tsx's
+// own AMENITY_OPTIONS list) - a brochure phrase that doesn't map to one of
+// these 22 real checkboxes is intentionally left unmatched rather than
+// invented as a new amenity.
 const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
   [/\bdouble\s*parking\b/i, 'Double Parking'],
   [/\bbike\s*parking\b|\btwo[- ]?wheeler\s*parking\b/i, 'Bike Parking'],
@@ -250,7 +254,7 @@ const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
   [/\blifts?\b|\belevators?\b/i, 'Lift'],
   [/\bpower\s*back\s*-?up\b|\bgenerator\b/i, 'Power Backup'],
   [/\bsecurity\b|\bcctv\b/i, 'Security'],
-  [/\bgym\b|\bfitness\s*center\b/i, 'Gym'],
+  [/\bgyms?\b|\bgymnasium\b|\bfitness\s*(?:center|centre)\b/i, 'Gym'],
   [/\bclub\s*house\b/i, 'Clubhouse'],
   [/\bwater\s*supply\b/i, 'Water Supply'],
   [/\bparks?\b|\bgarden\b/i, 'Park'],
@@ -258,6 +262,15 @@ const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
   [/\bbadminton\b/i, 'Badminton Court'],
   [/\bcricket\b/i, 'Cricket Court'],
   [/\bfood\s*court\b/i, 'Food Court'],
+  [/\bwaiting\s*lounge\b/i, 'Waiting Lounge'],
+  [/\bamphitheat(?:er|re)\b/i, 'Amphitheater'],
+  [/\bsauna\b/i, 'Sauna Bath'],
+  [/\bspa\b/i, 'Spa'],
+  [/\bskating\s*rink\b/i, 'Skating Rink'],
+  [/\bvastu\b/i, 'Vastu Compliant'],
+  [/\blandscap(?:ed|ing)\b|\btree\s*park\b/i, 'Landscaping & Tree Park'],
+  [/\bmini\s*theat(?:er|re)\b/i, 'Mini Theatre'],
+  [/\bfire\s*fighting\b|\bfire\s*safety\b/i, 'Fire Fighting System'],
 ];
 
 const extractAmenitiesFromSummary = (text: string) =>
