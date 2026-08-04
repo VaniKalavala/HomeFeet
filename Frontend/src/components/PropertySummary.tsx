@@ -137,6 +137,48 @@ const extractFlatSize = (text: string) =>
     /\bcarpet\s*area\s*[:\-]?\s*([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)?/i
   ]);
 
+// A unit-breakdown table lists a size range per BHK typology
+// ("3,088 - 3,433 SFT", "4,936 - 4,976 SFT"...). Take the overall min/max
+// across every range mentioned, matching the form's Min/Max Flat Size fields.
+const extractFlatSizeRange = (text: string) => {
+  // No \b before the first number: brochure tables often glue it straight
+  // onto the BHK label with no separator ("BHK3,088"), and \w on both
+  // sides of that boundary means \b would never match there.
+  const matches = Array.from(text.matchAll(/(\d[\d,]{2,})\s*(?:–|—|-|to)\s*(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)\b/gi));
+  const values = matches
+    .flatMap((match) => [match[1], match[2]])
+    .map((raw) => Number(raw.replace(/,/g, '')))
+    .filter((num) => Number.isFinite(num) && num > 0);
+  if (!values.length) return { flatSizeMin: '', flatSizeMax: '' };
+  return {
+    flatSizeMin: String(Math.min(...values)),
+    flatSizeMax: String(Math.max(...values))
+  };
+};
+
+const extractFloorToFloorHeight = (text: string) =>
+  extractNumber(text, [
+    /\bfloor[- ]?to[- ]?floor\s*height\s*[:\-]?\s*([\d.]+)\s*(?:ft|feet)?/i
+  ]);
+
+const FLAT_FACING_OPTIONS = ['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'];
+
+// A unit-breakdown table lists which facings are offered per typology
+// ("East, West", "East, West, North"...) as a run of 2+ directions joined
+// by comma/and/&. A single standalone "East facing" elsewhere (the plot's
+// own overall facing) never matches this, so the two fields don't collide.
+const extractFlatFacings = (text: string) => {
+  const found = new Set<string>();
+  const runPattern = /\b((?:north-east|north-west|south-east|south-west|north|south|east|west)(?:\s*(?:,|&|and)\s*(?:north-east|north-west|south-east|south-west|north|south|east|west)){1,3})\b/gi;
+  Array.from(text.matchAll(runPattern)).forEach((match) => {
+    match[1].split(/\s*(?:,|&|and)\s*/).forEach((word) => {
+      const normalized = normalizeDirection(word);
+      if ((FLAT_FACING_OPTIONS as string[]).includes(normalized)) found.add(normalized);
+    });
+  });
+  return FLAT_FACING_OPTIONS.filter((option) => found.has(option));
+};
+
 // When a summary is pasted from a brochure table, the value right after a
 // label like "Project Name" or "Developer" runs straight into the NEXT
 // label with no punctuation to stop at ("Sattva Lago Developer Sattva
@@ -1178,11 +1220,17 @@ const parseSummary = (summary: string) => {
   const furnishingStatus = extractFurnishingStatus(normalizedSummary);
   const possessionStatus = extractPossessionStatus(normalizedSummary);
   const flatSize = extractFlatSize(normalizedSummary);
-  const flatFacing = isApartmentLikeSummary ? extractChoice(normalizeDirection(finalFacing), ['North', 'South', 'East', 'West']) : '';
+  const { flatSizeMin, flatSizeMax } = isApartmentLikeSummary ? extractFlatSizeRange(normalizedSummary) : { flatSizeMin: '', flatSizeMax: '' };
+  const multiFlatFacings = isApartmentLikeSummary ? extractFlatFacings(normalizedSummary) : [];
+  const flatFacing = multiFlatFacings.length
+    ? multiFlatFacings.join(', ')
+    : isApartmentLikeSummary ? extractChoice(normalizeDirection(finalFacing), ['North', 'South', 'East', 'West']) : '';
+  const floorToFloorHeight = extractFloorToFloorHeight(normalizedSummary);
   const projectName = extractProjectName(normalizedSummary) || ventureName;
   const companyName = extractCompanyName(normalizedSummary);
   const squareFeetPrice = extractSquareFeetPrice(normalizedSummary);
   const totalBudget = extractTotalBudget(normalizedSummary);
+  const totalBudgetOnwards = Boolean(totalBudget) && /\bstarting\s*price\b|~\s*(?:rs\.?|₹)|\bonwards\b|\bstarting\s*from\b/i.test(normalizedSummary);
   const selectedAmenities = extractAmenitiesFromSummary(normalizedSummary);
   const projectTotalUnits = extractProjectTotalUnits(normalizedSummary);
   const reraId = extractReraId(normalizedSummary);
@@ -1235,11 +1283,15 @@ const parseSummary = (summary: string) => {
     furnishingStatus,
     possessionStatus,
     flatSize,
+    flatSizeMin,
+    flatSizeMax,
     flatFacing,
+    floorToFloorHeight,
     projectName,
     companyName,
     squareFeetPrice,
     totalBudget,
+    totalBudgetOnwards,
     selectedAmenities,
     projectTotalUnits,
     reraId,
@@ -1368,7 +1420,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ].join('\n');
   };
 
-  // Step 1: Property Details
+  // Property Details
   const propertyDetails = section('Property Details', [
     ['Post Property For', parsed.listingIntent === 'development' ? 'Development' : parsed.listingIntent === 'buy' ? 'Buy' : 'Sell'],
     [parsed.listingIntent === 'development' ? 'Development Type' : 'Property Type', propertyType],
@@ -1384,30 +1436,35 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ['North Side Length', parsed.northSideLength ? `${parsed.northSideLength} ft` : ''],
     ['South Side Length', parsed.southSideLength ? `${parsed.southSideLength} ft` : ''],
     ['East Side Length', parsed.eastSideLength ? `${parsed.eastSideLength} ft` : ''],
-    ['West Side Length', parsed.westSideLength ? `${parsed.westSideLength} ft` : ''],
-    ['Project Total Units', parsed.projectTotalUnits],
-    ['RERA Registration No.', parsed.reraId],
-    ['Layout / Building Permission No.', parsed.permissionNo]
+    ['West Side Length', parsed.westSideLength ? `${parsed.westSideLength} ft` : '']
   ]);
 
-  // Step 2: Apartment Details (or Villa Details, same dynamic label the form itself uses)
+  // Apartment Details (or Villa Details - same dynamic label the form itself uses)
   const unitDetails = section(isVilla ? 'Villa Details' : 'Apartment Details', [
     ['Project Name', parsed.projectName],
     ['Builder / Company Name', parsed.companyName],
+    ['Project Total Units', parsed.projectTotalUnits],
+    ['Floor to Floor Height', parsed.floorToFloorHeight ? `${parsed.floorToFloorHeight} ft` : ''],
+    ['Flat Size', parsed.flatSize ? `${parsed.flatSize} Sq Ft` : ''],
+    ['Min Flat Size', parsed.flatSizeMin ? `${parsed.flatSizeMin} Sq Ft` : ''],
+    ['Max Flat Size', parsed.flatSizeMax ? `${parsed.flatSizeMax} Sq Ft` : ''],
+    ['Flat Facing', parsed.flatFacing],
     ['Bedrooms (BHK)', parsed.bedrooms],
     ['Bathrooms', parsed.bathrooms],
-    ['Flat Size', parsed.flatSize ? `${parsed.flatSize} Sq Ft` : ''],
-    ['Flat Facing', parsed.flatFacing],
     ['Floor', parsed.floorNumber ? `${parsed.floorNumber}${parsed.totalFloors ? ` of ${parsed.totalFloors}` : ''}` : ''],
     ['Furnishing Status', parsed.furnishingStatus],
-    ['Possession Status', parsed.possessionStatus],
-    ['Property Description', simpleDescription]
+    ['Possession Status', parsed.possessionStatus]
   ]);
 
-  // Step 3: Pricing & Amenities
-  const pricingAmenities = section('Pricing & Amenities', [
+  // Amenities Details
+  const amenitiesDetails = section('Amenities Details', [
+    ['Amenities', (parsed.selectedAmenities || []).join(', ')]
+  ]);
+
+  // Commercial Terms
+  const commercialTerms = section('Commercial Terms', [
     ['Square Feet Price', formatPreviewAmount(parsed.squareFeetPrice)],
-    ['Total Budget', formatPreviewAmount(parsed.totalBudget)],
+    ['Total Budget', formatPreviewAmount(parsed.totalBudget) + (parsed.totalBudgetOnwards ? ' (Onwards)' : '')],
     ['Development Ratio (Owner : Builder)', parsed.developerRatio],
     ['Goodwill', formatPreviewAmount(parsed.goodwill)],
     ['Advance', formatPreviewAmount(parsed.advance)],
@@ -1421,16 +1478,19 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ['Owner Extent', ownerExtent],
     ['Per Acre Price', perAcrePrice],
     ['Site Access', [roadText, surroundings ? `surrounded by ${surroundings}` : ''].filter(Boolean).join(', ')],
-    ['Amenities', (parsed.selectedAmenities || []).join(', ')]
+    ['Property Description', simpleDescription]
   ]);
 
-  // Step 4: Media Uploads - nothing to parse from free text; only note what's
+  // Media Uploads - RERA/Permission/Highlights live on this step in the real
+  // form; nothing else here can come from free text, so only note what's
   // actually attached rather than pretending photos/brochures were provided.
   const mediaUploads = section('Media Uploads', [
-    ['Property Dimension Image', hasPlotDiagram ? 'Attached' : '']
+    ['Property Dimension Image', hasPlotDiagram ? 'Attached' : ''],
+    ['RERA Registration No.', parsed.reraId],
+    ['Layout / Building Permission No.', parsed.permissionNo]
   ]);
 
-  // Step 5: Location Details
+  // Location Details
   const locationDetails = section('Location Details', [
     ['State', parsed.state],
     ['City', parsed.city],
@@ -1441,7 +1501,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ['Survey Number', surveyNumber]
   ]);
 
-  return [propertyDetails, unitDetails, pricingAmenities, mediaUploads, locationDetails]
+  return [propertyDetails, unitDetails, amenitiesDetails, commercialTerms, mediaUploads, locationDetails]
     .filter(Boolean)
     .join('\n\n') || cleaned;
 };
@@ -2125,11 +2185,15 @@ const PropertySummary = () => {
       data.append('furnishingStatus', propertyDetails.furnishingStatus || '');
       data.append('possessionStatus', propertyDetails.possessionStatus || '');
       data.append('flatSize', propertyDetails.flatSize || '');
+      data.append('flatSizeMin', propertyDetails.flatSizeMin || '');
+      data.append('flatSizeMax', propertyDetails.flatSizeMax || '');
       data.append('flatFacing', propertyDetails.flatFacing || '');
+      data.append('floorToFloorHeight', propertyDetails.floorToFloorHeight || '');
       data.append('projectName', propertyDetails.projectName || '');
       data.append('companyName', propertyDetails.companyName || '');
       data.append('squareFeetPrice', propertyDetails.squareFeetPrice || '');
       data.append('totalBudget', propertyDetails.totalBudget || '');
+      data.append('totalBudgetOnwards', String(Boolean(propertyDetails.totalBudgetOnwards)));
       data.append('selectedAmenities', JSON.stringify(propertyDetails.selectedAmenities || []));
       data.append('projectTotalUnits', propertyDetails.projectTotalUnits || '');
       data.append('reraId', propertyDetails.reraId || '');

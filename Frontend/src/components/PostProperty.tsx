@@ -423,6 +423,8 @@ const PostProperty = () => {
       totalArea: prefill.totalArea || prev.totalArea,
       areaUnit: prefill.areaUnit || prev.areaUnit,
       flatSize: prefill.flatSize || prev.flatSize,
+      flatSizeMin: prefill.flatSizeMin || prev.flatSizeMin,
+      flatSizeMax: prefill.flatSizeMax || prev.flatSizeMax,
       projectName: prefill.projectName || prev.projectName,
       companyName: prefill.companyName || prev.companyName,
       projectTotalUnits: prefill.projectTotalUnits || prev.projectTotalUnits,
