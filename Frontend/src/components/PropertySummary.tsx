@@ -78,6 +78,14 @@ const extractAreaFromSummary = (summary: string) => {
 const extractChoice = (text: string, choices: string[]) =>
   choices.find((choice) => new RegExp(`\\b${choice.replace('-', '[- ]?')}\\b`, 'i').test(text)) || '';
 
+const formatBhkLabel = (raw: string) => {
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return '';
+  if (num >= 5) return '4+ BHK';
+  if (Number.isInteger(num) || Math.abs((num % 1) - 0.5) < 1e-9) return `${num} BHK`;
+  return `${Math.round(num)} BHK`;
+};
+
 const extractBedrooms = (text: string) => {
   // Brochure tables often list every unit typology (3 BHK, 3.5 BHK, 4 BHK...),
   // sometimes with the size figure glued right onto "BHK" with no space
@@ -86,15 +94,7 @@ const extractBedrooms = (text: string) => {
   const matches = bhkMatches.length ? bhkMatches : Array.from(text.matchAll(/\b(\d(?:\.\d)?)\s*\+?\s*bed\s*rooms?\b/gi));
   if (!matches.length) return '';
 
-  const toLabel = (raw: string) => {
-    const num = Number(raw);
-    if (!Number.isFinite(num)) return '';
-    if (num >= 5) return '4+ BHK';
-    if (Number.isInteger(num) || Math.abs((num % 1) - 0.5) < 1e-9) return `${num} BHK`;
-    return `${Math.round(num)} BHK`;
-  };
-
-  const labels = Array.from(new Set(matches.map((match) => toLabel(match[1])).filter(Boolean)));
+  const labels = Array.from(new Set(matches.map((match) => formatBhkLabel(match[1])).filter(Boolean)));
   if (/\b4\s*\+\s*bhk\b/i.test(text) && !labels.includes('4+ BHK')) labels.push('4+ BHK');
   labels.sort((a, b) => parseFloat(a) - parseFloat(b));
   return labels.join(', ');
@@ -177,6 +177,67 @@ const extractFlatFacings = (text: string) => {
     });
   });
   return FLAT_FACING_OPTIONS.filter((option) => found.has(option));
+};
+
+// Turns brochure "Nearby Schools: X (1.03 km), Y (1.14 km)." and
+// "Corporate Hubs: Direct access to A, B, and C tech hubs." sections into
+// one line per place, matching the app's existing "Near to X" per-line
+// convention for the Locality Top Highlights field.
+const extractLocalityHighlights = (text: string) => {
+  const lines: string[] = [];
+
+  // Lazy match up to a period that ends the sentence (followed by
+  // whitespace or end of string) rather than the first "." at all -
+  // otherwise this stops at the decimal point in "1.03 km".
+  const schoolsSection = text.match(/nearby\s*schools?\s*[:\-]?\s*([\s\S]+?)\.(?=\s|$)/i)?.[1] || '';
+  Array.from(schoolsSection.matchAll(/([A-Z][A-Za-z0-9.'&\s]*?)\s*\(\s*([\d.]+)\s*km\s*\)/g)).forEach((match) => {
+    const name = match[1].trim();
+    if (name) lines.push(`${match[2]} km to ${name}`);
+  });
+
+  const hubsSection = text.match(/corporate\s*hubs?\s*[:\-]?\s*([\s\S]+?)\.(?=\s|$)/i)?.[1] || '';
+  const hubsList = hubsSection.match(/(?:direct\s*access\s*to|close\s*to|near)\s+([^.]+)/i)?.[1] || hubsSection;
+  hubsList
+    .replace(/\btech\s*hubs?\b/gi, '')
+    .split(/\s*,\s*(?:and\s+)?|\s+and\s+/i)
+    .map((place) => place.trim())
+    .filter(Boolean)
+    .forEach((place) => lines.push(`Close to ${place}`));
+
+  return lines.join('\n');
+};
+
+const priceToRupees = (rawValue: string, rawUnit: string) => {
+  const value = Number(String(rawValue || '').replace(/,/g, ''));
+  if (!Number.isFinite(value)) return '';
+  const unit = String(rawUnit || '').toLowerCase();
+  if (/cr|crore/.test(unit)) return String(Math.round(value * 10000000));
+  if (/l|lac|lakh/.test(unit)) return String(Math.round(value * 100000));
+  return String(Math.round(value));
+};
+
+// A brochure's per-typology breakdown table ("3 BHK 3,088-3,433 SFT East,
+// West ₹3.6 Cr - ₹4.0 Cr") lists everything a Floor Plans by Unit card
+// needs in one continuous run per row. Each card only has a single size and
+// price field (no min/max pair), so the lower end of each range is used as
+// a representative value - never an average or invented midpoint.
+const extractFloorPlanUnitsFromSummary = (text: string) => {
+  const rowPattern = /(\d(?:\.\d)?)\s*\+?\s*bhk(?![a-z])\s*(\d[\d,]{2,})\s*(?:–|—|-|to)\s*(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)\s*((?:north-east|north-west|south-east|south-west|north|south|east|west)(?:\s*(?:,|&|and)\s*(?:north-east|north-west|south-east|south-west|north|south|east|west))*)\s*(?:₹|rs\.?|inr)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/gi;
+
+  return Array.from(text.matchAll(rowPattern))
+    .map((match) => {
+      const facings = match[4]
+        .split(/\s*(?:,|&|and)\s*/)
+        .map((word) => normalizeDirection(word))
+        .filter((word) => (FLAT_FACING_OPTIONS as string[]).includes(word));
+      return {
+        bedrooms: formatBhkLabel(match[1]),
+        size: match[2].replace(/,/g, ''),
+        price: priceToRupees(match[5], match[6]),
+        unitFacing: facings[0] || ''
+      };
+    })
+    .filter((unit) => unit.bedrooms);
 };
 
 // When a summary is pasted from a brochure table, the value right after a
@@ -1248,6 +1309,8 @@ const parseSummary = (summary: string) => {
   const projectTotalUnits = extractProjectTotalUnits(normalizedSummary);
   const reraId = extractReraId(normalizedSummary);
   const permissionNo = extractPermissionNo(normalizedSummary);
+  const floorPlanUnits = isApartmentLikeSummary ? extractFloorPlanUnitsFromSummary(normalizedSummary) : [];
+  const localityHighlights = extractLocalityHighlights(normalizedSummary);
 
   return {
     listingIntent: hasDevelopmentTerms
@@ -1309,6 +1372,8 @@ const parseSummary = (summary: string) => {
     projectTotalUnits,
     reraId,
     permissionNo,
+    floorPlanUnits,
+    localityHighlights,
     description: summary.trim()
   };
 };
@@ -1499,8 +1564,13 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
   // actually attached rather than pretending photos/brochures were provided.
   const mediaUploads = section('Media Uploads', [
     ['Property Dimension Image', hasPlotDiagram ? 'Attached' : ''],
+    ...parsed.floorPlanUnits.map((unit, index): [string, string] => [
+      `Unit ${index + 1} (${unit.bedrooms})`,
+      [unit.size ? `${unit.size} Sq Ft` : '', unit.unitFacing, formatPreviewAmount(unit.price)].filter(Boolean).join(' · ')
+    ]),
     ['RERA Registration No.', parsed.reraId],
-    ['Layout / Building Permission No.', parsed.permissionNo]
+    ['Layout / Building Permission No.', parsed.permissionNo],
+    ['Locality Top Highlights', parsed.localityHighlights.replace(/\n/g, ', ')]
   ]);
 
   // Location Details
@@ -2211,6 +2281,20 @@ const PropertySummary = () => {
       data.append('projectTotalUnits', propertyDetails.projectTotalUnits || '');
       data.append('reraId', propertyDetails.reraId || '');
       data.append('permissionNo', propertyDetails.permissionNo || '');
+      data.append('floorPlanUnits', JSON.stringify(
+        (propertyDetails.floorPlanUnits || []).map((unit) => ({
+          bedrooms: unit.bedrooms,
+          size: unit.size,
+          price: unit.price,
+          plotSizeSqYd: '',
+          dimension: '',
+          unitFacing: unit.unitFacing,
+          existingImageUrls: [],
+          newFileCount: 0,
+          rooms: []
+        }))
+      ));
+      data.append('localityHighlights', propertyDetails.localityHighlights || '');
 
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);

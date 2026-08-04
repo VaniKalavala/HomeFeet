@@ -449,6 +449,7 @@ const PostProperty = () => {
       possessionStatus: prefill.possessionStatus || prev.possessionStatus,
       reraId: prefill.reraId || prev.reraId,
       permissionNo: prefill.permissionNo || prev.permissionNo,
+      localityHighlights: prefill.localityHighlights || prev.localityHighlights,
       developerRatio: prefill.developerRatio || prev.developerRatio,
       state: prefill.state || prev.state,
       city: prefill.city || prev.city,
@@ -477,6 +478,20 @@ const PostProperty = () => {
       contactEmail: prefillContactEmail || prev.contactEmail,
       plotDiagram: routeState?.plotDiagramFile || prev.plotDiagram
     }));
+
+    if (Array.isArray(prefill.floorPlanUnits) && prefill.floorPlanUnits.length) {
+      setFloorPlanUnits(prefill.floorPlanUnits.map((unit: any) => ({
+        bedrooms: unit.bedrooms || '',
+        size: unit.size || '',
+        price: unit.price || '',
+        plotSizeSqYd: unit.plotSizeSqYd || '',
+        dimension: unit.dimension || '',
+        unitFacing: unit.unitFacing || '',
+        files: [],
+        existingImageUrls: [],
+        rooms: []
+      })));
+    }
 
     if (canUseAssistedUpload && (prefillContactPhone || prefillContactEmail || prefillOwnerName)) {
       setAssistedOwner(prev => ({
