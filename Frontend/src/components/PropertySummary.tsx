@@ -1300,6 +1300,21 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     ['Pincode', parsed.pincode]
   ]);
 
+  const unitDetails = section('Apartment / Villa Details', [
+    ['Project / Society Name', parsed.projectName],
+    ['Builder / Company Name', parsed.companyName],
+    ['Bedrooms (BHK)', parsed.bedrooms],
+    ['Bathrooms', parsed.bathrooms],
+    ['Flat Size', parsed.flatSize ? `${parsed.flatSize} Sq Ft` : ''],
+    ['Flat Facing', parsed.flatFacing],
+    ['Floor', parsed.floorNumber ? `${parsed.floorNumber}${parsed.totalFloors ? ` of ${parsed.totalFloors}` : ''}` : ''],
+    ['Furnishing Status', parsed.furnishingStatus],
+    ['Possession Status', parsed.possessionStatus],
+    ['Square Feet Price', formatPreviewAmount(parsed.squareFeetPrice)],
+    ['Total Budget', formatPreviewAmount(parsed.totalBudget)],
+    ['Amenities', (parsed.selectedAmenities || []).join(', ')]
+  ]);
+
   const plotDimensions = section('Plot Dimensions (in feet)', [
     ['North Side Length', parsed.northSideLength],
     ['South Side Length', parsed.southSideLength],
@@ -1344,7 +1359,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     ['Property Description', simpleDescription]
   ]);
 
-  return [propertyDetails, plotDimensions, locationDetails, contactDetails, commercialTerms, description]
+  return [propertyDetails, unitDetails, plotDimensions, locationDetails, contactDetails, commercialTerms, description]
     .filter(Boolean)
     .join('\n\n') || cleaned;
 };
