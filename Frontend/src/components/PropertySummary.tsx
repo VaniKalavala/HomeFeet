@@ -79,14 +79,25 @@ const extractChoice = (text: string, choices: string[]) =>
   choices.find((choice) => new RegExp(`\\b${choice.replace('-', '[- ]?')}\\b`, 'i').test(text)) || '';
 
 const extractBedrooms = (text: string) => {
-  const match = text.match(/\b(\d(?:\.\d)?)\s*\+?\s*bhk\b/i) || text.match(/\b(\d(?:\.\d)?)\s*\+?\s*bed\s*rooms?\b/i);
-  if (!match) return '';
-  if (/\b4\s*\+\s*bhk\b/i.test(text)) return '4+ BHK';
-  const num = Number(match[1]);
-  if (!Number.isFinite(num)) return '';
-  if (num >= 5) return '4+ BHK';
-  if ([1, 2, 2.5, 3, 4].includes(num)) return `${num} BHK`;
-  return `${Math.round(num)} BHK`;
+  // Brochure tables often list every unit typology (3 BHK, 3.5 BHK, 4 BHK...),
+  // sometimes with the size figure glued right onto "BHK" with no space
+  // ("BHK3,088"), so match every occurrence rather than stopping at the first.
+  const bhkMatches = Array.from(text.matchAll(/\b(\d(?:\.\d)?)\s*\+?\s*bhk(?![a-z])/gi));
+  const matches = bhkMatches.length ? bhkMatches : Array.from(text.matchAll(/\b(\d(?:\.\d)?)\s*\+?\s*bed\s*rooms?\b/gi));
+  if (!matches.length) return '';
+
+  const toLabel = (raw: string) => {
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return '';
+    if (num >= 5) return '4+ BHK';
+    if (Number.isInteger(num) || Math.abs((num % 1) - 0.5) < 1e-9) return `${num} BHK`;
+    return `${Math.round(num)} BHK`;
+  };
+
+  const labels = Array.from(new Set(matches.map((match) => toLabel(match[1])).filter(Boolean)));
+  if (/\b4\s*\+\s*bhk\b/i.test(text) && !labels.includes('4+ BHK')) labels.push('4+ BHK');
+  labels.sort((a, b) => parseFloat(a) - parseFloat(b));
+  return labels.join(', ');
 };
 
 const extractBathrooms = (text: string) =>
@@ -126,15 +137,52 @@ const extractFlatSize = (text: string) =>
     /\bcarpet\s*area\s*[:\-]?\s*([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)?/i
   ]);
 
+// When a summary is pasted from a brochure table, the value right after a
+// label like "Project Name" or "Developer" runs straight into the NEXT
+// label with no punctuation to stop at ("Sattva Lago Developer Sattva
+// Group ..."). Stop collecting words as soon as one looks like the start
+// of another label, or stops looking like part of a proper name.
+const SUMMARY_LABEL_STOPWORDS = /^(?:Developer|Location|Land|Total|Towers|Elevation|Floor|Project|Status|Target|Possession|RERA|Registration|HMDA|DTCP|GHMC|Permission|Pricing|Configuration|Base|Rate|Starting|Price|Overall|Unit|Breakdowns|Typology|Size|Range|Facings|Offered|Specifications|Construction|Standards|Structure|Flooring|Sanitary|Plumbing|Kitchen|Amenities|Lifestyle|Facilities|Sports|Indoor|Wellness|Family|Kids|Connectivity|Context|Situated|Nearby|Schools|Corporate|Hubs|By|Builder|Company|Bedrooms|Bathrooms|Facing|Furnishing|Zoning|Possession|Description|Contact|Mobile|Email)$/i;
+
+const isSummaryNameWord = (word: string) => /^[A-Z][A-Za-z&'.-]*$/.test(word) && !SUMMARY_LABEL_STOPWORDS.test(word);
+
+const captureNameAfterLabel = (text: string, labelPattern: RegExp, maxWords = 4) => {
+  const rest = text.match(labelPattern)?.[1];
+  if (!rest) return '';
+  const words = rest.trim().split(/\s+/);
+  const collected: string[] = [];
+  for (const word of words) {
+    if (collected.length >= maxWords || !isSummaryNameWord(word)) break;
+    collected.push(word);
+  }
+  return collected.join(' ');
+};
+
 const extractProjectName = (text: string) =>
-  text.match(/\bproject\s*name\s*[:\-]?\s*([^\n,.]+)/i)?.[1]?.trim()
+  captureNameAfterLabel(text, /\bproject\s*name\s*[:\-]?\s*([^\n]+)/i)
   || text.match(/\bproject\s*[:\-]\s*([^\n,.]+)/i)?.[1]?.trim()
   || '';
 
 const extractCompanyName = (text: string) =>
-  text.match(/\b(?:builder|developer|company)\s*(?:name)?\s*[:\-]\s*([^\n,.]+)/i)?.[1]?.trim()
+  captureNameAfterLabel(text, /\b(?:builder|developer|company)\s*(?:name)?\s*[:\-]?\s*([^\n]+)/i)
   || text.match(/\bby\s+([A-Z][A-Za-z0-9&.'\s]*?(?:builders?|constructions?|infra|developers?|group|llp|pvt\.?\s*ltd\.?))\b/i)?.[1]?.trim()
   || '';
+
+const extractProjectTotalUnits = (text: string) =>
+  extractNumber(text, [
+    /\btotal\s*(?:no\.?\s*of\s*)?units?\s*[:\-]?\s*([\d,]+)/i,
+    /\b([\d,]+)\s*(?:total\s*)?units?\b/i
+  ]);
+
+const extractReraId = (text: string) => {
+  const match = text.match(/\brera\s*(?:registration|regd\.?|reg\.?|id|no\.?|number)*\s*[:\-]?\s*([A-Z]{1,4}\s*\/?\s*\d{4,}[A-Z0-9\/]*)/i);
+  return match?.[1]?.replace(/\s+/g, '') || '';
+};
+
+const extractPermissionNo = (text: string) => {
+  const match = text.match(/\b(?:hmda|dtcp|ghmc|gp|layout|building)\s*permission\s*(?:no\.?|number|regd\.?)*\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\/\-]{3,})/i);
+  return match?.[1]?.trim() || '';
+};
 
 const extractSquareFeetPrice = (text: string) =>
   extractAmount(text, [
@@ -145,10 +193,12 @@ const extractSquareFeetPrice = (text: string) =>
 const extractTotalBudget = (text: string) =>
   extractAmount(text, [
     /\btotal\s*budget\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
+    /\bstarting\s*price\s*[:\-]?\s*~?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
     /\bexpected\s*price\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
     /\btotal\s*price\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
-    /\bprice\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i,
-    /(?:rs\.?|₹)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?\s*(?:only|onwards|negotiable|fixed)?\b/i
+    // "price"/currency-prefixed fallbacks: never grab a per-sq-ft rate.
+    /\bprice\s*[:\-]?\s*(?:rs\.?|₹)?\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?(?!\s*\/?\s*(?:per\s*)?sq)/i,
+    /(?:rs\.?|₹)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?\s*(?:only|onwards|negotiable|fixed)?\b(?!\s*\/?\s*(?:per\s*)?sq)/i
   ]);
 
 const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
@@ -206,10 +256,23 @@ const extractPlotDimensionPair = (summary: string) => {
     : { length: '', width: '' };
 };
 
+// Brochure/table text pasted from a webpage often loses its whitespace between
+// cells ("Project NameSattva Lago", "RERA RegistrationP02400010916HMDA
+// Permission No..."). Insert a space at the boundary wherever one clearly
+// belongs, without touching alphanumeric codes like RERA IDs (which are a
+// letter prefix immediately followed by digits, never the reverse).
+const insertMissingWordBoundaries = (value: string) =>
+  value
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/([).,;:])([A-Za-z])/g, '$1 $2')
+    .replace(/(\d)([A-Z])/g, '$1 $2')
+    .replace(/([a-z])(\d)/g, '$1 $2');
+
 const normalizeSummaryForParsing = (value: string) =>
   propertySpeechCorrections.reduce(
     (current, [pattern, replacement]) => current.replace(pattern, replacement),
-    value
+    insertMissingWordBoundaries(value)
   )
     .replace(/\bdevelopement\b/gi, 'development')
     .replace(/\bdevelopmant\b/gi, 'development')
@@ -917,9 +980,9 @@ const extractLocationFields = (summary: string) => {
     ''
   ));
   const districtName = titleCase(cleanLocationPart(
-    summary.match(/\bdistrict\s*[:\-]?\s*([A-Za-z][A-Za-z\s.'-]+?)(?:,|\n|$)/i)?.[1] ||
-    summary.match(/\b([A-Za-z][A-Za-z\s.'-]+?)\s*\(\s*(?:D|district)\s*\)/i)?.[1] ||
     summary.match(/\b([A-Za-z][A-Za-z\s.'-]+?)\s+district\b/i)?.[1] ||
+    summary.match(/\bdistrict\s*[:\-]\s*([A-Za-z][A-Za-z\s.'-]+?)(?:,|\n|$)/i)?.[1] ||
+    summary.match(/\b([A-Za-z][A-Za-z\s.'-]+?)\s*\(\s*(?:D|district)\s*\)/i)?.[1] ||
     ''
   ));
   const isKarnatakaSummary = /\b(?:KA|Karnataka|Bengaluru\s+(?:Rural|Urban)|Bangalore\s+(?:Rural|Urban)|Devanahalli|Brigade\s+Orchards|Thanisandra|Manyata\s+Tech\s+Park)\b/i.test(summary);
@@ -1121,9 +1184,20 @@ const parseSummary = (summary: string) => {
   const squareFeetPrice = extractSquareFeetPrice(normalizedSummary);
   const totalBudget = extractTotalBudget(normalizedSummary);
   const selectedAmenities = extractAmenitiesFromSummary(normalizedSummary);
+  const projectTotalUnits = extractProjectTotalUnits(normalizedSummary);
+  const reraId = extractReraId(normalizedSummary);
+  const permissionNo = extractPermissionNo(normalizedSummary);
 
   return {
-    listingIntent: hasDevelopmentTerms ? 'development' : /\b(?:sell|sale|selling|outright|per\s*acres?|card\s*value)\b/i.test(normalizedSummary) ? 'sell' : 'development',
+    listingIntent: hasDevelopmentTerms
+      ? 'development'
+      : /\b(?:sell|sale|selling|outright|per\s*acres?|card\s*value)\b/i.test(normalizedSummary)
+        ? 'sell'
+        // A fully-built apartment/villa project brochure (RERA number, unit
+        // price breakdown, etc.) is a sale listing even when it never says
+        // the word "sell" - "development" is only the right default for
+        // land/plot summaries offered to a builder for joint development.
+        : isApartmentLikeSummary ? 'sell' : 'development',
     developmentType,
     plotNumber,
     approvalType,
@@ -1167,6 +1241,9 @@ const parseSummary = (summary: string) => {
     squareFeetPrice,
     totalBudget,
     selectedAmenities,
+    projectTotalUnits,
+    reraId,
+    permissionNo,
     description: summary.trim()
   };
 };
@@ -1258,7 +1335,12 @@ const formatPreviewAmount = (value = '') => {
   return `Rs. ${amount.toLocaleString('en-IN')}`;
 };
 
-const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') => {
+// Mirrors the 5-step Property Form exactly (PostProperty.tsx's own
+// `formSteps` list: Property Details / Apartment or Villa Details /
+// Pricing & Amenities / Media Uploads / Location Details), so admins
+// reviewing the parsed summary see it grouped the same way they'll fill
+// or check it on the next screen.
+const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', hasPlotDiagram = false) => {
   const cleaned = normalizeRealEstateSummaryText(summary);
   if (!cleaned) return '';
 
@@ -1268,6 +1350,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+  const isVilla = parsed.developmentType.trim().toLowerCase() === 'villa';
   const area = parsed.totalArea ? `${parsed.totalArea} ${parsed.areaUnit}` : extractRawValue(cleaned, /([\d,.]+\s*(?:sq\s*yards?|square\s*yards?|acres?|guntas?))/i);
   const surveyNumber = extractRawValue(cleaned, /(?:Survey No\.|survey numbers?|sy no)\s*[:.-]?\s*([^\n.]+)/i);
   const ownerExtent = extractRawValue(cleaned, /(?:direct\s+owner|owner)\s*[:.-]?\s*([\d,.]+\s*(?:acres?|guntas?)(?:\s*[\d,.]+\s*guntas?)?)/i);
@@ -1285,6 +1368,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     ].join('\n');
   };
 
+  // Step 1: Property Details
   const propertyDetails = section('Property Details', [
     ['Post Property For', parsed.listingIntent === 'development' ? 'Development' : parsed.listingIntent === 'buy' ? 'Buy' : 'Sell'],
     [parsed.listingIntent === 'development' ? 'Development Type' : 'Property Type', propertyType],
@@ -1297,11 +1381,18 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     ['Frontage Width', parsed.frontageWidth ? `${parsed.frontageWidth} ft` : ''],
     ['Road Facing Direction', parsed.roadFacingDirection || parsed.facing],
     ['Zoning Classification', parsed.zoningClassification],
-    ['Pincode', parsed.pincode]
+    ['North Side Length', parsed.northSideLength ? `${parsed.northSideLength} ft` : ''],
+    ['South Side Length', parsed.southSideLength ? `${parsed.southSideLength} ft` : ''],
+    ['East Side Length', parsed.eastSideLength ? `${parsed.eastSideLength} ft` : ''],
+    ['West Side Length', parsed.westSideLength ? `${parsed.westSideLength} ft` : ''],
+    ['Project Total Units', parsed.projectTotalUnits],
+    ['RERA Registration No.', parsed.reraId],
+    ['Layout / Building Permission No.', parsed.permissionNo]
   ]);
 
-  const unitDetails = section('Apartment / Villa Details', [
-    ['Project / Society Name', parsed.projectName],
+  // Step 2: Apartment Details (or Villa Details, same dynamic label the form itself uses)
+  const unitDetails = section(isVilla ? 'Villa Details' : 'Apartment Details', [
+    ['Project Name', parsed.projectName],
     ['Builder / Company Name', parsed.companyName],
     ['Bedrooms (BHK)', parsed.bedrooms],
     ['Bathrooms', parsed.bathrooms],
@@ -1310,36 +1401,13 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     ['Floor', parsed.floorNumber ? `${parsed.floorNumber}${parsed.totalFloors ? ` of ${parsed.totalFloors}` : ''}` : ''],
     ['Furnishing Status', parsed.furnishingStatus],
     ['Possession Status', parsed.possessionStatus],
+    ['Property Description', simpleDescription]
+  ]);
+
+  // Step 3: Pricing & Amenities
+  const pricingAmenities = section('Pricing & Amenities', [
     ['Square Feet Price', formatPreviewAmount(parsed.squareFeetPrice)],
     ['Total Budget', formatPreviewAmount(parsed.totalBudget)],
-    ['Amenities', (parsed.selectedAmenities || []).join(', ')]
-  ]);
-
-  const plotDimensions = section('Plot Dimensions (in feet)', [
-    ['North Side Length', parsed.northSideLength],
-    ['South Side Length', parsed.southSideLength],
-    ['East Side Length', parsed.eastSideLength],
-    ['West Side Length', parsed.westSideLength]
-  ]);
-
-  const locationDetails = section('Location Details', [
-    ['State', parsed.state],
-    ['City', parsed.city],
-    ['Mandal', parsed.mandal],
-    ['District', parsed.district],
-    ['Locality', parsed.locality],
-    ['Colony Name', parsed.societyName],
-    ['Landmark / Street', parsed.landmark],
-    ['Survey Number', surveyNumber]
-  ]);
-
-  const contactDetails = section('Contact Details', [
-    ['Contact Name', parsed.ownerName],
-    ['Mobile Number', parsed.contactPhone],
-    ['Email', parsed.contactEmail]
-  ]);
-
-  const commercialTerms = section('Commercial Terms', [
     ['Development Ratio (Owner : Builder)', parsed.developerRatio],
     ['Goodwill', formatPreviewAmount(parsed.goodwill)],
     ['Advance', formatPreviewAmount(parsed.advance)],
@@ -1352,14 +1420,28 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '') =>
     ['Extra Charges', parsed.extraCharges],
     ['Owner Extent', ownerExtent],
     ['Per Acre Price', perAcrePrice],
-    ['Site Access', [roadText, surroundings ? `surrounded by ${surroundings}` : ''].filter(Boolean).join(', ')]
+    ['Site Access', [roadText, surroundings ? `surrounded by ${surroundings}` : ''].filter(Boolean).join(', ')],
+    ['Amenities', (parsed.selectedAmenities || []).join(', ')]
   ]);
 
-  const description = section('Description', [
-    ['Property Description', simpleDescription]
+  // Step 4: Media Uploads - nothing to parse from free text; only note what's
+  // actually attached rather than pretending photos/brochures were provided.
+  const mediaUploads = section('Media Uploads', [
+    ['Property Dimension Image', hasPlotDiagram ? 'Attached' : '']
   ]);
 
-  return [propertyDetails, unitDetails, plotDimensions, locationDetails, contactDetails, commercialTerms, description]
+  // Step 5: Location Details
+  const locationDetails = section('Location Details', [
+    ['State', parsed.state],
+    ['City', parsed.city],
+    ['Locality', parsed.locality],
+    ['Colony Name', parsed.societyName],
+    ['Landmark / Street', parsed.landmark],
+    ['Pincode', parsed.pincode],
+    ['Survey Number', surveyNumber]
+  ]);
+
+  return [propertyDetails, unitDetails, pricingAmenities, mediaUploads, locationDetails]
     .filter(Boolean)
     .join('\n\n') || cleaned;
 };
@@ -1877,7 +1959,7 @@ const PropertySummary = () => {
         pincode: parsedSummary.pincode || googleResolvedPincode
       }
     : null;
-  const structuredSummaryPreview = buildStructuredSummaryPreview(summary, googleResolvedPincode);
+  const structuredSummaryPreview = buildStructuredSummaryPreview(summary, googleResolvedPincode, Boolean(plotDiagramFile));
   const liveMissingFields = parsedSummaryWithPincode ? getMissingPropertyFormFields(parsedSummaryWithPincode, Boolean(plotDiagramFile)) : missingFields;
 
   useEffect(() => {
@@ -2049,6 +2131,9 @@ const PropertySummary = () => {
       data.append('squareFeetPrice', propertyDetails.squareFeetPrice || '');
       data.append('totalBudget', propertyDetails.totalBudget || '');
       data.append('selectedAmenities', JSON.stringify(propertyDetails.selectedAmenities || []));
+      data.append('projectTotalUnits', propertyDetails.projectTotalUnits || '');
+      data.append('reraId', propertyDetails.reraId || '');
+      data.append('permissionNo', propertyDetails.permissionNo || '');
 
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);
