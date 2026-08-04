@@ -2227,6 +2227,9 @@ const PropertySummary = () => {
             <span className="flex items-center gap-2 text-sm font-bold text-slate-800"><FileText className="h-5 w-5 text-teal-700" />Property Summary</span>
           </div>
           <p className="mb-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm sm:leading-6">
+            Cover the same details as the Property Form: Post Property For (Sell / Buy / Development), Property Type, Total Area (with unit), Facing & Road Facing Direction, Road Size & Frontage Width, Zoning Classification, Bedrooms (for apartments/villas), Square Feet Price or Total Budget, Development Ratio (for development listings), and the full location — Locality, City, State, and Pincode.
+          </p>
+          <p className="mb-2 text-xs font-semibold leading-5 text-slate-600 sm:text-sm sm:leading-6">
             Example: Standalone, 1300 sq yards, north 40, south 40, east 30, west 30, road size 40, frontage 40, east facing, Miyapur, Hyderabad, 500049.
           </p>
           <textarea

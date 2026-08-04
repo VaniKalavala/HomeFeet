@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Check, Eye, Filter, Mail, MapPin, MessageCircle, Pencil, Phone, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { Building2, Check, Eye, FileText, Filter, Mail, MapPin, MessageCircle, Pencil, Phone, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import { isAdminUser } from '../lib/admin';
 
@@ -1315,9 +1315,20 @@ const AdminPanel: React.FC = () => {
       <div className={`${activeAdminPage === 'whatsapp' ? 'max-w-[104rem]' : 'max-w-7xl'} mx-auto px-4 py-8`}>
         {/* Header */}
         <div className="mb-6 rounded-lg bg-slate-950 p-8 text-white shadow-xl">
-          <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Operations Console</p>
-          <h1 className="mt-2 text-3xl font-black md:text-5xl">Admin Panel</h1>
-          <p className="mt-3 text-slate-300">Review listings, verify builders, manage inquiries, and protect marketplace quality.</p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Operations Console</p>
+              <h1 className="mt-2 text-3xl font-black md:text-5xl">Admin Panel</h1>
+              <p className="mt-3 text-slate-300">Review listings, verify builders, manage inquiries, and protect marketplace quality.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/post-property-summary')}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
+            >
+              <FileText className="h-4 w-4" /> Quick Add Property (Paste Summary)
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 grid gap-3 rounded-lg bg-white p-3 shadow-sm md:grid-cols-9">
