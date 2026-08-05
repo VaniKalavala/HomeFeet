@@ -109,7 +109,9 @@ const extractFloorDetails = (text: string) => {
   const ofPattern = text.match(/\bfloor\s*[:\-]?\s*(\d+)\s*(?:of|\/|out of)\s*(\d+)\b/i)
     || text.match(/\b(\d+)(?:st|nd|rd|th)?\s*floor\s*(?:of|out of)\s*(\d+)\b/i);
   if (ofPattern) return { floorNumber: ofPattern[1], totalFloors: ofPattern[2] };
-  const gPlus = text.match(/\bg\s*\+\s*(\d+)\b/i);
+  // "G+46" and spelled-out "Ground + 46 Upper Floors" both mean the same
+  // thing - a tower with a ground floor plus 46 floors above it.
+  const gPlus = text.match(/\bg\s*\+\s*(\d+)\b/i) || text.match(/\bground\s*\+\s*(\d+)\s*(?:upper\s*)?floors?\b/i);
   const floorOnly = text.match(/\b(\d+)(?:st|nd|rd|th)?\s*floor\b/i);
   const totalOnly = text.match(/\btotal\s*(?:of\s*)?(\d+)\s*floors?\b/i);
   return {
@@ -1221,6 +1223,11 @@ const parseSummary = (summary: string) => {
         : /lrs\s*(?:fully\s*)?paid/i.test(normalizedSummary)
           ? 'LRS Fully Paid'
         : '';
+  // Needed early to classify property type by floor count (see below) -
+  // extractFloorDetails is cheap (a couple of regex tests) and is called
+  // again later for the actual floorNumber/totalFloors fields.
+  const earlyTotalFloors = Number(extractFloorDetails(normalizedSummary).totalFloors) || 0;
+
   const developmentType = approvalType.includes('HMDA')
     ? 'hmda-layout'
     : approvalType.includes('DTCP')
@@ -1241,6 +1248,14 @@ const parseSummary = (summary: string) => {
             ? 'residential-house'
           : /villa\s+development|development\s+site|villas?\b/i.test(normalizedSummary)
           ? 'villa'
+          // A specific total-floor count is a stronger signal than the
+          // generic "apartment"/"flat" wording every one of these types
+          // also uses, so it's checked first: >8 floors reads as a
+          // high-rise tower, 6-8 as a mid-rise gated community.
+          : earlyTotalFloors > 8
+            ? 'high-rise'
+          : earlyTotalFloors > 5
+            ? 'gated-community'
           : /\bapartments?\b|\bflats?\b/i.test(normalizedSummary)
             ? 'apartment'
           : /\bstandalone\s*(?:building|house)?\b/i.test(normalizedSummary)
@@ -1321,9 +1336,32 @@ const parseSummary = (summary: string) => {
   const bedrooms = extractBedrooms(normalizedSummary);
   const bathrooms = extractBathrooms(normalizedSummary);
   const floorDetails = extractFloorDetails(normalizedSummary);
-  const furnishingStatus = extractFurnishingStatus(normalizedSummary);
-  const possessionStatus = extractPossessionStatus(normalizedSummary);
+  // A brochure rarely states bathrooms per unit typology, only an overall
+  // "3 bathrooms" figure at most - default each BHK to the bathroom count
+  // that type conventionally has, so the per-BHK breakdown isn't left
+  // entirely blank. Half-BHK types round down to the whole-BHK count below
+  // them (3.5 BHK behaves like 3 BHK for bathroom purposes).
+  const DEFAULT_BHK_BATHROOMS: Record<string, string> = {
+    '1 BHK': '1', '2 BHK': '2', '2.5 BHK': '2', '3 BHK': '3', '3.5 BHK': '3', '4 BHK': '4', '4+ BHK': '4'
+  };
+  const bhkBathrooms: Record<string, string> = {};
+  bedrooms.split(',').map((label) => label.trim()).filter(Boolean).forEach((label) => {
+    if (DEFAULT_BHK_BATHROOMS[label]) bhkBathrooms[label] = DEFAULT_BHK_BATHROOMS[label];
+  });
+  // Furnishing is essentially always stated as one of the three options in
+  // a real listing; when a brochure never mentions it at all, default to
+  // Unfurnished (new-build apartments/villas are unfurnished unless the
+  // brochure says otherwise) rather than leaving the field blank.
+  const furnishingStatus = extractFurnishingStatus(normalizedSummary) || (bedrooms ? 'Unfurnished' : '');
   const possessionDate = extractTargetPossessionDate(normalizedSummary);
+  // Possession status keyword ("ready to move"/"under construction") wins
+  // when the brochure states it outright. Otherwise "New Launch"-style
+  // wording implies construction hasn't finished, and failing that, a
+  // stated target-possession year in the future implies the same.
+  const possessionStatus = extractPossessionStatus(normalizedSummary)
+    || (/\bnew\s*launch\b|\bpre[- ]?launch\b|\bupcoming\b/i.test(normalizedSummary) ? 'Under Construction' : '')
+    || (possessionDate && Number(possessionDate.slice(0, 4)) > new Date().getFullYear() ? 'Under Construction' : '')
+    || (possessionDate ? 'Ready to Move' : '');
   const flatSize = extractFlatSize(normalizedSummary);
   const { flatSizeMin, flatSizeMax } = isApartmentLikeSummary ? extractFlatSizeRange(normalizedSummary) : { flatSizeMin: '', flatSizeMax: '' };
   const multiFlatFacings = isApartmentLikeSummary ? extractFlatFacings(normalizedSummary) : [];
@@ -1342,6 +1380,14 @@ const parseSummary = (summary: string) => {
   const permissionNo = extractPermissionNo(normalizedSummary);
   const floorPlanUnits = isApartmentLikeSummary ? extractFloorPlanUnitsFromSummary(normalizedSummary) : [];
   const localityHighlights = extractLocalityHighlights(normalizedSummary);
+  // Project Highlights are built only from facts already parsed elsewhere
+  // (unit count, area, floor-to-floor height, amenity count) rather than
+  // summarizing free-form brochure prose, so nothing here is invented.
+  const projectHighlights = [
+    projectTotalUnits && totalArea ? `${projectTotalUnits} Units spread across ${totalArea} ${areaUnit}` : (projectTotalUnits ? `${projectTotalUnits} Units` : ''),
+    floorToFloorHeight ? `${floorToFloorHeight} ft floor-to-floor height` : '',
+    selectedAmenities.length ? `${selectedAmenities.length}+ premium amenities including ${selectedAmenities.slice(0, 3).join(', ')}` : ''
+  ].filter(Boolean).join('\n');
 
   return {
     listingIntent: hasDevelopmentTerms
@@ -1385,6 +1431,7 @@ const parseSummary = (summary: string) => {
     zoningClassification: finalZoningClassification,
     bedrooms,
     bathrooms,
+    bhkBathrooms,
     floorNumber: floorDetails.floorNumber,
     totalFloors: floorDetails.totalFloors,
     furnishingStatus,
@@ -1405,6 +1452,7 @@ const parseSummary = (summary: string) => {
     permissionNo,
     floorPlanUnits,
     localityHighlights,
+    projectHighlights,
     possessionDate,
     description: summary.trim()
   };
@@ -1561,6 +1609,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ['Flat Facing', parsed.flatFacing],
     ['Bedrooms (BHK)', parsed.bedrooms],
     ['Bathrooms', parsed.bathrooms],
+    ['Bathrooms per BHK', Object.entries(parsed.bhkBathrooms || {}).map(([bhk, count]) => `${bhk}: ${count}`).join(', ')],
     ['Floor', parsed.floorNumber ? `${parsed.floorNumber}${parsed.totalFloors ? ` of ${parsed.totalFloors}` : ''}` : ''],
     ['Furnishing Status', parsed.furnishingStatus],
     ['Possession Status', parsed.possessionStatus]
@@ -1603,7 +1652,8 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ['Possession Date', parsed.possessionDate],
     ['RERA Registration No.', parsed.reraId],
     ['Layout / Building Permission No.', parsed.permissionNo],
-    ['Locality Top Highlights', parsed.localityHighlights.replace(/\n/g, ', ')]
+    ['Locality Top Highlights', parsed.localityHighlights.replace(/\n/g, ', ')],
+    ['Project Highlights', parsed.projectHighlights.replace(/\n/g, ', ')]
   ]);
 
   // Location Details
@@ -2328,7 +2378,9 @@ const PropertySummary = () => {
         }))
       ));
       data.append('localityHighlights', propertyDetails.localityHighlights || '');
+      data.append('projectHighlights', propertyDetails.projectHighlights || '');
       data.append('possessionDate', propertyDetails.possessionDate || '');
+      data.append('bhkBathrooms', JSON.stringify(propertyDetails.bhkBathrooms || {}));
 
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);

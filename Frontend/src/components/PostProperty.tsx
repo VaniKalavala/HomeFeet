@@ -451,6 +451,7 @@ const PostProperty = () => {
       reraId: prefill.reraId || prev.reraId,
       permissionNo: prefill.permissionNo || prev.permissionNo,
       localityHighlights: prefill.localityHighlights || prev.localityHighlights,
+      projectHighlights: prefill.projectHighlights || prev.projectHighlights,
       developerRatio: prefill.developerRatio || prev.developerRatio,
       state: prefill.state || prev.state,
       city: prefill.city || prev.city,
