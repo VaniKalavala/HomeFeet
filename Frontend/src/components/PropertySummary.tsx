@@ -129,6 +129,21 @@ const extractPossessionStatus = (text: string) =>
     : /\bunder\s*construction\b/i.test(text) ? 'Under Construction'
     : '';
 
+// The Possession Date field is a native date input needing an exact
+// dd-mm-yyyy value, but a brochure typically only states a target YEAR
+// ("Target Possession 2031"), never a specific day. Rather than leave the
+// field blank when a year is clearly stated, default to December 31 of
+// that year - a defensible "by end of" placeholder the admin can tighten
+// up, not a fabricated precise date.
+const extractTargetPossessionDate = (text: string) => {
+  const year = Number(
+    text.match(/\btarget\s*possession\s*[:\-]?\s*(?:in\s*|by\s*|q[1-4]\s*)?(\d{4})\b/i)?.[1]
+    || text.match(/\bpossession\s*(?:by|in|date)\s*[:\-]?\s*(?:q[1-4]\s*)?(\d{4})\b/i)?.[1]
+    || ''
+  );
+  return Number.isFinite(year) && year >= 2020 && year <= 2100 ? `${year}-12-31` : '';
+};
+
 const extractFlatSize = (text: string) =>
   extractNumber(text, [
     /\bflat\s*size\s*[:\-]?\s*([\d,.]+)\s*(?:sq\.?\s*ft|sqft|square\s*feet)?/i,
@@ -216,28 +231,43 @@ const priceToRupees = (rawValue: string, rawUnit: string) => {
   return String(Math.round(value));
 };
 
-// A brochure's per-typology breakdown table ("3 BHK 3,088-3,433 SFT East,
-// West ₹3.6 Cr - ₹4.0 Cr") lists everything a Floor Plans by Unit card
-// needs in one continuous run per row. Each card only has a single size and
-// price field (no min/max pair), so the lower end of each range is used as
-// a representative value - never an average or invented midpoint.
+// A brochure's per-typology breakdown table lists a size range, a price
+// range, and a facing list for each BHK row - but different brochures order
+// those three columns differently ("...SFT East, West Rs.3.6 Cr..." vs
+// "...SFT Rs.3.6 Cr...East, West"). Rather than one rigid sequential regex,
+// slice the text between one BHK mention and the next and search that slice
+// for size/price/facing independently, so any column order works. Each
+// card only has a single size and price field (no min/max pair), so the
+// lower end of each range is used as a representative value - never an
+// average or invented midpoint. A row is only kept if a size figure was
+// actually found close to the BHK mention, so a stray "3 BHK" in ordinary
+// prose elsewhere in the text never creates a phantom unit.
 const extractFloorPlanUnitsFromSummary = (text: string) => {
-  const rowPattern = /(\d(?:\.\d)?)\s*\+?\s*bhk(?![a-z])\s*(\d[\d,]{2,})\s*(?:–|—|-|to)\s*(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)\s*((?:north-east|north-west|south-east|south-west|north|south|east|west)(?:\s*(?:,|&|and)\s*(?:north-east|north-west|south-east|south-west|north|south|east|west))*)\s*(?:₹|rs\.?|inr)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/gi;
+  const markers = Array.from(text.matchAll(/(\d(?:\.\d)?)\s*\+?\s*bhk(?![a-z])/gi));
+  const MAX_ROW_LENGTH = 200;
 
-  return Array.from(text.matchAll(rowPattern))
-    .map((match) => {
-      const facings = match[4]
-        .split(/\s*(?:,|&|and)\s*/)
-        .map((word) => normalizeDirection(word))
+  return markers
+    .map((marker, index) => {
+      const start = (marker.index ?? 0) + marker[0].length;
+      const nextStart = index + 1 < markers.length ? markers[index + 1].index ?? text.length : text.length;
+      const row = text.slice(start, Math.min(nextStart, start + MAX_ROW_LENGTH));
+
+      const sizeMatch = row.match(/(\d[\d,]{2,})\s*(?:–|—|-|to)\s*(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)/i);
+      if (!sizeMatch) return null;
+
+      const priceMatch = row.match(/(?:₹|rs\.?|inr)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i);
+      const facings = Array.from(row.matchAll(/\b(north-east|north-west|south-east|south-west|north|south|east|west)\b/gi))
+        .map((facingMatch) => normalizeDirection(facingMatch[1]))
         .filter((word) => (FLAT_FACING_OPTIONS as string[]).includes(word));
+
       return {
-        bedrooms: formatBhkLabel(match[1]),
-        size: match[2].replace(/,/g, ''),
-        price: priceToRupees(match[5], match[6]),
+        bedrooms: formatBhkLabel(marker[1]),
+        size: sizeMatch[1].replace(/,/g, ''),
+        price: priceMatch ? priceToRupees(priceMatch[1], priceMatch[2]) : '',
         unitFacing: facings[0] || ''
       };
     })
-    .filter((unit) => unit.bedrooms);
+    .filter((unit): unit is NonNullable<typeof unit> => Boolean(unit && unit.bedrooms));
 };
 
 // When a summary is pasted from a brochure table, the value right after a
@@ -1293,6 +1323,7 @@ const parseSummary = (summary: string) => {
   const floorDetails = extractFloorDetails(normalizedSummary);
   const furnishingStatus = extractFurnishingStatus(normalizedSummary);
   const possessionStatus = extractPossessionStatus(normalizedSummary);
+  const possessionDate = extractTargetPossessionDate(normalizedSummary);
   const flatSize = extractFlatSize(normalizedSummary);
   const { flatSizeMin, flatSizeMax } = isApartmentLikeSummary ? extractFlatSizeRange(normalizedSummary) : { flatSizeMin: '', flatSizeMax: '' };
   const multiFlatFacings = isApartmentLikeSummary ? extractFlatFacings(normalizedSummary) : [];
@@ -1374,6 +1405,7 @@ const parseSummary = (summary: string) => {
     permissionNo,
     floorPlanUnits,
     localityHighlights,
+    possessionDate,
     description: summary.trim()
   };
 };
@@ -1568,6 +1600,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
       `Unit ${index + 1} (${unit.bedrooms})`,
       [unit.size ? `${unit.size} Sq Ft` : '', unit.unitFacing, formatPreviewAmount(unit.price)].filter(Boolean).join(' · ')
     ]),
+    ['Possession Date', parsed.possessionDate],
     ['RERA Registration No.', parsed.reraId],
     ['Layout / Building Permission No.', parsed.permissionNo],
     ['Locality Top Highlights', parsed.localityHighlights.replace(/\n/g, ', ')]
@@ -2295,6 +2328,7 @@ const PropertySummary = () => {
         }))
       ));
       data.append('localityHighlights', propertyDetails.localityHighlights || '');
+      data.append('possessionDate', propertyDetails.possessionDate || '');
 
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);

@@ -447,6 +447,7 @@ const PostProperty = () => {
       totalFloors: prefill.totalFloors || prev.totalFloors,
       furnishingStatus: prefill.furnishingStatus || prev.furnishingStatus,
       possessionStatus: prefill.possessionStatus || prev.possessionStatus,
+      possessionDate: prefill.possessionDate || prev.possessionDate,
       reraId: prefill.reraId || prev.reraId,
       permissionNo: prefill.permissionNo || prev.permissionNo,
       localityHighlights: prefill.localityHighlights || prev.localityHighlights,
