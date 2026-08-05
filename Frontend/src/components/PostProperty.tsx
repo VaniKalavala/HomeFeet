@@ -402,6 +402,7 @@ const PostProperty = () => {
     const routeState = location.state as {
       propertySummaryPrefill?: Record<string, any>;
       plotDiagramFile?: File | null;
+      projectImages?: File[];
     } | null;
     const storedPrefill = sessionStorage.getItem('propertySummaryPrefill');
     const prefill = routeState?.propertySummaryPrefill || (storedPrefill ? JSON.parse(storedPrefill) : null);
@@ -478,7 +479,10 @@ const PostProperty = () => {
         : prev.selectedAmenities,
       contactPhone: prefillContactPhone || prev.contactPhone,
       contactEmail: prefillContactEmail || prev.contactEmail,
-      plotDiagram: routeState?.plotDiagramFile || prev.plotDiagram
+      plotDiagram: routeState?.plotDiagramFile || prev.plotDiagram,
+      images: Array.isArray(routeState?.projectImages) && routeState.projectImages.length
+        ? [...prev.images, ...routeState.projectImages].slice(0, MAX_GALLERY_IMAGES)
+        : prev.images
     }));
 
     if (Array.isArray(prefill.floorPlanUnits) && prefill.floorPlanUnits.length) {

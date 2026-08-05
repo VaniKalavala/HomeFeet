@@ -2170,6 +2170,8 @@ const PropertySummary = () => {
   const [mapLink, setMapLink] = useState('');
   const [mapLinkTouched, setMapLinkTouched] = useState(false);
   const [plotDiagramFile, setPlotDiagramFile] = useState<File | null>(null);
+  const [projectImages, setProjectImages] = useState<File[]>([]);
+  const MAX_PROJECT_IMAGES = 10;
   const [isListening, setIsListening] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [message, setMessage] = useState('');
@@ -2306,7 +2308,8 @@ const PropertySummary = () => {
         navigate('/post-property', {
           state: {
             propertySummaryPrefill: propertyDetails,
-            plotDiagramFile: finalPlotDiagram
+            plotDiagramFile: finalPlotDiagram,
+            projectImages
           }
         });
         return;
@@ -2385,6 +2388,9 @@ const PropertySummary = () => {
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);
       }
+      projectImages.forEach((file) => {
+        data.append('images', file);
+      });
 
       const res = await fetch(`${API_BASE}/add`, {
         method: 'POST',
@@ -2419,6 +2425,16 @@ const PropertySummary = () => {
   const handlePlotDiagram = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     setPlotDiagramFile(file);
+  };
+
+  const handleProjectImages = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setProjectImages((prev) => [...prev, ...files].slice(0, MAX_PROJECT_IMAGES));
+    event.target.value = '';
+  };
+
+  const removeProjectImage = (index: number) => {
+    setProjectImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addVoiceTextToSummary = (rawText: string) => {
@@ -2684,15 +2700,38 @@ const PropertySummary = () => {
           </label>
 
           <label className="block">
-            <span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Property Dimension Image</span>
+            <span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Project Images</span>
             <input
               type="file"
-              accept="image/*,.pdf"
-              onChange={handlePlotDiagram}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm"
+              accept="image/*"
+              multiple
+              onChange={handleProjectImages}
+              disabled={projectImages.length >= MAX_PROJECT_IMAGES}
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
             />
-            {plotDiagramFile && <p className="mt-2 text-sm font-semibold text-teal-700">{plotDiagramFile.name}</p>}
-            <p className="mt-2 text-xs leading-5 text-slate-600">Optional attachment only. Dimensions are taken from the property summary.</p>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Optional. Upload up to {MAX_PROJECT_IMAGES} photos of the property (exterior, interior, surroundings).
+            </p>
+            {projectImages.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {projectImages.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Project photo ${index + 1}`}
+                      className="h-16 w-full rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeProjectImage(index)}
+                      className="absolute right-1 top-1 rounded-full bg-slate-950/70 px-1.5 py-0.5 text-xs font-bold text-white"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </label>
         </div>
 
