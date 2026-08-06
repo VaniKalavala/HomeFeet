@@ -2196,6 +2196,8 @@ const PropertySummary = () => {
   const [plotDiagramFile, setPlotDiagramFile] = useState<File | null>(null);
   const [projectImages, setProjectImages] = useState<File[]>([]);
   const MAX_PROJECT_IMAGES = 10;
+  const [unitPlanImages, setUnitPlanImages] = useState<File[]>([]);
+  const MAX_UNIT_PLAN_IMAGES = 5;
   const [isListening, setIsListening] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [message, setMessage] = useState('');
@@ -2333,7 +2335,8 @@ const PropertySummary = () => {
           state: {
             propertySummaryPrefill: propertyDetails,
             plotDiagramFile: finalPlotDiagram,
-            projectImages
+            projectImages,
+            unitPlanImages
           }
         });
         return;
@@ -2391,8 +2394,9 @@ const PropertySummary = () => {
       data.append('projectTotalUnits', propertyDetails.projectTotalUnits || '');
       data.append('reraId', propertyDetails.reraId || '');
       data.append('permissionNo', propertyDetails.permissionNo || '');
+      const floorPlanUnitsList = propertyDetails.floorPlanUnits || [];
       data.append('floorPlanUnits', JSON.stringify(
-        (propertyDetails.floorPlanUnits || []).map((unit) => ({
+        floorPlanUnitsList.map((unit) => ({
           bedrooms: unit.bedrooms,
           size: unit.size,
           price: unit.price,
@@ -2400,10 +2404,18 @@ const PropertySummary = () => {
           dimension: '',
           unitFacing: unit.unitFacing,
           existingImageUrls: [],
-          newFileCount: 0,
+          // The same uploaded floor plan images are attached to every unit
+          // typology - the backend consumes 'floorPlan' files sequentially
+          // per unit's declared count, so they're uploaded once per unit.
+          newFileCount: unitPlanImages.length,
           rooms: []
         }))
       ));
+      floorPlanUnitsList.forEach(() => {
+        unitPlanImages.forEach((file) => {
+          data.append('floorPlan', file);
+        });
+      });
       data.append('localityHighlights', propertyDetails.localityHighlights || '');
       data.append('projectHighlights', propertyDetails.projectHighlights || '');
       data.append('possessionDate', propertyDetails.possessionDate || '');
@@ -2459,6 +2471,16 @@ const PropertySummary = () => {
 
   const removeProjectImage = (index: number) => {
     setProjectImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUnitPlanImages = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setUnitPlanImages((prev) => [...prev, ...files].slice(0, MAX_UNIT_PLAN_IMAGES));
+    event.target.value = '';
+  };
+
+  const removeUnitPlanImage = (index: number) => {
+    setUnitPlanImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addVoiceTextToSummary = (rawText: string) => {
@@ -2748,6 +2770,41 @@ const PropertySummary = () => {
                     <button
                       type="button"
                       onClick={() => removeProjectImage(index)}
+                      className="absolute right-1 top-1 rounded-full bg-slate-950/70 px-1.5 py-0.5 text-xs font-bold text-white"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </label>
+
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Unit / Floor Plan Images</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleUnitPlanImages}
+              disabled={unitPlanImages.length >= MAX_UNIT_PLAN_IMAGES}
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Optional. Upload up to {MAX_UNIT_PLAN_IMAGES} floor plan images - applied to every unit typology (3 BHK, 4 BHK, etc.) detected in the summary.
+            </p>
+            {unitPlanImages.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {unitPlanImages.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Unit floor plan ${index + 1}`}
+                      className="h-16 w-full rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeUnitPlanImage(index)}
                       className="absolute right-1 top-1 rounded-full bg-slate-950/70 px-1.5 py-0.5 text-xs font-bold text-white"
                     >
                       ×

@@ -403,6 +403,7 @@ const PostProperty = () => {
       propertySummaryPrefill?: Record<string, any>;
       plotDiagramFile?: File | null;
       projectImages?: File[];
+      unitPlanImages?: File[];
     } | null;
     const storedPrefill = sessionStorage.getItem('propertySummaryPrefill');
     const prefill = routeState?.propertySummaryPrefill || (storedPrefill ? JSON.parse(storedPrefill) : null);
@@ -486,6 +487,10 @@ const PostProperty = () => {
     }));
 
     if (Array.isArray(prefill.floorPlanUnits) && prefill.floorPlanUnits.length) {
+      // The summary page only offers one shared floor plan image upload
+      // (not a per-unit picker), so the same files are attached to every
+      // extracted unit typology here.
+      const sharedUnitPlanFiles = Array.isArray(routeState?.unitPlanImages) ? routeState.unitPlanImages : [];
       setFloorPlanUnits(prefill.floorPlanUnits.map((unit: any) => ({
         bedrooms: unit.bedrooms || '',
         size: unit.size || '',
@@ -493,7 +498,7 @@ const PostProperty = () => {
         plotSizeSqYd: unit.plotSizeSqYd || '',
         dimension: unit.dimension || '',
         unitFacing: unit.unitFacing || '',
-        files: [],
+        files: sharedUnitPlanFiles,
         existingImageUrls: [],
         rooms: []
       })));
