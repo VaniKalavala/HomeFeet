@@ -67,11 +67,15 @@ const extractAreaFromSummary = (summary: string) => {
   const labelledTotal = valueAfterEquals(labelledArea);
   if (labelledTotal) return labelledTotal;
 
+  // The captured "number" must start with an actual digit - [\d,.]+ alone
+  // would happily accept a lone "." as a match (e.g. "...Meditation Area.
+  // Indoor Games..." lets the generic "area" label match with nothing but
+  // the sentence-ending period as its "number").
   return extractNumber(summary, [
-    /(?:total\s*)?land\s*[:\-]?\s*([\d,.]+)\s*-?\s*(?:acres?|sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?)/i,
-    /(?:plot\s*size|plot\s*area|land\s*area)\s*[:\-]?\s*([\d,.]+)\s*-?\s*(?:acres?|sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?)/i,
-    /(?:total\s*)?area\s*[:\-]?\s*([\d,.]+)\s*-?\s*(?:acres?|sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?)?/i,
-    /(?:total\s*)?([\d,.]+)\s*-?\s*(?:sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?|acres?)/i
+    /(?:total\s*)?land\s*[:\-]?\s*(\d[\d,.]*)\s*-?\s*(?:acres?|sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?)/i,
+    /(?:plot\s*size|plot\s*area|land\s*area)\s*[:\-]?\s*(\d[\d,.]*)\s*-?\s*(?:acres?|sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?)/i,
+    /(?:total\s*)?area\s*[:\-]?\s*(\d[\d,.]*)\s*-?\s*(?:acres?|sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?)?/i,
+    /(?:total\s*)?(\d[\d,.]*)\s*-?\s*(?:sq\.?\s*ft|square\s*feet|sqft|sq\.?\s*yards?|square\s*yards?|syds?|acres?)/i
   ]);
 };
 
@@ -205,11 +209,26 @@ const extractLocalityHighlights = (text: string) => {
 
   // Lazy match up to a period that ends the sentence (followed by
   // whitespace or end of string) rather than the first "." at all -
-  // otherwise this stops at the decimal point in "1.03 km".
-  const schoolsSection = text.match(/nearby\s*schools?\s*[:\-]?\s*([\s\S]+?)\.(?=\s|$)/i)?.[1] || '';
+  // otherwise this stops at the decimal point in "1.03 km". Brochures
+  // phrase this label both ways ("Nearby Schools" and "Schools Nearby").
+  const schoolsSection = text.match(/(?:nearby\s*schools?|schools?\s*nearby)\s*[:\-]?\s*([\s\S]+?)\.(?=\s|$)/i)?.[1] || '';
   Array.from(schoolsSection.matchAll(/([A-Z][A-Za-z0-9.'&\s]*?)\s*\(\s*([\d.]+)\s*km\s*\)/g)).forEach((match) => {
     const name = match[1].trim();
     if (name) lines.push(`${match[2]} km to ${name}`);
+  });
+
+  // A single named landmark stated as "X (details): ~6 km away" rather than
+  // a "Corporate Hubs" list, e.g. "Outer Ring Road (ORR Exit 15): ~6 km away".
+  // The regex's earliest-match-wins scanning can pull in a preceding section
+  // heading with no punctuation to stop at ("Connectivity HighlightsOuter
+  // Ring Road..." normalizes to one run of capitalized words) - strip any
+  // such heading words off the front of the captured name.
+  const HIGHLIGHT_HEADING_WORDS = /^(?:Location|Connectivity|Highlights|Context|Overview|Nearby|Summary|Details)$/i;
+  Array.from(text.matchAll(/\b([A-Z][A-Za-z0-9\s]*?(?:\([^)]*\))?)\s*:\s*~?\s*(\d+(?:\.\d+)?)\s*km\s*away/gi)).forEach((match) => {
+    const words = match[1].trim().split(/\s+/);
+    while (words.length > 1 && HIGHLIGHT_HEADING_WORDS.test(words[0])) words.shift();
+    const name = words.join(' ').trim();
+    if (name) lines.push(`${match[2]} km from ${name}`);
   });
 
   const hubsSection = text.match(/corporate\s*hubs?\s*[:\-]?\s*([\s\S]+?)\.(?=\s|$)/i)?.[1] || '';
@@ -310,7 +329,12 @@ const extractProjectTotalUnits = (text: string) =>
   ]);
 
 const extractReraId = (text: string) => {
-  const match = text.match(/\brera\s*(?:registration|regd\.?|reg\.?|id|no\.?|number)*\s*[:\-]?\s*([A-Z]{1,4}\s*\/?\s*\d{4,}[A-Z0-9\/]*)/i);
+  // Label wording between "RERA" and the actual ID varies too much to
+  // enumerate ("Registration No.", "Reg. No.", "Regd No", "TG RERA Reg.
+  // No."...) - skip over any short run of letters/punctuation/spaces
+  // instead, and let the ID pattern itself (an uppercase-letter prefix
+  // immediately followed by digits) mark where the real value starts.
+  const match = text.match(/\brera\b[\sA-Za-z.:\-]{0,25}?([A-Z]{1,4}\d{4,}[A-Z0-9\/]*)/i);
   return match?.[1]?.replace(/\s+/g, '') || '';
 };
 
@@ -1398,7 +1422,7 @@ const parseSummary = (summary: string) => {
         // price breakdown, etc.) is a sale listing even when it never says
         // the word "sell" - "development" is only the right default for
         // land/plot summaries offered to a builder for joint development.
-        : isApartmentLikeSummary ? 'sell' : 'development',
+        : (isApartmentLikeSummary || developmentType === 'villa') ? 'sell' : 'development',
     developmentType,
     plotNumber,
     approvalType,
