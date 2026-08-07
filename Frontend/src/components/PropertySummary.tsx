@@ -365,33 +365,80 @@ const extractTotalBudget = (text: string) =>
   ]);
 
 // Matches every amenity the Property Form actually offers (PostProperty.tsx's
-// own AMENITY_OPTIONS list) - a brochure phrase that doesn't map to one of
-// these 22 real checkboxes is intentionally left unmatched rather than
-// invented as a new amenity.
+// own AMENITY_CATEGORIES list, grouped into Sports/Convenience/Safety/
+// Leisure/Environment) - a brochure phrase that doesn't map to one of these
+// real checkboxes is intentionally left unmatched rather than invented as a
+// new amenity. Not every one of the ~65 options has its own pattern here -
+// only the ones common enough in real brochures to be worth matching.
 const AMENITY_KEYWORD_MAP: Array<[RegExp, string]> = [
+  // Sports
+  [/\byoga\b|\bmeditation\b/i, 'Yoga & Meditation'],
+  [/\bswimming\s*pool\b|\bpool\b/i, 'Swimming Pool'],
+  [/\bkids?\s*play\s*area\b|\bchildren'?s?\s*play\s*area\b/i, 'Kids Play Area'],
+  [/\btennis\s*court\b/i, 'Tennis Court'],
+  [/\bjogging\b|\bcycl(?:e|ing)\s*track\b/i, 'Jogging/Cycle Track'],
+  [/\bgyms?\b|\bgymnasium\b|\bfitness\s*(?:center|centre)\b/i, 'Gym'],
+  [/\bbadminton\b/i, 'Badminton Court'],
+  [/\bsquash\b/i, 'Squash Court'],
+  [/\btable\s*tennis\b/i, 'Table Tennis'],
+  [/\bbilliards?\b|\bsnooker\b/i, 'Billiards & Snooker'],
+  [/\bcricket\b/i, 'Cricket Court'],
+  [/\bskating\s*rink\b/i, 'Skating Rink'],
+  // Convenience
+  [/\bdrop[- ]?off\s*zone\b/i, 'Drop-off Zone'],
+  [/\bpet\s*park\b/i, 'Pet Park'],
+  [/\boutdoor\s*work\s*stations?\b/i, 'Outdoor Workstations'],
+  [/\bwaiting\s*lounge\b/i, 'Waiting Lounge'],
+  [/\bconvenience\s*store\b/i, 'Convenience Store'],
+  [/\bguest\s*room\b/i, 'Guest Room'],
+  [/\batm\b/i, 'ATM'],
+  [/\bcar\s*wash\b/i, 'Car Wash'],
+  [/\bdrivers?\s*lounge\b/i, 'Drivers Lounge'],
+  [/\bev\s*charging\b|\belectric\s*vehicle\s*charging\b/i, 'EV Charging Point'],
+  [/\bclinic\b/i, 'Clinic'],
+  [/\bboom\s*barrier\b/i, 'Boom Barrier'],
+  [/\bpower\s*back\s*-?up\b|\bgenerator\b/i, 'Power Backup'],
+  [/\bhome\s*automation\b/i, 'Home Automation'],
+  [/\bgarbage\s*chute\b/i, 'Garbage Chute'],
   [/\bdouble\s*parking\b/i, 'Double Parking'],
   [/\bbike\s*parking\b|\btwo[- ]?wheeler\s*parking\b/i, 'Bike Parking'],
   [/\bsingle\s*parking\b|\bparking\b/i, 'Single Parking'],
   [/\blifts?\b|\belevators?\b/i, 'Lift'],
-  [/\bpower\s*back\s*-?up\b|\bgenerator\b/i, 'Power Backup'],
-  [/\bsecurity\b|\bcctv\b/i, 'Security'],
-  [/\bgyms?\b|\bgymnasium\b|\bfitness\s*(?:center|centre)\b/i, 'Gym'],
-  [/\bclub\s*house\b/i, 'Clubhouse'],
-  [/\bwater\s*supply\b/i, 'Water Supply'],
-  [/\bparks?\b|\bgarden\b/i, 'Park'],
-  [/\bswimming\s*pool\b|\bpool\b/i, 'Swimming Pool'],
-  [/\bbadminton\b/i, 'Badminton Court'],
-  [/\bcricket\b/i, 'Cricket Court'],
   [/\bfood\s*court\b/i, 'Food Court'],
-  [/\bwaiting\s*lounge\b/i, 'Waiting Lounge'],
-  [/\bamphitheat(?:er|re)\b/i, 'Amphitheater'],
-  [/\bsauna\b/i, 'Sauna Bath'],
-  [/\bspa\b/i, 'Spa'],
-  [/\bskating\s*rink\b/i, 'Skating Rink'],
-  [/\bvastu\b/i, 'Vastu Compliant'],
-  [/\blandscap(?:ed|ing)\b|\btree\s*park\b/i, 'Landscaping & Tree Park'],
-  [/\bmini\s*theat(?:er|re)\b/i, 'Mini Theatre'],
+  // Safety
+  [/\b24\s*\/?\s*7\s*security\b|\bsecurity\b/i, '24/7 Security'],
+  [/\bcctv\b|\bsurveillance\b/i, 'CCTV Surveillance'],
   [/\bfire\s*fighting\b|\bfire\s*safety\b/i, 'Fire Fighting System'],
+  [/\bsmoke\s*detectors?\b/i, 'Smoke Detectors'],
+  [/\bemergency\s*rescue\b/i, 'Emergency Rescue'],
+  // Leisure
+  [/\bhammock\b/i, 'Hammock Zone'],
+  [/\blibrary\b/i, 'Library'],
+  [/\brooftop\s*deck\b/i, 'Rooftop Deck'],
+  [/\bpicnic\s*area\b/i, 'Picnic Area'],
+  [/\bamphitheat(?:er|re)\b/i, 'Amphitheatre'],
+  [/\bparty\s*lawn\b/i, 'Party Lawn'],
+  [/\boutdoor\s*caf[ée]\b/i, 'Outdoor Cafe'],
+  [/\bcaf[ée]\b/i, 'Cafe'],
+  [/\bindoor\s*games?\b/i, 'Indoor Games'],
+  [/\bspa\b|\bsauna\b/i, 'Spa & Sauna'],
+  [/\bjacuzzi\b/i, 'Jacuzzi'],
+  [/\bmini\s*theat(?:er|re)\b/i, 'Mini Theatre'],
+  [/\bparty\s*hall\b/i, 'Party Hall'],
+  [/\bconference\s*room\b/i, 'Conference Room'],
+  [/\bdance\s*studio\b/i, 'Dance Studio'],
+  [/\bsupermarket\b/i, 'Supermarket'],
+  [/\bclub\s*house\b/i, 'Clubhouse'],
+  // Environment
+  [/\bentrance\s*lobby\b/i, 'Entrance Lobby'],
+  [/\btropical\s*garden\b/i, 'Tropical Garden'],
+  [/\bparks?\b/i, 'Park'],
+  [/\blandscap(?:ed|ing)\b|\bgarden\b/i, 'Landscaped Garden'],
+  [/\beco[- ]?friendly\b/i, 'Eco Friendly'],
+  [/\bsewage\s*treatment\b|\bstp\b/i, 'Sewage Treatment Plant'],
+  [/\btreated\s*water\b/i, 'Treated Water'],
+  [/\bwater\s*supply\b/i, 'Water Supply'],
+  [/\bvastu\b/i, 'Vastu Compliant'],
 ];
 
 const extractAmenitiesFromSummary = (text: string) =>

@@ -344,7 +344,7 @@ export default function SubscriptionPlansPage() {
             </div>
           </div>
 
-          <div className="mx-auto mt-8 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="ml-auto mt-8 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-600">Selected plan:</span>
               <span className="font-black text-slate-950">{selectedOwnerTier.label}</span>
@@ -371,7 +371,7 @@ export default function SubscriptionPlansPage() {
             </p>
           </div>
           {ownerPlanMessage && (
-            <p className="mx-auto mt-4 max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800">
+            <p className="ml-auto mt-4 max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800">
               {ownerPlanMessage}
             </p>
           )}

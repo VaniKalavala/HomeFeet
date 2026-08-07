@@ -1,28 +1,48 @@
 import React, { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   Armchair,
   ArrowLeft,
   ArrowUpDown,
+  Baby,
   Bath,
+  BedDouble,
   Bike,
+  BookOpen,
   Building2,
+  Camera,
   Car,
   Castle,
+  ChevronDown,
   CircleDot,
   Clapperboard,
+  Coffee,
   Compass,
+  DoorOpen,
   Droplet,
   Dumbbell,
   Flower2,
+  Gamepad2,
   Image,
+  Landmark,
+  Laptop,
+  Leaf,
+  LifeBuoy,
   MapPin,
+  Music,
+  Palmtree,
+  PawPrint,
   Ruler,
   Shield,
   ShieldCheck,
   ShowerHead,
   Snowflake,
+  Sparkles,
   Sprout,
+  Stethoscope,
+  Store,
+  Trash2,
   Trees,
   Trophy,
   Upload,
@@ -30,6 +50,7 @@ import {
   Users,
   Video,
   Waves,
+  Wifi,
   Zap
 } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
@@ -325,6 +346,7 @@ const PostProperty = () => {
   const step1Label = formData.developmentType.trim().toLowerCase() === 'villa' ? 'Villa Details' : 'Apartment Details';
   const formSteps = ['Property Details', step1Label, 'Pricing & Amenities', 'Media Uploads', 'Location Details'];
   const [currentStep, setCurrentStep] = useState(0);
+  const [expandedAmenityCategories, setExpandedAmenityCategories] = useState<Set<string>>(new Set());
   const [assistedOwner, setAssistedOwner] = useState({
     accountType: 'owner',
     phone: '',
@@ -1531,30 +1553,108 @@ const PostProperty = () => {
     };
   }, [formData.images]);
 
-  const AMENITY_OPTIONS = [
-    { label: 'Single Parking', icon: Car },
-    { label: 'Double Parking', icon: Car },
-    { label: 'Bike Parking', icon: Bike },
-    { label: 'Lift', icon: ArrowUpDown },
-    { label: 'Power Backup', icon: Zap },
-    { label: 'Security', icon: Shield },
-    { label: 'Gym', icon: Dumbbell },
-    { label: 'Clubhouse', icon: Users },
-    { label: 'Water Supply', icon: Droplet },
-    { label: 'Park', icon: Trees },
-    { label: 'Swimming Pool', icon: Waves },
-    { label: 'Badminton Court', icon: Trophy },
-    { label: 'Cricket Court', icon: CircleDot },
-    { label: 'Food Court', icon: UtensilsCrossed },
-    { label: 'Waiting Lounge', icon: Armchair },
-    { label: 'Amphitheater', icon: Castle },
-    { label: 'Sauna Bath', icon: Bath },
-    { label: 'Spa', icon: Flower2 },
-    { label: 'Skating Rink', icon: Snowflake },
-    { label: 'Vastu Compliant', icon: Compass },
-    { label: 'Landscaping & Tree Park', icon: Sprout },
-    { label: 'Mini Theatre', icon: Clapperboard },
-    { label: 'Fire Fighting System', icon: ShowerHead }
+  // Grouped into the same categories builders use in real brochures, each
+  // collapsible so a ~65-option list doesn't overwhelm the form. Every old
+  // flat-list option is preserved somewhere below (folded into whichever
+  // new category fits it) so existing saved properties still show their
+  // amenities as checked when re-opened for editing.
+  const AMENITY_CATEGORIES: { category: string; icon: typeof Trophy; options: { label: string; icon: typeof Trophy }[] }[] = [
+    {
+      category: 'Sports',
+      icon: Trophy,
+      options: [
+        { label: 'Yoga & Meditation', icon: Sparkles },
+        { label: 'Swimming Pool', icon: Waves },
+        { label: 'Kids Play Area', icon: Baby },
+        { label: 'Tennis Court', icon: CircleDot },
+        { label: 'Jogging/Cycle Track', icon: Bike },
+        { label: 'Gym', icon: Dumbbell },
+        { label: 'Badminton Court', icon: Trophy },
+        { label: 'Squash Court', icon: Trophy },
+        { label: 'Table Tennis', icon: CircleDot },
+        { label: 'Billiards & Snooker', icon: CircleDot },
+        { label: 'Cricket Court', icon: CircleDot },
+        { label: 'Skating Rink', icon: Snowflake }
+      ]
+    },
+    {
+      category: 'Convenience',
+      icon: Car,
+      options: [
+        { label: 'Drop-off Zone', icon: Car },
+        { label: 'Pet Park', icon: PawPrint },
+        { label: 'Outdoor Workstations', icon: Laptop },
+        { label: 'Waiting Lounge', icon: Armchair },
+        { label: 'Convenience Store', icon: Store },
+        { label: 'Guest Room', icon: BedDouble },
+        { label: 'ATM', icon: Landmark },
+        { label: 'Car Wash', icon: Droplet },
+        { label: 'Drivers Lounge', icon: Armchair },
+        { label: 'EV Charging Point', icon: Zap },
+        { label: 'Clinic', icon: Stethoscope },
+        { label: 'Boom Barrier', icon: ArrowUpDown },
+        { label: 'Power Backup', icon: Zap },
+        { label: 'Home Automation', icon: Wifi },
+        { label: 'Garbage Chute', icon: Trash2 },
+        { label: 'Single Parking', icon: Car },
+        { label: 'Double Parking', icon: Car },
+        { label: 'Bike Parking', icon: Bike },
+        { label: 'Lift', icon: ArrowUpDown },
+        { label: 'Food Court', icon: UtensilsCrossed }
+      ]
+    },
+    {
+      category: 'Safety',
+      icon: Shield,
+      options: [
+        { label: '24/7 Security', icon: Shield },
+        { label: 'CCTV Surveillance', icon: Camera },
+        { label: 'Fire Fighting System', icon: ShowerHead },
+        { label: 'Smoke Detectors', icon: AlertTriangle },
+        { label: 'Emergency Rescue', icon: LifeBuoy }
+      ]
+    },
+    {
+      category: 'Leisure',
+      icon: Castle,
+      options: [
+        { label: 'Hammock Zone', icon: Palmtree },
+        { label: 'Library', icon: BookOpen },
+        { label: 'Rooftop Deck', icon: Building2 },
+        { label: 'Picnic Area', icon: Trees },
+        { label: 'Amphitheatre', icon: Castle },
+        { label: 'Seating Area', icon: Armchair },
+        { label: 'Party Lawn', icon: Trees },
+        { label: 'Outdoor Cafe', icon: Coffee },
+        { label: 'Cafe', icon: Coffee },
+        { label: 'Indoor Games', icon: Gamepad2 },
+        { label: 'Spa & Sauna', icon: Flower2 },
+        { label: 'Jacuzzi', icon: Bath },
+        { label: 'Mini Theatre', icon: Clapperboard },
+        { label: 'Sundial', icon: Compass },
+        { label: 'Party Hall', icon: Users },
+        { label: 'Conference Room', icon: Users },
+        { label: 'Dance Studio', icon: Music },
+        { label: 'Supermarket', icon: Store },
+        { label: 'Open Space', icon: Trees },
+        { label: 'Clubhouse', icon: Users }
+      ]
+    },
+    {
+      category: 'Environment',
+      icon: Trees,
+      options: [
+        { label: 'Entrance Lobby', icon: DoorOpen },
+        { label: 'Tropical Garden', icon: Sprout },
+        { label: 'Park', icon: Trees },
+        { label: 'Landscaped Garden', icon: Sprout },
+        { label: 'Eco Friendly', icon: Leaf },
+        { label: 'Sewage Treatment Plant', icon: Droplet },
+        { label: 'Treated Water', icon: Droplet },
+        { label: 'Water Supply', icon: Droplet },
+        { label: 'Vastu Compliant', icon: Compass }
+      ]
+    }
   ];
 
   const toggleAmenity = (amenity: string) => {
@@ -1564,6 +1664,16 @@ const PostProperty = () => {
         ? prev.selectedAmenities.filter(a => a !== amenity)
         : [...prev.selectedAmenities, amenity]
     }));
+  };
+
+  // Every category starts minimized - expand only the ones you need.
+  const toggleAmenityCategory = (category: string) => {
+    setExpandedAmenityCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
   };
 
   const handlePlotDiagramChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -3205,27 +3315,65 @@ const PostProperty = () => {
       {currentStep === 2 && (
       <>
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="mb-2 text-sm font-semibold text-slate-800">Amenities Details</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {AMENITY_OPTIONS.map(({ label: amenity, icon: AmenityIcon }) => (
-            <label
-              key={amenity}
-              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                formData.selectedAmenities.includes(amenity)
-                  ? 'border-teal-600 bg-teal-50 text-teal-800'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={formData.selectedAmenities.includes(amenity)}
-                onChange={() => toggleAmenity(amenity)}
-                className="h-4 w-4 accent-teal-700"
-              />
-              <AmenityIcon className="h-4 w-4 text-teal-700" />
-              {amenity}
-            </label>
-          ))}
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-800">Amenities Details</p>
+          {formData.selectedAmenities.length > 0 && (
+            <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700">
+              {formData.selectedAmenities.length} selected
+            </span>
+          )}
+        </div>
+        <div className="space-y-2">
+          {AMENITY_CATEGORIES.map(({ category, icon: CategoryIcon, options }) => {
+            const isOpen = expandedAmenityCategories.has(category);
+            const selectedInCategory = options.filter(({ label }) => formData.selectedAmenities.includes(label)).length;
+            return (
+              <div key={category} className="overflow-hidden rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => toggleAmenityCategory(category)}
+                  className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100"
+                >
+                  <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <CategoryIcon className="h-4 w-4 text-teal-700" />
+                    {category}
+                    <span className="text-xs font-medium text-slate-400">({options.length})</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {selectedInCategory > 0 && (
+                      <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-700">
+                        {selectedInCategory}
+                      </span>
+                    )}
+                    <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
+                    {options.map(({ label: amenity, icon: AmenityIcon }) => (
+                      <label
+                        key={amenity}
+                        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                          formData.selectedAmenities.includes(amenity)
+                            ? 'border-teal-600 bg-teal-50 text-teal-800'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.selectedAmenities.includes(amenity)}
+                          onChange={() => toggleAmenity(amenity)}
+                          className="h-4 w-4 accent-teal-700"
+                        />
+                        <AmenityIcon className="h-4 w-4 text-teal-700" />
+                        {amenity}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
