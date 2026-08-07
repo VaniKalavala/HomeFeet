@@ -1,108 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AlertCircle, Check, KeyRound, Mail, MapPin, Pencil, Phone, Users, X } from 'lucide-react';
+import { AlertCircle, Check, KeyRound, Mail, MapPin, Pencil, Phone, Users } from 'lucide-react';
 import ListingsSidebar from './ListingsSidebar';
 import LoginModal from './LoginModal';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
 import { isAdminUser } from '../lib/admin';
-
-type PlanTier = {
-  value: string;
-  label: string;
-  price: number;
-  validity: string;
-  visibility: string;
-  slot: string;
-  phonePrivacy: boolean;
-  relationshipManager: boolean;
-  fieldVisit: boolean;
-  propertyShowing: boolean;
-  photoshoot: boolean;
-  assuredRank: string;
-  socialMedia: boolean;
-  shorts: boolean;
-  propertyReport: boolean;
-  matchingBuyers: boolean;
-  mostPopular?: boolean;
-};
-
-const PLAN_TIERS: PlanTier[] = [
-  {
-    value: 'basic',
-    label: 'Basic',
-    price: 2500,
-    validity: '30 Days',
-    visibility: '75%',
-    slot: 'Medium Slot',
-    phonePrivacy: true,
-    relationshipManager: false,
-    fieldVisit: false,
-    propertyShowing: false,
-    photoshoot: false,
-    assuredRank: '',
-    socialMedia: false,
-    shorts: false,
-    propertyReport: false,
-    matchingBuyers: true
-  },
-  {
-    value: 'standard',
-    label: 'Standard',
-    price: 5000,
-    validity: '60 Days',
-    visibility: '85%',
-    slot: 'Medium Slot',
-    phonePrivacy: true,
-    relationshipManager: false,
-    fieldVisit: false,
-    propertyShowing: false,
-    photoshoot: false,
-    assuredRank: '',
-    socialMedia: false,
-    shorts: false,
-    propertyReport: false,
-    matchingBuyers: true
-  },
-  {
-    value: 'premium',
-    label: 'Premium Plan',
-    price: 7500,
-    validity: '120 Days',
-    visibility: '100%',
-    slot: 'Medium Slot',
-    phonePrivacy: true,
-    relationshipManager: false,
-    fieldVisit: false,
-    propertyShowing: false,
-    photoshoot: true,
-    assuredRank: '',
-    socialMedia: false,
-    shorts: false,
-    propertyReport: false,
-    matchingBuyers: true,
-    mostPopular: true
-  }
-];
-
-const BUYER_CONTACT_PACKS = [
-  { packSize: 1, price: 199, label: '1 Property' },
-  { packSize: 5, price: 1000, label: '5 Properties' },
-  { packSize: 10, price: 2000, label: '10 Properties' }
-];
-
-const FEATURE_ROWS: Array<{
-  label: string;
-  render: (tier: PlanTier) => React.ReactNode;
-}> = [
-  { label: 'Plan Validity', render: (tier) => tier.validity },
-  { label: 'Position in search result', render: (tier) => tier.slot },
-  { label: 'Privacy of Your Phone Number', render: (tier) => (tier.phonePrivacy ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
-  { label: 'Assured 1st Rank in Search Results', render: (tier) => tier.assuredRank || <X className="mx-auto h-4 w-4 text-slate-300" /> },
-  { label: 'Social Media Marketing', render: (tier) => (tier.socialMedia ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
-  { label: 'Property Report', render: (tier) => (tier.propertyReport ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
-  { label: 'Matching Buyers', render: (tier) => (tier.matchingBuyers ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) }
-];
+import { PlanTier, PLAN_TIERS, FEATURE_ROWS, BUYER_CONTACT_PACKS } from '../lib/plans';
 
 const COMMERCIAL_TYPES = ['office-space', 'retail', 'hospitality', 'industrial', 'commercial-plot'];
 

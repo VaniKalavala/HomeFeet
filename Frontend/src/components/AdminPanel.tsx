@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Check, Eye, FileText, Filter, Mail, MapPin, MessageCircle, Pencil, Phone, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import { isAdminUser } from '../lib/admin';
+import { PLAN_TIERS, FEATURE_ROWS, BUYER_CONTACT_PACKS } from '../lib/plans';
 
 interface Property {
   _id: string;
@@ -221,7 +222,7 @@ const AdminPanel: React.FC = () => {
   const [builderSeedCity, setBuilderSeedCity] = useState('Hyderabad');
   const [builderDigestSending, setBuilderDigestSending] = useState(false);
   const [builderDigestStatus, setBuilderDigestStatus] = useState('');
-  const [activeAdminPage, setActiveAdminPage] = useState<'properties' | 'builders' | 'builderContacts' | 'membership' | 'inquiries' | 'whatsapp' | 'testimonials' | 'loginHistory' | 'ownerContactAccess'>('properties');
+  const [activeAdminPage, setActiveAdminPage] = useState<'properties' | 'builders' | 'builderContacts' | 'membership' | 'inquiries' | 'whatsapp' | 'testimonials' | 'loginHistory' | 'ownerContactAccess' | 'plans'>('properties');
   const [activeMembershipTab, setActiveMembershipTab] = useState('all');
   const [activeMembershipTypeTab, setActiveMembershipTypeTab] = useState('all');
   const [adminLoadError, setAdminLoadError] = useState('');
@@ -1331,7 +1332,7 @@ const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-3 rounded-lg bg-white p-3 shadow-sm md:grid-cols-9">
+        <div className="mb-6 grid gap-3 rounded-lg bg-white p-3 shadow-sm md:grid-cols-10">
           {[
             { key: 'properties', label: 'Property Approval' },
             { key: 'builders', label: 'Builder Verification' },
@@ -1341,7 +1342,8 @@ const AdminPanel: React.FC = () => {
             { key: 'testimonials', label: 'Testimonials' },
             { key: 'inquiries', label: 'Contact Inquiries' },
             { key: 'loginHistory', label: 'Login History' },
-            { key: 'ownerContactAccess', label: 'Owner Contact Access' }
+            { key: 'ownerContactAccess', label: 'Owner Contact Access' },
+            { key: 'plans', label: 'Subscription Plans' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -2248,6 +2250,62 @@ const AdminPanel: React.FC = () => {
               </table>
             </div>
           )}
+        </div>
+
+        {/* Subscription Plans — read-only overview of every plan across account types */}
+        <div className={`${activeAdminPage === 'plans' ? 'block' : 'hidden'} bg-white rounded-lg shadow-sm p-6 mb-6`}>
+          <h2 className="text-xl font-semibold mb-1">Owner / Agent / Builder Plans</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            These three tiers are shared across Owner, Agent (Mediator), and Builder accounts — whichever of the three a user
+            signs up as, this is the plan table they see when posting or boosting a property. Read-only here; nothing can be
+            purchased from the admin view.
+          </p>
+          <div className="mb-8 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-3">Feature</th>
+                  {PLAN_TIERS.map((tier) => (
+                    <th key={tier.value} className="py-2 pr-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-sm font-bold text-slate-900">{tier.label}</span>
+                        {tier.mostPopular && (
+                          <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-700">Most Popular</span>
+                        )}
+                        <span className="text-base font-bold text-teal-700">₹{tier.price.toLocaleString('en-IN')}</span>
+                        <span className="text-xs font-normal text-slate-400">Search Visibility {tier.visibility}</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {FEATURE_ROWS.map((row) => (
+                  <tr key={row.label} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 font-medium text-slate-700">{row.label}</td>
+                    {PLAN_TIERS.map((tier) => (
+                      <td key={tier.value} className="py-2 pr-3 text-center text-slate-600">{row.render(tier)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h2 className="text-xl font-semibold mb-1">Buyer Contact Packs</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Buyer accounts don't use the tier plan above — instead they pay per pack to unlock a set number of owners'
+            contact details.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {BUYER_CONTACT_PACKS.map((pack) => (
+              <div key={pack.packSize} className="rounded-lg border border-slate-200 p-4 text-center">
+                <p className="text-sm font-semibold text-slate-500">{pack.label}</p>
+                <p className="mt-1 text-2xl font-bold text-teal-700">₹{pack.price.toLocaleString('en-IN')}</p>
+                <p className="mt-1 text-xs text-slate-400">Unlocks {pack.packSize} owner contact{pack.packSize === 1 ? '' : 's'}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* WhatsApp Campaign */}
