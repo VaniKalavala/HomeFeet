@@ -2199,7 +2199,11 @@ const PropertySummary = () => {
   const [isGeneratingFromUrl, setIsGeneratingFromUrl] = useState(false);
   const [urlGenerateError, setUrlGenerateError] = useState('');
   const [extractedImages, setExtractedImages] = useState<string[]>([]);
-  const [selectedExtractedImages, setSelectedExtractedImages] = useState<Set<string>>(new Set());
+  // Independent selections per destination - an image can be picked for
+  // Project Images, Unit / Floor Plan Images, or both, without the two
+  // choices interfering with each other.
+  const [selectedForProject, setSelectedForProject] = useState<Set<string>>(new Set());
+  const [selectedForUnitPlan, setSelectedForUnitPlan] = useState<Set<string>>(new Set());
   const [isAddingExtractedImages, setIsAddingExtractedImages] = useState(false);
   const [mapLink, setMapLink] = useState('');
   const [mapLinkTouched, setMapLinkTouched] = useState(false);
@@ -2516,7 +2520,8 @@ const PropertySummary = () => {
 
       setSummary(data.text || '');
       setExtractedImages(Array.isArray(data.images) ? data.images : []);
-      setSelectedExtractedImages(new Set());
+      setSelectedForProject(new Set());
+      setSelectedForUnitPlan(new Set());
       setMissingFields([]);
       if (message) setMessage('');
     } catch (error: any) {
@@ -2526,8 +2531,9 @@ const PropertySummary = () => {
     }
   };
 
-  const toggleExtractedImageSelection = (url: string) => {
-    setSelectedExtractedImages((prev) => {
+  const toggleExtractedImageSelection = (pool: 'project' | 'unit', url: string) => {
+    const setter = pool === 'project' ? setSelectedForProject : setSelectedForUnitPlan;
+    setter((prev) => {
       const next = new Set(prev);
       if (next.has(url)) next.delete(url); else next.add(url);
       return next;
@@ -2540,7 +2546,7 @@ const PropertySummary = () => {
   };
 
   const addSelectedExtractedImagesTo = async (pool: 'project' | 'unit') => {
-    const urls = Array.from(selectedExtractedImages);
+    const urls = Array.from(pool === 'project' ? selectedForProject : selectedForUnitPlan);
     if (!urls.length) return;
     setIsAddingExtractedImages(true);
     try {
@@ -2565,10 +2571,11 @@ const PropertySummary = () => {
       }
       if (pool === 'project') {
         setProjectImages((prev) => [...prev, ...files].slice(0, MAX_PROJECT_IMAGES));
+        setSelectedForProject(new Set());
       } else {
         setUnitPlanImages((prev) => [...prev, ...files].slice(0, MAX_UNIT_PLAN_IMAGES));
+        setSelectedForUnitPlan(new Set());
       }
-      setSelectedExtractedImages(new Set());
     } finally {
       setIsAddingExtractedImages(false);
     }
@@ -2750,43 +2757,59 @@ const PropertySummary = () => {
           {extractedImages.length > 0 && (
             <div className="mt-4 border-t border-teal-200 pt-3">
               <p className="text-xs font-bold text-slate-800">
-                Found {extractedImages.length} image{extractedImages.length === 1 ? '' : 's'} on that page - select the ones to use:
+                Found {extractedImages.length} image{extractedImages.length === 1 ? '' : 's'} on that page - mark each one for Project Images and/or Unit / Floor Plan Images (an image can go to either, both, or neither):
               </p>
-              <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
-                {extractedImages.map((url) => (
-                  <button
-                    key={url}
-                    type="button"
-                    onClick={() => toggleExtractedImageSelection(url)}
-                    className={`relative overflow-hidden rounded-lg border-2 ${selectedExtractedImages.has(url) ? 'border-teal-600' : 'border-transparent'}`}
-                  >
-                    <img src={url} alt="Extracted from listing" className="h-16 w-full object-cover" />
-                    {selectedExtractedImages.has(url) && (
-                      <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">✓</span>
-                    )}
-                  </button>
-                ))}
+              <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {extractedImages.map((url) => {
+                  const inProject = selectedForProject.has(url);
+                  const inUnitPlan = selectedForUnitPlan.has(url);
+                  return (
+                    <div key={url} className="overflow-hidden rounded-lg border border-slate-200">
+                      <img src={url} alt="Extracted from listing" className="h-16 w-full object-cover" />
+                      <div className="flex divide-x divide-slate-200 border-t border-slate-200 text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => toggleExtractedImageSelection('project', url)}
+                          className={`flex-1 py-1 transition ${inProject ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                          title="Use in Project Images"
+                        >
+                          {inProject ? '✓ Project' : 'Project'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleExtractedImageSelection('unit', url)}
+                          className={`flex-1 py-1 transition ${inUnitPlan ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                          title="Use in Unit / Floor Plan Images"
+                        >
+                          {inUnitPlan ? '✓ Unit Plan' : 'Unit Plan'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {selectedExtractedImages.size > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedForProject.size > 0 && (
                   <button
                     type="button"
                     onClick={() => addSelectedExtractedImagesTo('project')}
                     disabled={isAddingExtractedImages}
                     className="rounded-lg border border-teal-600 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedExtractedImages.size} to Project Images`}
+                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedForProject.size} to Project Images`}
                   </button>
+                )}
+                {selectedForUnitPlan.size > 0 && (
                   <button
                     type="button"
                     onClick={() => addSelectedExtractedImagesTo('unit')}
                     disabled={isAddingExtractedImages}
-                    className="rounded-lg border border-teal-600 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg border border-amber-500 bg-white px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedExtractedImages.size} to Unit / Floor Plan Images`}
+                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedForUnitPlan.size} to Unit / Floor Plan Images`}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>
