@@ -2201,10 +2201,14 @@ const PropertySummary = () => {
   const [extractedImages, setExtractedImages] = useState<string[]>([]);
   // Independent selections per destination - an image can be picked for
   // Project Images, Unit / Floor Plan Images, or both, without the two
-  // choices interfering with each other.
-  const [selectedForProject, setSelectedForProject] = useState<Set<string>>(new Set());
-  const [selectedForUnitPlan, setSelectedForUnitPlan] = useState<Set<string>>(new Set());
-  const [isAddingExtractedImages, setIsAddingExtractedImages] = useState(false);
+  // choices interfering with each other. Toggling one on/off downloads or
+  // removes it immediately, so the Project Images / Unit Plan Images boxes
+  // further down stay in sync without a separate "Add" step. The Map
+  // (not just the Set) is what lets an "off" toggle find and remove the
+  // exact File it added, without touching any locally-uploaded files.
+  const [selectedForProject, setSelectedForProject] = useState<Map<string, File>>(new Map());
+  const [selectedForUnitPlan, setSelectedForUnitPlan] = useState<Map<string, File>>(new Map());
+  const [loadingExtractedImageUrls, setLoadingExtractedImageUrls] = useState<Set<string>>(new Set());
   const [mapLink, setMapLink] = useState('');
   const [mapLinkTouched, setMapLinkTouched] = useState(false);
   const [plotDiagramFile, setPlotDiagramFile] = useState<File | null>(null);
@@ -2520,8 +2524,8 @@ const PropertySummary = () => {
 
       setSummary(data.text || '');
       setExtractedImages(Array.isArray(data.images) ? data.images : []);
-      setSelectedForProject(new Set());
-      setSelectedForUnitPlan(new Set());
+      setSelectedForProject(new Map());
+      setSelectedForUnitPlan(new Map());
       setMissingFields([]);
       if (message) setMessage('');
     } catch (error: any) {
@@ -2531,53 +2535,57 @@ const PropertySummary = () => {
     }
   };
 
-  const toggleExtractedImageSelection = (pool: 'project' | 'unit', url: string) => {
-    const setter = pool === 'project' ? setSelectedForProject : setSelectedForUnitPlan;
-    setter((prev) => {
-      const next = new Set(prev);
-      if (next.has(url)) next.delete(url); else next.add(url);
-      return next;
-    });
-  };
-
   const dataUrlToFile = async (dataUrl: string, filename: string) => {
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: blob.type || 'image/jpeg' });
   };
 
-  const addSelectedExtractedImagesTo = async (pool: 'project' | 'unit') => {
-    const urls = Array.from(pool === 'project' ? selectedForProject : selectedForUnitPlan);
-    if (!urls.length) return;
-    setIsAddingExtractedImages(true);
+  // Toggling an image on immediately downloads it and adds it to the real
+  // Project Images / Unit Plan Images list; toggling it off removes that
+  // exact file again - so those boxes further down the page always match
+  // what's checked here, with no separate "Add" step.
+  const toggleExtractedImageSelection = async (pool: 'project' | 'unit', url: string) => {
+    const selectedMap = pool === 'project' ? selectedForProject : selectedForUnitPlan;
+    const setSelectedMap = pool === 'project' ? setSelectedForProject : setSelectedForUnitPlan;
+    const setImages = pool === 'project' ? setProjectImages : setUnitPlanImages;
+    const maxImages = pool === 'project' ? MAX_PROJECT_IMAGES : MAX_UNIT_PLAN_IMAGES;
+
+    const existingFile = selectedMap.get(url);
+    if (existingFile) {
+      setImages((prev) => prev.filter((file) => file !== existingFile));
+      setSelectedMap((prev) => {
+        const next = new Map(prev);
+        next.delete(url);
+        return next;
+      });
+      return;
+    }
+
+    setLoadingExtractedImageUrls((prev) => new Set(prev).add(url));
     try {
       const token = localStorage.getItem('token');
-      const files: File[] = [];
-      for (let i = 0; i < urls.length; i += 1) {
-        try {
-          const res = await fetch(`${API_BASE}/fetch-property-image`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ url: urls[i] })
-          });
-          const data = await res.json();
-          if (!res.ok) continue;
-          files.push(await dataUrlToFile(data.dataUrl, `property-image-${i + 1}.jpg`));
-        } catch {
-          // Skip images that fail to download; the rest still get added.
-        }
-      }
-      if (pool === 'project') {
-        setProjectImages((prev) => [...prev, ...files].slice(0, MAX_PROJECT_IMAGES));
-        setSelectedForProject(new Set());
-      } else {
-        setUnitPlanImages((prev) => [...prev, ...files].slice(0, MAX_UNIT_PLAN_IMAGES));
-        setSelectedForUnitPlan(new Set());
-      }
+      const res = await fetch(`${API_BASE}/fetch-property-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to download image');
+      const file = await dataUrlToFile(data.dataUrl, `property-image-${Date.now()}.jpg`);
+      setSelectedMap((prev) => new Map(prev).set(url, file));
+      setImages((prev) => [...prev, file].slice(0, maxImages));
+    } catch {
+      // Leave it unselected if the download failed - nothing to roll back
+      // since we never marked it selected on the way in.
     } finally {
-      setIsAddingExtractedImages(false);
+      setLoadingExtractedImageUrls((prev) => {
+        const next = new Set(prev);
+        next.delete(url);
+        return next;
+      });
     }
   };
 
@@ -2757,20 +2765,29 @@ const PropertySummary = () => {
           {extractedImages.length > 0 && (
             <div className="mt-4 border-t border-teal-200 pt-3">
               <p className="text-xs font-bold text-slate-800">
-                Found {extractedImages.length} image{extractedImages.length === 1 ? '' : 's'} on that page - mark each one for Project Images and/or Unit / Floor Plan Images (an image can go to either, both, or neither):
+                Found {extractedImages.length} image{extractedImages.length === 1 ? '' : 's'} on that page - check Project and/or Unit Plan on each one to add it there right away (an image can go to either, both, or neither). The Project Images and Unit / Floor Plan Images boxes below update as you check them.
               </p>
               <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {extractedImages.map((url) => {
                   const inProject = selectedForProject.has(url);
                   const inUnitPlan = selectedForUnitPlan.has(url);
+                  const isLoading = loadingExtractedImageUrls.has(url);
                   return (
                     <div key={url} className="overflow-hidden rounded-lg border border-slate-200">
-                      <img src={url} alt="Extracted from listing" className="h-16 w-full object-cover" />
+                      <div className="relative">
+                        <img src={url} alt="Extracted from listing" className="h-16 w-full object-cover" />
+                        {isLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+                          </div>
+                        )}
+                      </div>
                       <div className="flex divide-x divide-slate-200 border-t border-slate-200 text-[10px] font-bold">
                         <button
                           type="button"
                           onClick={() => toggleExtractedImageSelection('project', url)}
-                          className={`flex-1 py-1 transition ${inProject ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                          disabled={isLoading}
+                          className={`flex-1 py-1 transition disabled:cursor-not-allowed ${inProject ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                           title="Use in Project Images"
                         >
                           {inProject ? '✓ Project' : 'Project'}
@@ -2778,7 +2795,8 @@ const PropertySummary = () => {
                         <button
                           type="button"
                           onClick={() => toggleExtractedImageSelection('unit', url)}
-                          className={`flex-1 py-1 transition ${inUnitPlan ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                          disabled={isLoading}
+                          className={`flex-1 py-1 transition disabled:cursor-not-allowed ${inUnitPlan ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                           title="Use in Unit / Floor Plan Images"
                         >
                           {inUnitPlan ? '✓ Unit Plan' : 'Unit Plan'}
@@ -2787,28 +2805,6 @@ const PropertySummary = () => {
                     </div>
                   );
                 })}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedForProject.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => addSelectedExtractedImagesTo('project')}
-                    disabled={isAddingExtractedImages}
-                    className="rounded-lg border border-teal-600 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedForProject.size} to Project Images`}
-                  </button>
-                )}
-                {selectedForUnitPlan.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => addSelectedExtractedImagesTo('unit')}
-                    disabled={isAddingExtractedImages}
-                    className="rounded-lg border border-amber-500 bg-white px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedForUnitPlan.size} to Unit / Floor Plan Images`}
-                  </button>
-                )}
               </div>
             </div>
           )}
