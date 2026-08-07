@@ -2463,7 +2463,22 @@ const PostProperty = () => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-6xl space-y-6 px-3 py-5 sm:space-y-8 sm:px-4 sm:py-10">
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={(e) => {
+        // The wizard is one <form>; on the final step the real submit
+        // button is present in the DOM, so pressing Enter in any text
+        // input (locality/pincode/landmark/colony, or selecting a Google
+        // Places Autocomplete suggestion) submits the whole property
+        // immediately instead of just confirming that field. Only actual
+        // clicks on the submit button should submit - Enter in a
+        // <textarea> still inserts a newline as expected.
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+          e.preventDefault();
+        }
+      }}
+      className="mx-auto max-w-6xl space-y-6 px-3 py-5 sm:space-y-8 sm:px-4 sm:py-10"
+    >
       <div className="rounded-lg border border-white/10 bg-slate-950/80 px-4 py-5 text-white shadow-xl shadow-slate-950/30 backdrop-blur-md backdrop-saturate-150 sm:px-6 sm:py-8">
         <p className="text-xs font-semibold uppercase tracking-wide text-teal-300 sm:text-sm">{heroCopy.eyebrow}</p>
         <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">

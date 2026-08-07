@@ -1522,7 +1522,7 @@ function HomePage() {
 
                   <div className="mt-10">
                     <p className="text-sm text-slate-500">Starting price</p>
-                    <p className="mt-1 text-3xl font-black text-orange-600">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
+                    <p className="mt-1 text-[15px] font-black text-orange-600">{getExclusiveProjectPrice(activeExclusiveProject)}</p>
 
                     <div className="mt-5 flex flex-wrap gap-3">
                       {activeExclusiveProject.propertyFormUrl && (
