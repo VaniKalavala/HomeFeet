@@ -246,6 +246,61 @@ const pickSuggestedUnitPlanImageUrls = (images) => {
   return images.filter((img) => FLOOR_PLAN_FALLBACK_LABEL_PATTERN.test(img.label)).map((img) => img.url);
 };
 
+// Finds the builder/company logo on a listing page - deliberately separate
+// from extractImageUrlsFromHtml, which excludes anything matching "logo"
+// since that's noise for the Project Images pool. Looks for an <img> whose
+// class/id/alt names it as a logo (first match wins, since a header logo
+// almost always appears before any footer logo in document order), then
+// falls back to structured metadata (Open Graph/JSON-LD) sites sometimes
+// carry for their brand mark.
+const extractLogoUrlFromHtml = (html, baseUrl) => {
+  const resolve = (raw) => {
+    if (!raw || raw.startsWith('data:')) return null;
+    try {
+      return new URL(raw, baseUrl).toString();
+    } catch {
+      return null;
+    }
+  };
+
+  const imgPattern = /<img\b([^>]*)>/gi;
+  let match;
+  while ((match = imgPattern.exec(html))) {
+    const attrs = match[1];
+    if (!/\blogo\b/i.test(attrs)) continue;
+    const srcMatch = attrs.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+    const resolved = srcMatch && resolve(srcMatch[1].trim());
+    if (resolved && !/favicon/i.test(resolved)) return resolved;
+  }
+
+  const ogLogoMatch = html.match(/<meta[^>]+property\s*=\s*["']og:logo["'][^>]+content\s*=\s*["']([^"']+)["']/i)
+    || html.match(/<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:logo["']/i);
+  if (ogLogoMatch) {
+    const resolved = resolve(ogLogoMatch[1].trim());
+    if (resolved) return resolved;
+  }
+
+  const jsonLdLogoMatch = html.match(/"logo"\s*:\s*"([^"]+)"/i);
+  if (jsonLdLogoMatch) {
+    const resolved = resolve(jsonLdLogoMatch[1].trim().replace(/\\\//g, '/'));
+    if (resolved) return resolved;
+  }
+
+  return null;
+};
+
+// Finds a Google Maps link anywhere in the page's raw HTML (an <a href>,
+// an <iframe src> embed, or plain link text) so the project's real pinned
+// location can be carried over automatically instead of only the
+// free-text address. Deliberately scans the whole HTML, not just the
+// visible text extractTextFromHtml produces, since map links almost
+// always live in an href/src attribute that plain-text extraction drops.
+const extractGoogleMapsLinkFromHtml = (html) => {
+  const match = html.match(/https?:\/\/(?:www\.)?google\.[a-z.]+\/maps[^\s"'<>]*|https?:\/\/maps\.google\.[a-z.]+[^\s"'<>]*|https?:\/\/maps\.app\.goo\.gl\/[^\s"'<>]*|https?:\/\/goo\.gl\/maps\/[^\s"'<>]*/i);
+  if (!match) return null;
+  return match[0].replace(/&amp;/gi, '&');
+};
+
 // Excludes properties whose subscription-plan-based validity window has passed.
 // expiresAt is null for listings with no plan-based expiry (unaffected).
 const notExpiredCondition = () => ({ $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] });
@@ -735,15 +790,25 @@ router.post('/fetch-property-url', async (req, res) => {
     }
 
     const { html, finalUrl } = await fetchExternalUrlSafely(rawUrl);
-    const text = extractTextFromHtml(html);
+    let text = extractTextFromHtml(html);
     const images = extractImageUrlsFromHtml(html, finalUrl);
     const suggestedUnitPlanImageUrls = pickSuggestedUnitPlanImageUrls(images);
+    const logoUrl = extractLogoUrlFromHtml(html, finalUrl);
+    const mapLink = extractGoogleMapsLinkFromHtml(html);
 
     if (!text.trim()) {
       return res.status(422).json({ error: 'Could not read any property details from that link' });
     }
 
-    res.json({ success: true, text, images, suggestedUnitPlanImageUrls, resolvedUrl: finalUrl });
+    // Carried as a plain line in the summary text (rather than a separate
+    // field the frontend has to wire up specially) so it flows through the
+    // exact same Google Maps link detection already used for pasted
+    // brochure text.
+    if (mapLink && !text.includes(mapLink)) {
+      text = `${text}\nGoogle Maps: ${mapLink}`;
+    }
+
+    res.json({ success: true, text, images, suggestedUnitPlanImageUrls, logoUrl, resolvedUrl: finalUrl });
   } catch (err) {
     console.error('Fetch property URL error:', err.message || err);
     res.status(422).json({ error: 'Could not fetch that link. Please check the URL or paste the details as text instead.' });

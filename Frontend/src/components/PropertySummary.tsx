@@ -2223,6 +2223,13 @@ const PropertySummary = () => {
   const MAX_PROJECT_IMAGES = 10;
   const [unitPlanImages, setUnitPlanImages] = useState<File[]>([]);
   const MAX_UNIT_PLAN_IMAGES = 5;
+  // The builder/company logo found on the listing page (if any), auto
+  // downloaded into companyLogoFile right after "Generate Property" -
+  // still fully replaceable via the file input below, same as every other
+  // auto-suggested pick on this page.
+  const [extractedLogoUrl, setExtractedLogoUrl] = useState('');
+  const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
+  const [isLoadingLogo, setIsLoadingLogo] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [message, setMessage] = useState('');
@@ -2361,7 +2368,8 @@ const PropertySummary = () => {
             propertySummaryPrefill: propertyDetails,
             plotDiagramFile: finalPlotDiagram,
             projectImages,
-            unitPlanImages
+            unitPlanImages,
+            companyLogo: companyLogoFile
           }
         });
         return;
@@ -2449,6 +2457,9 @@ const PropertySummary = () => {
       if (finalPlotDiagram) {
         data.append('plotDiagram', finalPlotDiagram);
       }
+      if (companyLogoFile) {
+        data.append('companyLogo', companyLogoFile);
+      }
       projectImages.forEach((file) => {
         data.append('images', file);
       });
@@ -2508,6 +2519,16 @@ const PropertySummary = () => {
     setUnitPlanImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleCompanyLogoFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setCompanyLogoFile(file);
+    event.target.value = '';
+  };
+
+  const removeCompanyLogoFile = () => {
+    setCompanyLogoFile(null);
+  };
+
   const handleGenerateFromUrl = async () => {
     const url = propertyUrl.trim();
     if (!url) {
@@ -2542,6 +2563,13 @@ const PropertySummary = () => {
       suggestedUrls.slice(0, MAX_UNIT_PLAN_IMAGES).forEach((url) => {
         addExtractedImageToPool('unit', url);
       });
+
+      const logoUrl: string = typeof data.logoUrl === 'string' ? data.logoUrl : '';
+      setExtractedLogoUrl(logoUrl);
+      setCompanyLogoFile(null);
+      if (logoUrl) {
+        downloadExtractedLogo(logoUrl);
+      }
     } catch (error: any) {
       setUrlGenerateError(error.message || 'Could not generate a property summary from that link.');
     } finally {
@@ -2588,6 +2616,33 @@ const PropertySummary = () => {
         next.delete(url);
         return next;
       });
+    }
+  };
+
+  // Downloads the logo URL the server found on the listing page and sets
+  // it as the Company Logo file - the same download-and-convert path as
+  // addExtractedImageToPool above, just for a single file with no pool.
+  const downloadExtractedLogo = async (url: string) => {
+    setIsLoadingLogo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/fetch-property-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to download logo');
+      const file = await dataUrlToFile(data.dataUrl, `company-logo-${Date.now()}.jpg`);
+      setCompanyLogoFile(file);
+    } catch {
+      // Leave companyLogoFile unset if the download failed - the admin can
+      // still upload one manually.
+    } finally {
+      setIsLoadingLogo(false);
     }
   };
 
@@ -2991,6 +3046,43 @@ const PropertySummary = () => {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </label>
+
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800"><Image className="h-5 w-5 text-teal-700" />Company Logo</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleCompanyLogoFile}
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm"
+            />
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Optional. {extractedLogoUrl
+                ? "Auto-filled from the builder's logo found on the listing page - replace it above if it's wrong."
+                : "The builder/company's square logo, shown alongside this listing."}
+            </p>
+            {isLoadingLogo && (
+              <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+                Downloading logo...
+              </div>
+            )}
+            {companyLogoFile && !isLoadingLogo && (
+              <div className="relative mt-3 inline-block">
+                <img
+                  src={URL.createObjectURL(companyLogoFile)}
+                  alt="Company logo"
+                  className="h-16 w-16 rounded-lg border border-slate-200 object-contain bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={removeCompanyLogoFile}
+                  className="absolute -right-2 -top-2 rounded-full bg-slate-950/70 px-1.5 py-0.5 text-xs font-bold text-white"
+                >
+                  ×
+                </button>
               </div>
             )}
           </label>
