@@ -62,7 +62,7 @@ export const PLAN_TIERS: PlanTier[] = [
     assuredRank: '',
     socialMedia: false,
     shorts: false,
-    propertyReport: false,
+    propertyReport: true,
     matchingBuyers: true
   },
   {
@@ -77,10 +77,10 @@ export const PLAN_TIERS: PlanTier[] = [
     fieldVisit: false,
     propertyShowing: false,
     photoshoot: true,
-    assuredRank: '',
-    socialMedia: false,
+    assuredRank: '1st Rank',
+    socialMedia: true,
     shorts: false,
-    propertyReport: false,
+    propertyReport: true,
     matchingBuyers: true,
     mostPopular: true
   }
@@ -100,7 +100,7 @@ export const FEATURE_ROWS: Array<{
   { label: 'Plan Validity', render: (tier) => tier.validity },
   { label: 'Position in search result', render: (tier) => tier.slot },
   { label: 'Privacy of Your Phone Number', render: (tier) => (tier.phonePrivacy ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
-  { label: 'Assured 1st Rank in Search Results', render: (tier) => tier.assuredRank || <X className="mx-auto h-4 w-4 text-slate-300" /> },
+  { label: 'Assured 1st Rank in Search Results', render: (tier) => (tier.assuredRank ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Social Media Marketing', render: (tier) => (tier.socialMedia ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Property Report', render: (tier) => (tier.propertyReport ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) },
   { label: 'Matching Buyers', render: (tier) => (tier.matchingBuyers ? <Check className="mx-auto h-4 w-4 text-teal-600" /> : <X className="mx-auto h-4 w-4 text-slate-300" />) }
