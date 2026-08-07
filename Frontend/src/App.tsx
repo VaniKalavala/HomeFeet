@@ -1,4 +1,4 @@
-import { Link, Navigate, Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -22,8 +22,7 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
-  X,
-  FileText
+  X
 } from 'lucide-react';
 
 import Navbar from './components/Navbar';
@@ -55,7 +54,6 @@ import SubscriptionPlansPage from './components/SubscriptionPlansPage';
 import ComparisonPage from './components/ComparisonPage';
 import AgentDirectory from './components/AgentDirectory';
 import AgentProfile from './components/AgentProfile';
-import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from './config/razorpay.config';
 import { API_BASE, API_ORIGIN } from './lib/api';
 
 type RazorpayCheckoutResponse = {
@@ -168,21 +166,6 @@ const seoByPath: Record<string, SeoConfig> = {
     description:
       'Share buyer or property seeker requirements by property type, location, city, budget, area, and expected price range.',
     keywords: BUYER_REQUIREMENT_KEYWORDS
-  },
-  '/membership': {
-    title: 'HomeFeet Membership Plans',
-    description:
-      'Choose membership access for builders, owners, mediators, buyers, property seekers, and corporate property acquisition teams.'
-  },
-  '/builder-membership': {
-    title: 'Builder Membership | HomeFeet',
-    description:
-      'Builder membership for verified apartment sales opportunities, owner conversations, and commercial space workflows.'
-  },
-  '/owner-mediator-membership': {
-    title: 'Owner & Agent (Mediator) Membership | HomeFeet',
-    description:
-      'Owner and agent (mediator) membership for controlled access to complete listing details from other verified property owners and agents.'
   },
   '/dashboard': {
     title: 'Dashboard | HomeFeet',
@@ -3264,339 +3247,19 @@ function PropertiesMapPage() {
   );
 }
 
-function MembershipPage({ audience }: { audience?: 'builder' | 'owner_mediator' }) {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('3_months');
-  const [loadingPlan, setLoadingPlan] = useState('');
-  const [message, setMessage] = useState('');
-  const paymentInProgressRef = useRef(false);
-  const redirectParam = searchParams.get('redirect');
-  const membershipUseCase = searchParams.get('useCase');
-  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/properties';
-  const accountType = localStorage.getItem('accountType') || 'owner';
-  const selectedAudience = audience || (['owner', 'mediator', 'buyer'].includes(accountType) ? 'owner_mediator' : 'builder');
-  const isOwnerMediatorPlan = selectedAudience === 'owner_mediator';
-  const isBuyerAccessPlan = isOwnerMediatorPlan && membershipUseCase === 'buyer';
-  const isBuyerInfoAccessPlan = isOwnerMediatorPlan && membershipUseCase === 'buyer-info';
-  const builderMembershipPrices = {
-    '3_months': '15000.00 INR',
-    '6_months': '30000.00 INR',
-    '12_months': '50000.00 INR',
-  };
-  const ownerMediatorMembershipPrices = {
-    '3_months': '50000.00 INR',
-    '6_months': '100000.00 INR',
-    '12_months': '150000.00 INR',
-  };
-  const membershipPrices = isBuyerAccessPlan
-    ? builderMembershipPrices
-    : isOwnerMediatorPlan
-      ? ownerMediatorMembershipPrices
-      : builderMembershipPrices;
-  const membershipFeatures = isBuyerAccessPlan
-    ? [
-        'Subscribe before exploring sale flats and commercial space',
-        'Access complete listing details from owners and mediators',
-        'Continue from the property search you were browsing',
-      ]
-    : isBuyerInfoAccessPlan
-    ? [
-        'Owners and mediators can access buyer requirement details',
-        'Open buyer contact information only with active membership',
-        'Continue from the buyer requirement you were reviewing',
-      ]
-    : isOwnerMediatorPlan
-    ? [
-        'Free property posting for owners and mediators',
-        'Access complete property details',
-        'Continue from the property page you were browsing',
-      ]
-    : [
-        'Access complete property details',
-        'View owner and mediator listing information',
-        'Continue from the property page you were browsing',
-      ];
-  const plans = [
-    {
-      value: '3_months',
-      label: 'Quarterly / 3 Months',
-      price: membershipPrices['3_months'],
-      note: 'Best for short-term property scouting',
-    },
-    {
-      value: '6_months',
-      label: 'Half Yearly / 6 Months',
-      price: membershipPrices['6_months'],
-      note: 'Better for active market follow-up',
-    },
-    {
-      value: '12_months',
-      label: 'Yearly / 12 Months',
-      price: membershipPrices['12_months'],
-      note: 'Best value for full-year access',
-    },
-  ];
-  const selectedPlanDetails = plans.find((plan) => plan.value === selectedPlan) || plans[0];
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0 });
-  }, []);
-
-  const loadRazorpayCheckout = () =>
-    new Promise<void>((resolve, reject) => {
-      if (window.Razorpay) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = RAZORPAY_CHECKOUT_URL;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Unable to load Razorpay Checkout'));
-      document.body.appendChild(script);
-    });
-
-  const openRazorpayCheckout = async (plan: typeof plans[number]) => {
-    if (paymentInProgressRef.current) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setShowLoginModal(true);
-      return;
-    }
-
-    const currentAccountType = localStorage.getItem('accountType') || 'owner';
-    const accountAudience = currentAccountType === 'owner' || currentAccountType === 'mediator' ? 'owner_mediator' : 'builder';
-    if (accountAudience !== selectedAudience) {
-      setMessage(accountAudience === 'owner_mediator'
-        ? 'Your account is Owner/Agent (Mediator). Please open the Owner/Agent (Mediator) membership page.'
-        : 'Your account is Builder. Please open the Builder membership page.'
-      );
-      return;
-    }
-
-    paymentInProgressRef.current = true;
-    setLoadingPlan(plan.value);
-    setMessage('');
-
-    try {
-      await loadRazorpayCheckout();
-
-      const orderResponse = await fetch(`${API_BASE}/membership-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ plan: plan.value, membershipAudience: selectedAudience })
-      });
-      const orderData = await orderResponse.json();
-      if (!orderResponse.ok) {
-        throw new Error(orderData.message || 'Failed to create Razorpay order');
-      }
-      if (!window.Razorpay) {
-        throw new Error('Razorpay Checkout is not available');
-      }
-
-      const checkout = new window.Razorpay({
-        key: orderData.keyId || razorpayConfig.keyId,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency || 'INR',
-        name: razorpayConfig.businessName,
-        description: `${plan.label} Membership`,
-        image: `${window.location.origin}${razorpayConfig.logoPath}`,
-        order_id: orderData.order.id,
-        prefill: {
-          name: localStorage.getItem('name') || 'HomeFeet User',
-          email: localStorage.getItem('email') || '',
-          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
-        },
-        notes: {
-          plan: plan.value,
-          membershipAudience: selectedAudience,
-          redirectTo,
-          address: razorpayConfig.notesAddress
-        },
-        theme: {
-          color: razorpayConfig.themeColor
-        },
-        handler: async (response) => {
-          try {
-            const verifyResponse = await fetch(`${API_BASE}/membership-payment/verify`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem('token') || ''}`
-              },
-              body: JSON.stringify({
-                plan: plan.value,
-                ...response
-              })
-            });
-            const verifyData = await verifyResponse.json();
-            if (!verifyResponse.ok) {
-              throw new Error(verifyData.message || 'Payment verification failed');
-            }
-
-            localStorage.setItem('builderSubscriptionPlan', verifyData.user.builderSubscriptionPlan || 'none');
-            localStorage.setItem('builderSubscriptionExpiresAt', verifyData.user.builderSubscriptionExpiresAt || '');
-            setMessage('Payment successful. Membership activated.');
-            window.setTimeout(() => navigate(redirectTo), 800);
-          } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'Payment verification failed');
-          } finally {
-            paymentInProgressRef.current = false;
-            setLoadingPlan('');
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            paymentInProgressRef.current = false;
-            setLoadingPlan('');
-          }
-        }
-      });
-
-      checkout.open();
-    } catch (error) {
-      paymentInProgressRef.current = false;
-      setMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
-      setLoadingPlan('');
-    }
-  };
-
-  const handleSubscribe = (plan: typeof plans[number]) => {
-    if (paymentInProgressRef.current) return;
-
-    setMessage('');
-    setSelectedPlan(plan.value);
-    localStorage.setItem('membershipRedirectTo', redirectTo);
-    localStorage.setItem('pendingMembershipPlan', plan.value);
-
-    if (!localStorage.getItem('token')) {
-      setShowLoginModal(true);
-      return;
-    }
-
-    openRazorpayCheckout(plan);
-  };
-
-  return (
-    <section className="bg-slate-50 pb-24 pt-12">
-      <div className="ld-container">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm font-bold tracking-wide text-[#0877C9]">HomeFeet Membership</p>
-          <h1 className="relative -top-2 mt-1 text-[2.25rem] font-black tracking-tight text-slate-950 sm:text-[2.7rem] md:whitespace-nowrap md:text-[4.3rem]">
-            {isBuyerAccessPlan
-              ? 'Buyer | Property Seeker Membership'
-              : isBuyerInfoAccessPlan
-                ? 'Unlock buyer information'
-                : 'Unlock complete property details'}
-          </h1>
-        </div>
-
-        <div id="membership-plans" className="mx-auto mt-3 max-w-[784px] scroll-mt-24 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-8">
-          <div className="mx-auto grid max-w-[720px] gap-3 md:grid-cols-3">
-            {plans.map((plan) => {
-              const active = selectedPlan === plan.value;
-              return (
-                <label
-                  key={plan.value}
-                  className={`cursor-pointer rounded-xl border px-3 py-4 transition sm:px-4 sm:py-6 ${
-                    active ? 'border-[#0877C9] bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="membershipPlan"
-                      checked={active}
-                      onChange={() => setSelectedPlan(plan.value)}
-                      className="peer sr-only"
-                    />
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                      active ? 'border-[#0877C9]' : 'border-slate-400'
-                    }`}>
-                      <span className={`h-2.5 w-2.5 rounded-full transition ${active ? 'bg-[#0877C9]' : 'bg-transparent'}`} />
-                    </span>
-                    <span className="text-[13px] font-black leading-tight text-slate-950 md:whitespace-nowrap">{plan.label}</span>
-                  </div>
-                  <p className="mt-3 text-center font-sans text-lg font-semibold leading-tight tracking-normal text-slate-900 sm:text-xl">{plan.price}</p>
-                  <p className="mt-2 text-center text-[11px] leading-5 text-slate-600 md:whitespace-nowrap">{plan.note}</p>
-                </label>
-              );
-            })}
-          </div>
-
-          <div className="mx-auto mt-6 max-w-4xl space-y-3 text-xs font-semibold text-slate-800 sm:text-sm">
-            {membershipFeatures.map((feature) => (
-              <div key={feature} className="flex items-start gap-3">
-                <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#0877C9]" />
-                <span>{feature}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mx-auto mt-3 flex max-w-4xl items-center justify-between border-t border-slate-200 pt-4 text-sm">
-            <span className="font-semibold text-slate-600">Total Amount:</span>
-            <span className="font-sans text-lg font-semibold tracking-normal text-slate-900">{selectedPlanDetails.price}</span>
-          </div>
-
-          <div className="mx-auto mt-3 flex max-w-4xl items-center gap-2 text-xs font-semibold text-slate-600 sm:text-sm">
-            <FileText className="h-4 w-4 text-slate-500" />
-            GST Invoice Available
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleSubscribe(selectedPlanDetails)}
-            disabled={Boolean(loadingPlan)}
-            className="mx-auto mt-5 flex min-h-9 w-full max-w-[176px] items-center justify-center gap-2 rounded-lg bg-[#0877C9] px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#0665aa] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loadingPlan ? 'Opening Razorpay...' : 'Subscribe Now'}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-slate-600">
-            <span>Secured by</span>
-            <span className="inline-flex items-center gap-0.5 font-black italic text-[#1f5fbf]">
-              <svg className="h-5 w-4" viewBox="0 0 64 80" aria-hidden="true">
-                <polygon points="6,72 24,40 37,35 24,72" fill="#0b2d5b" />
-                <polygon points="26,38 60,6 43,72 28,72 39,35 28,45" fill="#3395ff" />
-              </svg>
-              Razorpay
-            </span>
-          </p>
-        </div>
-
-        {message && (
-          <p className="mx-auto mt-6 max-w-xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800">
-            {message}
-          </p>
-        )}
-
-        <p className="mt-8 text-center text-xs text-slate-500">
-          Your selected plan is saved so support can continue from the membership you selected.
-        </p>
-      </div>
-      {showLoginModal && (
-        <LoginModal
-          onClose={() => setShowLoginModal(false)}
-          stayOnPage
-          onLoginSuccess={() => {
-            setShowLoginModal(false);
-            if (selectedPlan) {
-              const plan = plans.find((item) => item.value === selectedPlan);
-              if (plan) openRazorpayCheckout(plan);
-            } else {
-              setMessage('Please select a membership plan to continue.');
-            }
-          }}
-        />
-      )}
-    </section>
-  );
+// The old /membership, /builder-membership, and /owner-mediator-membership
+// pages were replaced by a single, consolidated Owner/Agent/Builder +
+// marketplace-access + Buyer Contact Packs experience on
+// SubscriptionPlansPage.tsx (/subscription-plans). This keeps the old
+// URLs (bookmarks, external links) working by forwarding straight there,
+// preserving any redirect/useCase query params and adding an audience
+// hint where the old route implied one.
+function RedirectToSubscriptionPlans({ audience }: { audience?: 'builder' | 'owner_mediator' }) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  if (audience && !params.get('audience')) params.set('audience', audience);
+  const query = params.toString();
+  return <Navigate to={`/subscription-plans${query ? `?${query}` : ''}`} replace />;
 }
 
 function ScrollToTop() {
@@ -3652,11 +3315,11 @@ function App() {
           <Route path="/buy-plot-land" element={<Navigate to="/properties?view=developers&listingIntent=buy" replace />} />
           <Route path="/sell-plot-land" element={<Navigate to="/properties?view=developers&listingIntent=sell" replace />} />
           <Route path="/properties-map" element={<PropertiesMapPage />} />
-          <Route path="/membership" element={<MembershipPage />} />
-          <Route path="/builder-membership" element={<MembershipPage audience="builder" />} />
-          <Route path="/owner-mediator-membership" element={<MembershipPage audience="owner_mediator" />} />
-          <Route path="/membership/builder" element={<MembershipPage audience="builder" />} />
-          <Route path="/membership/owner-mediator" element={<MembershipPage audience="owner_mediator" />} />
+          <Route path="/membership" element={<RedirectToSubscriptionPlans />} />
+          <Route path="/builder-membership" element={<RedirectToSubscriptionPlans audience="builder" />} />
+          <Route path="/owner-mediator-membership" element={<RedirectToSubscriptionPlans audience="owner_mediator" />} />
+          <Route path="/membership/builder" element={<RedirectToSubscriptionPlans audience="builder" />} />
+          <Route path="/membership/owner-mediator" element={<RedirectToSubscriptionPlans audience="owner_mediator" />} />
           <Route path="/search" element={<PropertiesListingPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/testimonials" element={<TestimonialsPage />} />

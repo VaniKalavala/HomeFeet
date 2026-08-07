@@ -687,8 +687,8 @@ const PropertiesListingPage: React.FC = () => {
   const isBuyerRequirementAccess = listingIntent === 'buy';
   const membershipUseCase = isBuyerRequirementAccess ? 'buyer-info' : isBuyerMarketplaceAccess ? 'buyer' : '';
   const membershipUrl = membershipUseCase
-    ? `/owner-mediator-membership?useCase=${membershipUseCase}&redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`
-    : `/membership?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
+    ? `/subscription-plans?audience=owner_mediator&useCase=${membershipUseCase}&redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`
+    : `/subscription-plans?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
   const membershipModalCopy = isBuyerRequirementAccess
     ? 'Owners and mediators need an active subscription to access buyer requirement details and buyer contact information.'
     : isBuyerMarketplaceAccess

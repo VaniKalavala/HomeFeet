@@ -162,8 +162,8 @@ const PropertyDetails: React.FC = () => {
   const isBuyerMarketplaceListing = detailListingIntent === 'sell' || detailPropertyType === 'commercial-plot';
   const detailMembershipUseCase = isBuyerRequirementListing ? 'buyer-info' : isBuyerMarketplaceListing ? 'buyer' : '';
   const membershipUrl = detailMembershipUseCase
-    ? `/owner-mediator-membership?useCase=${detailMembershipUseCase}&redirect=${encodeURIComponent(`/property/${id || ''}`)}`
-    : `/membership?redirect=${encodeURIComponent(`/property/${id || ''}`)}`;
+    ? `/subscription-plans?audience=owner_mediator&useCase=${detailMembershipUseCase}&redirect=${encodeURIComponent(`/property/${id || ''}`)}`
+    : `/subscription-plans?redirect=${encodeURIComponent(`/property/${id || ''}`)}`;
   const contactPartyLabel = isBuyerRequirementListing ? 'Buyer' : 'Owner';
   const marketplaceAccessCopy = isBuyerRequirementListing
     ? 'Owners and mediators need an active subscription to access buyer requirement details and buyer contact information.'
@@ -558,7 +558,7 @@ const PropertyDetails: React.FC = () => {
 
   const chooseBuilderPlan = async (plan: string) => {
     localStorage.setItem('pendingMembershipPlan', plan);
-    navigate(`/builder-membership?redirect=${encodeURIComponent(`/property/${id || ''}`)}`);
+    navigate(`/subscription-plans?audience=builder&redirect=${encodeURIComponent(`/property/${id || ''}`)}`);
   };
 
   if (!token && !loading) {

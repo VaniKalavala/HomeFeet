@@ -93,6 +93,33 @@ export const BUYER_CONTACT_PACKS = [
   { packSize: 10, price: 2000, label: '10 Properties' }
 ];
 
+// "Unlock complete property details" - a marketplace-wide subscription for
+// VIEWING other people's full listing/owner-contact details, separate from
+// PLAN_TIERS above (which only boosts YOUR OWN listing's visibility).
+// Prices here mirror the backend's real, authoritative price table
+// (backend/routes/auth.js: builderSubscriptionPrices /
+// ownerMediatorSubscriptionPrices, keyed off the logged-in user's real
+// accountType) - shown for display only; the actual charge always comes
+// from the backend's own computation, never the client.
+export type AccessPlan = {
+  value: '3_months' | '6_months' | '12_months';
+  label: string;
+  price: number;
+  note: string;
+};
+
+export const BUILDER_ACCESS_PLANS: AccessPlan[] = [
+  { value: '3_months', label: 'Quarterly / 3 Months', price: 15000, note: 'Best for short-term property scouting' },
+  { value: '6_months', label: 'Half Yearly / 6 Months', price: 30000, note: 'Better for active market follow-up' },
+  { value: '12_months', label: 'Yearly / 12 Months', price: 50000, note: 'Best value for full-year access' }
+];
+
+export const OWNER_MEDIATOR_ACCESS_PLANS: AccessPlan[] = [
+  { value: '3_months', label: 'Quarterly / 3 Months', price: 50000, note: 'Best for short-term property scouting' },
+  { value: '6_months', label: 'Half Yearly / 6 Months', price: 100000, note: 'Better for active market follow-up' },
+  { value: '12_months', label: 'Yearly / 12 Months', price: 150000, note: 'Best value for full-year access' }
+];
+
 export const FEATURE_ROWS: Array<{
   label: string;
   render: (tier: PlanTier) => React.ReactNode;
