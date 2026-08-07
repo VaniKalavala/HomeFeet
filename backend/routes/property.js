@@ -3,6 +3,8 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const axios = require('axios');
+const dns = require('dns').promises;
+const net = require('net');
 const Property = require('../models/Property');
 const User = require('../models/User');
 const Interest = require('../models/Interest');
@@ -87,6 +89,128 @@ const isAllowedGoogleMapHost = (hostname = '') =>
 
 const escapeRegex = (value = '') =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// --- SSRF guards for "paste a builder's listing URL" style features ---
+// Unlike resolve-map-link (restricted to Google's own domains), a "fetch
+// any property URL" feature has to accept arbitrary public hosts, so the
+// protection has to be IP-range based instead of a host allowlist: block
+// loopback/private/link-local/reserved ranges (including the cloud
+// metadata address) so the server can't be tricked into fetching internal
+// endpoints via a user-supplied URL.
+const isPrivateOrReservedIp = (ip) => {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    const [a, b] = parts;
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 169 && b === 254) return true; // link-local + cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // carrier-grade NAT
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase();
+    if (lower === '::1') return true;
+    if (lower.startsWith('fe80:') || lower.startsWith('fc') || lower.startsWith('fd')) return true;
+    if (lower.startsWith('::ffff:')) return isPrivateOrReservedIp(lower.replace('::ffff:', ''));
+    return false;
+  }
+  return true; // not a recognizable literal IP - treat cautiously
+};
+
+const assertPublicHostname = async (hostname) => {
+  const addresses = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (!addresses.length) throw new Error('Could not resolve host');
+  if (addresses.some((entry) => isPrivateOrReservedIp(entry.address))) {
+    throw new Error('This host cannot be fetched');
+  }
+};
+
+// Fetches a user-supplied URL with SSRF protections: only http/https,
+// re-validates the hostname's resolved IP at every redirect hop (axios's
+// own maxRedirects would otherwise happily follow a redirect straight to
+// an internal address), and caps response size and redirect count.
+const fetchExternalUrlSafely = async (rawUrl, { maxHops = 5, timeout = 10000, maxBytes = 3_000_000 } = {}) => {
+  let currentUrl = rawUrl;
+  for (let hop = 0; hop <= maxHops; hop += 1) {
+    const parsed = new URL(currentUrl);
+    if (!/^https?:$/i.test(parsed.protocol)) throw new Error('Only http/https links are supported');
+    await assertPublicHostname(parsed.hostname);
+
+    const response = await axios.get(currentUrl, {
+      maxRedirects: 0,
+      timeout,
+      maxContentLength: maxBytes,
+      maxBodyLength: maxBytes,
+      validateStatus: (status) => (status >= 200 && status < 400) || (status >= 300 && status < 400),
+      headers: { 'User-Agent': 'Mozilla/5.0 HomeFeet property link resolver' }
+    }).catch((err) => {
+      if (err.response && err.response.status >= 300 && err.response.status < 400) return err.response;
+      throw err;
+    });
+
+    if (response.status >= 300 && response.status < 400 && response.headers.location) {
+      currentUrl = new URL(response.headers.location, currentUrl).toString();
+      continue;
+    }
+
+    return { html: String(response.data || ''), finalUrl: currentUrl };
+  }
+  throw new Error('Too many redirects');
+};
+
+// Strips scripts/styles/nav/footer/head and all remaining tags to get
+// readable text, decodes the handful of entities real estate copy
+// actually uses, and caps the length so a huge page doesn't overwhelm
+// the summary parser with noise.
+const extractTextFromHtml = (html) => {
+  const withoutNoise = html
+    .replace(/<(script|style|noscript|head|nav|footer|svg)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+  const withBreaks = withoutNoise.replace(/<\/(p|div|li|tr|h[1-6]|br)>/gi, '$&\n');
+  const text = withBreaks
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n+/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n');
+  return text.slice(0, 8000);
+};
+
+// Pulls candidate photo URLs out of <img> tags, resolves them to absolute
+// URLs against the page's own address, and filters out obvious
+// icons/logos/tracking pixels by filename pattern.
+const extractImageUrlsFromHtml = (html, baseUrl) => {
+  const found = [];
+  const seen = new Set();
+  const imgPattern = /<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  let match;
+  while ((match = imgPattern.exec(html)) && found.length < 40) {
+    const raw = match[1].trim();
+    if (!raw || raw.startsWith('data:')) continue;
+    let absolute;
+    try {
+      absolute = new URL(raw, baseUrl).toString();
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute)) continue;
+    if (/\b(logo|icon|sprite|favicon|pixel|placeholder|spinner|loader)\b/i.test(absolute)) continue;
+    seen.add(absolute);
+    found.push(absolute);
+  }
+  return found.slice(0, 24);
+};
 
 // Excludes properties whose subscription-plan-based validity window has passed.
 // expiresAt is null for listings with no plan-based expiry (unaffected).
@@ -546,6 +670,93 @@ router.get('/resolve-map-link', async (req, res) => {
   } catch (err) {
     console.error('Map link resolve error:', err.message || err);
     res.status(500).json({ error: 'Failed to resolve map link' });
+  }
+});
+
+// POST /api/fetch-property-url - fetch a builder's listing page and pull out
+// its readable text (fed straight into the same summary parser used for
+// pasted text) plus candidate photo URLs. Requires login since it makes a
+// real outbound request on the user's behalf.
+router.post('/fetch-property-url', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Authorization token required' });
+    try {
+      jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    const rawUrl = String(req.body.url || '').trim();
+    if (!rawUrl) return res.status(400).json({ error: 'Property URL is required' });
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(rawUrl);
+    } catch {
+      return res.status(400).json({ error: 'Enter a valid URL' });
+    }
+    if (!/^https?:$/i.test(parsedUrl.protocol)) {
+      return res.status(400).json({ error: 'Only http/https links are supported' });
+    }
+
+    const { html, finalUrl } = await fetchExternalUrlSafely(rawUrl);
+    const text = extractTextFromHtml(html);
+    const images = extractImageUrlsFromHtml(html, finalUrl);
+
+    if (!text.trim()) {
+      return res.status(422).json({ error: 'Could not read any property details from that link' });
+    }
+
+    res.json({ success: true, text, images, resolvedUrl: finalUrl });
+  } catch (err) {
+    console.error('Fetch property URL error:', err.message || err);
+    res.status(422).json({ error: 'Could not fetch that link. Please check the URL or paste the details as text instead.' });
+  }
+});
+
+// POST /api/fetch-property-image - server-side download of one image URL
+// (selected from fetch-property-url's results) returned as a data URL, so
+// the browser can turn it into a File without hitting the source site's
+// CORS policy directly.
+router.post('/fetch-property-image', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Authorization token required' });
+    try {
+      jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    const rawUrl = String(req.body.url || '').trim();
+    if (!rawUrl) return res.status(400).json({ error: 'Image URL is required' });
+
+    const parsedUrl = new URL(rawUrl);
+    if (!/^https?:$/i.test(parsedUrl.protocol)) {
+      return res.status(400).json({ error: 'Only http/https links are supported' });
+    }
+    await assertPublicHostname(parsedUrl.hostname);
+
+    const response = await axios.get(rawUrl, {
+      responseType: 'arraybuffer',
+      maxRedirects: 3,
+      timeout: 10000,
+      maxContentLength: 8_000_000,
+      maxBodyLength: 8_000_000,
+      headers: { 'User-Agent': 'Mozilla/5.0 HomeFeet property link resolver' }
+    });
+
+    const contentType = String(response.headers['content-type'] || '');
+    if (!contentType.startsWith('image/')) {
+      return res.status(422).json({ error: 'That link is not an image' });
+    }
+
+    const base64 = Buffer.from(response.data).toString('base64');
+    res.json({ success: true, dataUrl: `data:${contentType};base64,${base64}` });
+  } catch (err) {
+    console.error('Fetch property image error:', err.message || err);
+    res.status(422).json({ error: 'Could not download that image' });
   }
 });
 

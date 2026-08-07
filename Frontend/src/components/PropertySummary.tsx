@@ -1,5 +1,5 @@
 import React, { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowRight, FileText, Image, MapPin, Mic, MicOff } from 'lucide-react';
+import { ArrowRight, FileText, Image, Link2, MapPin, Mic, MicOff, Sparkles as SparklesIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../lib/api';
 import { isAdminUser as checkIsAdminUser } from '../lib/admin';
@@ -273,7 +273,11 @@ const extractFloorPlanUnitsFromSummary = (text: string) => {
       const nextStart = index + 1 < markers.length ? markers[index + 1].index ?? text.length : text.length;
       const row = text.slice(start, Math.min(nextStart, start + MAX_ROW_LENGTH));
 
-      const sizeMatch = row.match(/(\d[\d,]{2,})\s*(?:–|—|-|to)\s*(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)/i);
+      // Not every typology gives a size range - some state a single value
+      // ("3 BHK 1,450 SFT"). Try the range first, then fall back to one
+      // plain number+unit so that row isn't dropped entirely.
+      const sizeMatch = row.match(/(\d[\d,]{2,})\s*(?:–|—|-|to)\s*(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)/i)
+        || row.match(/(\d[\d,]{2,})\s*(?:sq\.?\s*ft|sqft|square\s*feet|sft)/i);
       if (!sizeMatch) return null;
 
       const priceMatch = row.match(/(?:₹|rs\.?|inr)\s*([\d,.]+)\s*(cr|crores?|lakhs?|lacs?|l)?/i);
@@ -2191,6 +2195,12 @@ const PropertySummary = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
   const [summary, setSummary] = useState('');
+  const [propertyUrl, setPropertyUrl] = useState('');
+  const [isGeneratingFromUrl, setIsGeneratingFromUrl] = useState(false);
+  const [urlGenerateError, setUrlGenerateError] = useState('');
+  const [extractedImages, setExtractedImages] = useState<string[]>([]);
+  const [selectedExtractedImages, setSelectedExtractedImages] = useState<Set<string>>(new Set());
+  const [isAddingExtractedImages, setIsAddingExtractedImages] = useState(false);
   const [mapLink, setMapLink] = useState('');
   const [mapLinkTouched, setMapLinkTouched] = useState(false);
   const [plotDiagramFile, setPlotDiagramFile] = useState<File | null>(null);
@@ -2483,6 +2493,87 @@ const PropertySummary = () => {
     setUnitPlanImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleGenerateFromUrl = async () => {
+    const url = propertyUrl.trim();
+    if (!url) {
+      setUrlGenerateError('Paste a property listing link first.');
+      return;
+    }
+    setIsGeneratingFromUrl(true);
+    setUrlGenerateError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/fetch-property-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not generate a property summary from that link.');
+
+      setSummary(data.text || '');
+      setExtractedImages(Array.isArray(data.images) ? data.images : []);
+      setSelectedExtractedImages(new Set());
+      setMissingFields([]);
+      if (message) setMessage('');
+    } catch (error: any) {
+      setUrlGenerateError(error.message || 'Could not generate a property summary from that link.');
+    } finally {
+      setIsGeneratingFromUrl(false);
+    }
+  };
+
+  const toggleExtractedImageSelection = (url: string) => {
+    setSelectedExtractedImages((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url); else next.add(url);
+      return next;
+    });
+  };
+
+  const dataUrlToFile = async (dataUrl: string, filename: string) => {
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+  };
+
+  const addSelectedExtractedImagesTo = async (pool: 'project' | 'unit') => {
+    const urls = Array.from(selectedExtractedImages);
+    if (!urls.length) return;
+    setIsAddingExtractedImages(true);
+    try {
+      const token = localStorage.getItem('token');
+      const files: File[] = [];
+      for (let i = 0; i < urls.length; i += 1) {
+        try {
+          const res = await fetch(`${API_BASE}/fetch-property-image`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ url: urls[i] })
+          });
+          const data = await res.json();
+          if (!res.ok) continue;
+          files.push(await dataUrlToFile(data.dataUrl, `property-image-${i + 1}.jpg`));
+        } catch {
+          // Skip images that fail to download; the rest still get added.
+        }
+      }
+      if (pool === 'project') {
+        setProjectImages((prev) => [...prev, ...files].slice(0, MAX_PROJECT_IMAGES));
+      } else {
+        setUnitPlanImages((prev) => [...prev, ...files].slice(0, MAX_UNIT_PLAN_IMAGES));
+      }
+      setSelectedExtractedImages(new Set());
+    } finally {
+      setIsAddingExtractedImages(false);
+    }
+  };
+
   const addVoiceTextToSummary = (rawText: string) => {
     const detected = rawText.trim();
     if (!detected) return;
@@ -2631,6 +2722,75 @@ const PropertySummary = () => {
           </div>
 
       <form onSubmit={handleSubmit} className="w-full rounded-lg border border-slate-200 bg-white p-5 shadow-lg sm:p-7">
+        <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50 p-4">
+          <span className="flex items-center gap-2 text-sm font-bold text-slate-800"><Link2 className="h-5 w-5 text-teal-700" />Property Listing URL</span>
+          <p className="mt-1 text-xs leading-5 text-slate-600">
+            Paste a link to the property's listing page and generate a summary, project images, and unit floor plans from it automatically.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              type="url"
+              value={propertyUrl}
+              onChange={(event) => { setPropertyUrl(event.target.value); if (urlGenerateError) setUrlGenerateError(''); }}
+              placeholder="https://www.examplebuilder.com/project-name"
+              className="w-full flex-1 rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-teal-600"
+            />
+            <button
+              type="button"
+              onClick={handleGenerateFromUrl}
+              disabled={isGeneratingFromUrl}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              {isGeneratingFromUrl ? 'Generating...' : 'Generate Property'}
+            </button>
+          </div>
+          {urlGenerateError && <p className="mt-2 text-xs font-semibold text-red-600">{urlGenerateError}</p>}
+
+          {extractedImages.length > 0 && (
+            <div className="mt-4 border-t border-teal-200 pt-3">
+              <p className="text-xs font-bold text-slate-800">
+                Found {extractedImages.length} image{extractedImages.length === 1 ? '' : 's'} on that page - select the ones to use:
+              </p>
+              <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                {extractedImages.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => toggleExtractedImageSelection(url)}
+                    className={`relative overflow-hidden rounded-lg border-2 ${selectedExtractedImages.has(url) ? 'border-teal-600' : 'border-transparent'}`}
+                  >
+                    <img src={url} alt="Extracted from listing" className="h-16 w-full object-cover" />
+                    {selectedExtractedImages.has(url) && (
+                      <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {selectedExtractedImages.size > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => addSelectedExtractedImagesTo('project')}
+                    disabled={isAddingExtractedImages}
+                    className="rounded-lg border border-teal-600 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedExtractedImages.size} to Project Images`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addSelectedExtractedImagesTo('unit')}
+                    disabled={isAddingExtractedImages}
+                    className="rounded-lg border border-teal-600 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isAddingExtractedImages ? 'Adding...' : `Add ${selectedExtractedImages.size} to Unit / Floor Plan Images`}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <label className="block">
           <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="flex items-center gap-2 text-sm font-bold text-slate-800"><FileText className="h-5 w-5 text-teal-700" />Property Summary</span>
