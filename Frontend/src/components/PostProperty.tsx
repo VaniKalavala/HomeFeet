@@ -2145,8 +2145,23 @@ const PostProperty = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    // The wizard is one <form> spanning all 5 steps, and the real submit
+    // button only exists in the DOM on the last step - but a stray submit
+    // event (e.g. a race between a step transition and the browser
+    // processing a click already in flight) can still reach this handler
+    // while an earlier step is showing. Without this guard that silently
+    // submits whatever's currently in formData - on an edit, that's
+    // whatever the last completed step captured, before the admin/owner
+    // ever got to Location Details to fix the map. Only the actual last
+    // step should ever submit.
+    if (currentStep !== formSteps.length - 1) {
+      setCurrentStep(formSteps.length - 1);
+      return;
+    }
+
     setIsSubmitting(true);
-    
+
     const token = localStorage.getItem('token');
     if (!token) {
       alert('You must be logged in');
@@ -2470,10 +2485,15 @@ const PostProperty = () => {
         // button is present in the DOM, so pressing Enter in any text
         // input (locality/pincode/landmark/colony, or selecting a Google
         // Places Autocomplete suggestion) submits the whole property
-        // immediately instead of just confirming that field. Only actual
-        // clicks on the submit button should submit - Enter in a
-        // <textarea> still inserts a newline as expected.
-        if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+        // immediately instead of just confirming that field. The same
+        // applies to the State/City <select> dropdowns on the Location
+        // Details step - confirming a choice with Enter (after typing to
+        // jump to an option, or after the dropdown auto-closes) submits
+        // the form too, which is exactly what stopped admins from finishing
+        // a location/map update. Only actual clicks (or Enter/Space on the
+        // submit button itself) should submit - Enter in a <textarea>
+        // still inserts a newline as expected.
+        if (e.key === 'Enter' && ['INPUT', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
           e.preventDefault();
         }
       }}
@@ -3997,6 +4017,7 @@ const PostProperty = () => {
         )}
         {currentStep < formSteps.length - 1 ? (
           <button
+            key="wizard-next-button"
             type="button"
             onClick={() => setCurrentStep((step) => step + 1)}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0AA6A6] px-8 py-4 font-semibold text-white shadow-lg hover:bg-[#088f8f]"
@@ -4005,6 +4026,7 @@ const PostProperty = () => {
           </button>
         ) : (
           <button
+            key="wizard-submit-button"
             type="submit"
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0AA6A6] px-8 py-4 font-semibold text-white shadow-lg hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:bg-gray-400"
             disabled={isSubmitting}
