@@ -130,7 +130,6 @@ const PropertyDetails: React.FC = () => {
   const [interestStatus, setInterestStatus] = useState('');
   const [interestId, setInterestId] = useState('');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [subscriptionLoading, setSubscriptionLoading] = useState('');
   const [accessRequired, setAccessRequired] = useState('');
   const [accessListingIntent, setAccessListingIntent] = useState('');
   const [accessPropertyType, setAccessPropertyType] = useState('');
@@ -160,27 +159,13 @@ const PropertyDetails: React.FC = () => {
   const detailPropertyType = String(property?.developmentType || accessPropertyType || '').toLowerCase();
   const isBuyerRequirementListing = detailListingIntent === 'buy';
   const isBuyerMarketplaceListing = detailListingIntent === 'sell' || detailPropertyType === 'commercial-plot';
-  const detailMembershipUseCase = isBuyerRequirementListing ? 'buyer-info' : isBuyerMarketplaceListing ? 'buyer' : '';
-  const membershipUrl = detailMembershipUseCase
-    ? `/subscription-plans?audience=owner_mediator&useCase=${detailMembershipUseCase}&redirect=${encodeURIComponent(`/property/${id || ''}`)}`
-    : `/subscription-plans?redirect=${encodeURIComponent(`/property/${id || ''}`)}`;
+  const membershipUrl = `/subscription-plans?redirect=${encodeURIComponent(`/property/${id || ''}`)}`;
   const contactPartyLabel = isBuyerRequirementListing ? 'Buyer' : 'Owner';
   const marketplaceAccessCopy = isBuyerRequirementListing
     ? 'Owners and mediators need an active subscription to access buyer requirement details and buyer contact information.'
     : isBuyerMarketplaceListing
       ? 'Buyers and land seekers need an active subscription to explore sell plots, commercial plots, complete details, and owner or mediator contact information.'
       : 'To access complete property details, please upgrade your membership.';
-  const accessPlanPrices = isOwnerOrMediator
-    ? {
-        '3_months': '50000.00 INR',
-        '6_months': '100000.00 INR',
-        '12_months': '150000.00 INR',
-      }
-    : {
-        '3_months': '15000.00 INR',
-        '6_months': '30000.00 INR',
-        '12_months': '50000.00 INR',
-      };
   const continueBrowsing = () => {
     const previousPath = document.referrer && document.referrer.startsWith(window.location.origin)
       ? `${new URL(document.referrer).pathname}${new URL(document.referrer).search}`
@@ -193,11 +178,6 @@ const PropertyDetails: React.FC = () => {
 
     navigate(-1);
   };
-  const accessPlans = [
-    { value: '3_months', label: '3 Months', price: accessPlanPrices['3_months'], note: 'Marketplace access for one quarter' },
-    { value: '6_months', label: '6 Months', price: accessPlanPrices['6_months'], note: 'Good for active project scouting' },
-    { value: '12_months', label: '12 Months', price: accessPlanPrices['12_months'], note: 'Best value for yearly marketplace access' },
-  ];
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -545,6 +525,7 @@ const PropertyDetails: React.FC = () => {
           localStorage.setItem('builderSubscriptionPlan', data.subscription.plan || 'none');
           localStorage.setItem('builderSubscriptionExpiresAt', data.subscription.expiresAt || '');
           localStorage.setItem('contactUnlocksUsed', String((2 - Number(data.subscription.freeRemaining || 0))));
+          localStorage.setItem('buyerContactCredits', String(data.subscription.buyerContactCredits || 0));
         }
       }
       if (data.paymentRequired && !isOwnerOrMediator) {
@@ -556,9 +537,8 @@ const PropertyDetails: React.FC = () => {
     }
   };
 
-  const chooseBuilderPlan = async (plan: string) => {
-    localStorage.setItem('pendingMembershipPlan', plan);
-    navigate(`/subscription-plans?audience=builder&redirect=${encodeURIComponent(`/property/${id || ''}`)}`);
+  const goToContactRevealPacks = () => {
+    navigate(`/subscription-plans?redirect=${encodeURIComponent(`/property/${id || ''}`)}`);
   };
 
   if (!token && !loading) {
@@ -1578,13 +1558,13 @@ const PropertyDetails: React.FC = () => {
       )}
       {showSubscriptionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-          <div className="pointer-events-auto w-full max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="pointer-events-auto w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="ld-eyebrow">Marketplace Access</p>
-                <h2 className="mt-2 text-2xl font-bold text-slate-950">Choose a plan to unlock more owner contacts</h2>
+                <h2 className="mt-2 text-2xl font-bold text-slate-950">Unlock more owner contacts</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Paid builder, owner, and mediator members can access owner contacts without waiting for owner approval. Free builders need owner approval before contact details unlock.
+                  You've used your free contact reveals. Top up with a Contact Reveal Pack to unlock this and other owners' contact details without waiting for owner approval.
                 </p>
               </div>
               <button onClick={() => setShowSubscriptionModal(false)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -1592,28 +1572,10 @@ const PropertyDetails: React.FC = () => {
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {accessPlans.map((plan) => (
-                <button
-                  key={plan.value}
-                  type="button"
-                  onClick={() => chooseBuilderPlan(plan.value)}
-                  disabled={Boolean(subscriptionLoading)}
-                  className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-orange-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-slate-950">{plan.label}</p>
-                    <Check className="h-5 w-5 text-orange-700" />
-                  </div>
-                  <p className="mt-3 font-sans text-lg font-semibold tracking-normal text-slate-900">{plan.price}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{plan.note}</p>
-                  <span className="mt-5 inline-flex rounded-lg bg-orange-700 px-4 py-2 text-sm font-semibold text-white">
-                    {subscriptionLoading === plan.value ? 'Activating...' : 'Select Plan'}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div className="mt-5 flex justify-center">
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <button type="button" onClick={goToContactRevealPacks} className="ld-btn-primary">
+                Buy a Contact Reveal Pack <ArrowLeft className="h-5 w-5 rotate-180" />
+              </button>
               <button type="button" onClick={() => setShowSubscriptionModal(false)} className="ld-btn-ghost">
                 Continue Browsing
               </button>

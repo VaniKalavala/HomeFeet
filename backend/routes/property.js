@@ -427,6 +427,10 @@ const unlockBuilderContact = async (user, interest) => {
     return { unlocked: true, via: interest.unlockedVia };
   }
 
+  // hasActiveBuilderSubscription only matters for builders who already
+  // paid for the old marketplace-wide subscription before it was retired
+  // in favor of Contact Reveal Packs - keeps their paid access working
+  // until it naturally expires, without offering it as a new purchase.
   if (hasActiveBuilderSubscription(user)) {
     interest.contactUnlocked = true;
     interest.unlockedVia = 'subscription';
@@ -442,6 +446,17 @@ const unlockBuilderContact = async (user, interest) => {
     interest.contactUnlockedAt = new Date();
     await Promise.all([user.save(), interest.save()]);
     return { unlocked: true, via: 'free_credit' };
+  }
+
+  // Beyond the free allowance, builders now use the same Contact Reveal
+  // Packs (buyerContactCredits) as every other account type.
+  if ((user.buyerContactCredits || 0) > 0) {
+    user.buyerContactCredits -= 1;
+    interest.contactUnlocked = true;
+    interest.unlockedVia = 'buyer_credit';
+    interest.contactUnlockedAt = new Date();
+    await Promise.all([user.save(), interest.save()]);
+    return { unlocked: true, via: 'buyer_credit' };
   }
 
   return { unlocked: false, paymentRequired: true };
@@ -1608,7 +1623,7 @@ router.post('/interests', async (req, res) => {
       return res.status(400).json({ error: 'You cannot request contact for your own listing' });
     }
 
-    const paidBuilder = isBuilder && hasActiveBuilderSubscription(user);
+    const paidBuilder = isBuilder && (hasActiveBuilderSubscription(user) || (user.buyerContactCredits || 0) > 0);
     const buyerInstantEligible = isBuyer && (
       hasActiveMarketplaceSubscription(user) || !user.buyerFreeContactUsed || (user.buyerContactCredits || 0) > 0
     );
@@ -1649,12 +1664,14 @@ router.post('/interests', async (req, res) => {
               : unlock.via === 'buyer_free'
                 ? 'Your free contact reveal has been used for this property. Contact details are available.'
                 : 'A contact-reveal credit was used. Contact details are available.'
-            : paidBuilder
+            : unlock.via === 'subscription'
               ? 'Paid builder membership active. Owner contact details are available without owner approval.'
-              : 'Owner approved your request. Contact details are available.'
+              : unlock.via === 'buyer_credit'
+                ? 'A contact-reveal credit was used. Contact details are available.'
+                : 'Owner approved your request. Contact details are available.'
           : isBuyer
             ? 'Your free reveal and purchased credits are used. Buy a contact pack to unlock more contacts, or wait for the owner to respond.'
-            : 'Your free owner-contact credits are used. Please choose a builder plan to unlock more contacts.'
+            : 'Your free owner-contact credits are used. Buy a contact pack to unlock more contacts, or wait for the owner to respond.'
         : 'Interest sent to owner. Contact details unlock after owner accepts.',
       interest,
       contactUnlocked: interest.status === 'accepted' && unlock.unlocked,
@@ -1666,6 +1683,7 @@ router.post('/interests', async (req, res) => {
       } : {
         plan: user.builderSubscriptionPlan,
         expiresAt: user.builderSubscriptionExpiresAt,
+        buyerContactCredits: user.buyerContactCredits || 0,
         freeRemaining
       },
       contact: interest.status === 'accepted' && unlock.unlocked ? {

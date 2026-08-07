@@ -685,10 +685,7 @@ const PropertiesListingPage: React.FC = () => {
   const currentPropertyType = searchParams.get('propertyType') || '';
   const isBuyerMarketplaceAccess = listingIntent === 'sell' || currentPropertyType === 'commercial-plot';
   const isBuyerRequirementAccess = listingIntent === 'buy';
-  const membershipUseCase = isBuyerRequirementAccess ? 'buyer-info' : isBuyerMarketplaceAccess ? 'buyer' : '';
-  const membershipUrl = membershipUseCase
-    ? `/subscription-plans?audience=owner_mediator&useCase=${membershipUseCase}&redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`
-    : `/subscription-plans?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
+  const membershipUrl = `/subscription-plans?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
   const membershipModalCopy = isBuyerRequirementAccess
     ? 'Owners and mediators need an active subscription to access buyer requirement details and buyer contact information.'
     : isBuyerMarketplaceAccess

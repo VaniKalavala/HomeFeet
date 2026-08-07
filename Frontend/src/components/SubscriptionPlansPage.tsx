@@ -2,15 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, FileText, KeyRound } from 'lucide-react';
 import { API_BASE } from '../lib/api';
-import {
-  PLAN_TIERS,
-  FEATURE_ROWS,
-  BUYER_CONTACT_PACKS,
-  BUILDER_ACCESS_PLANS,
-  OWNER_MEDIATOR_ACCESS_PLANS,
-  PlanTier,
-  AccessPlan
-} from '../lib/plans';
+import { PLAN_TIERS, FEATURE_ROWS, BUYER_CONTACT_PACKS, PlanTier } from '../lib/plans';
 import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
 import LoginModal from './LoginModal';
 
@@ -22,13 +14,15 @@ type MarketplaceStats = {
   approvedProperties: number;
 };
 
-// This page is the one real place every "Subscribe" path in the app ends
-// up: the Owner/Agent/Builder visibility-boost tiers (PLAN_TIERS), the
-// marketplace-wide "unlock complete property details" access plans
-// (previously the separate /owner-mediator-membership and
-// /builder-membership pages - now folded in here), and the Buyer Contact
-// Packs. All three run real Razorpay checkouts against the same backend
-// endpoints those older pages and Dashboard.tsx already used.
+// This page hosts the two real Subscribe/Buy paths in the app: the
+// Owner/Agent/Builder visibility-boost tiers (PLAN_TIERS) and the Contact
+// Reveal Packs (pay-per-reveal, works the same way for every account type).
+// A third product - a marketplace-wide "unlock everything" subscription -
+// used to live here too (and, before that, on its own /owner-mediator-
+// membership and /builder-membership pages); it's been retired in favor
+// of Contact Reveal Packs / free credits for everyone. Both remaining
+// flows run real Razorpay checkouts against the same backend endpoints
+// Dashboard.tsx already used.
 export default function SubscriptionPlansPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -75,9 +69,6 @@ export default function SubscriptionPlansPage() {
 
   const redirectParam = searchParams.get('redirect');
   const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '';
-  const useCase = searchParams.get('useCase');
-  const isBuyerAccess = useCase === 'buyer';
-  const isBuyerInfoAccess = useCase === 'buyer-info';
 
   const loadRazorpayCheckout = () =>
     new Promise<void>((resolve, reject) => {
@@ -188,147 +179,11 @@ export default function SubscriptionPlansPage() {
   };
 
   // ---------------------------------------------------------------------
-  // "Unlock complete property details" marketplace-access plans
-  // (previously /owner-mediator-membership and /builder-membership)
-  // ---------------------------------------------------------------------
-  const accountType = localStorage.getItem('accountType') || 'owner';
-  const audienceParam = searchParams.get('audience');
-  // Which price table (and, before login, which copy) to default to.
-  // Real charges are always validated against the logged-in user's actual
-  // account type server-side, regardless of this - see the pre-flight
-  // check inside handleSubscribeAccessPlan below.
-  const accountAudienceGuess = ['owner', 'mediator', 'buyer'].includes(accountType) ? 'owner_mediator' : 'builder';
-  const accessAudience: 'owner_mediator' | 'builder' =
-    audienceParam === 'builder' || audienceParam === 'owner_mediator' ? audienceParam : accountAudienceGuess;
-  const accessPlans = accessAudience === 'builder' ? BUILDER_ACCESS_PLANS : OWNER_MEDIATOR_ACCESS_PLANS;
-
-  const accessHeading = isBuyerAccess
-    ? 'Buyer | Property Seeker Access'
-    : isBuyerInfoAccess
-      ? 'Unlock buyer information'
-      : 'Unlock complete property details';
-
-  const accessFeatures = isBuyerAccess
-    ? [
-        'Subscribe before exploring sale flats and commercial space',
-        'Access complete listing details from owners and mediators',
-        'Continue from the property search you were browsing'
-      ]
-    : isBuyerInfoAccess
-      ? [
-          'Owners and mediators can access buyer requirement details',
-          'Open buyer contact information only with active membership',
-          'Continue from the buyer requirement you were reviewing'
-        ]
-      : accessAudience === 'owner_mediator'
-        ? [
-            'Free property posting for owners and mediators',
-            'Access complete property details',
-            'Continue from the property page you were browsing'
-          ]
-        : [
-            'Access complete property details',
-            'View owner and mediator listing information',
-            'Continue from the property page you were browsing'
-          ];
-
-  const [selectedAccessPlanValue, setSelectedAccessPlanValue] = useState<AccessPlan['value']>('3_months');
-  const [accessPlanLoadingValue, setAccessPlanLoadingValue] = useState('');
-  const [accessPlanMessage, setAccessPlanMessage] = useState('');
-  const accessPlanPaymentInProgressRef = useRef(false);
-  const selectedAccessPlan = accessPlans.find((plan) => plan.value === selectedAccessPlanValue) || accessPlans[0];
-
-  const handleSubscribeAccessPlan = async (plan: AccessPlan) => {
-    if (accessPlanPaymentInProgressRef.current) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      pendingActionRef.current = () => handleSubscribeAccessPlan(plan);
-      setShowLoginModal(true);
-      return;
-    }
-
-    const currentAccountType = localStorage.getItem('accountType') || 'owner';
-    const realAudience: 'owner_mediator' | 'builder' = ['owner', 'mediator', 'buyer'].includes(currentAccountType)
-      ? 'owner_mediator'
-      : 'builder';
-    if (realAudience !== accessAudience) {
-      setAccessPlanMessage(realAudience === 'owner_mediator'
-        ? 'Your account is Owner/Agent (Mediator)/Buyer - reload this page to see the matching plan.'
-        : 'Your account is Builder - reload this page to see the matching plan.');
-      return;
-    }
-
-    accessPlanPaymentInProgressRef.current = true;
-    setAccessPlanLoadingValue(plan.value);
-    setAccessPlanMessage('');
-
-    try {
-      await loadRazorpayCheckout();
-
-      const orderResponse = await fetch(`${API_BASE}/membership-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan: plan.value, membershipAudience: realAudience })
-      });
-      const orderData = await orderResponse.json();
-      if (!orderResponse.ok) throw new Error(orderData.message || 'Failed to create Razorpay order');
-      if (!window.Razorpay) throw new Error('Razorpay Checkout is not available');
-
-      const checkout = new window.Razorpay({
-        key: orderData.keyId || razorpayConfig.keyId,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency || 'INR',
-        name: razorpayConfig.businessName,
-        description: `${plan.label} Membership`,
-        image: `${window.location.origin}${razorpayConfig.logoPath}`,
-        order_id: orderData.order.id,
-        prefill: {
-          name: localStorage.getItem('name') || 'HomeFeet User',
-          email: localStorage.getItem('email') || '',
-          contact: localStorage.getItem('phone') ? `+91${localStorage.getItem('phone')}` : ''
-        },
-        notes: { plan: plan.value, membershipAudience: realAudience, redirectTo, address: razorpayConfig.notesAddress },
-        theme: { color: razorpayConfig.themeColor },
-        handler: async (response: any) => {
-          try {
-            const verifyResponse = await fetch(`${API_BASE}/membership-payment/verify`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-              body: JSON.stringify({ plan: plan.value, ...response })
-            });
-            const verifyData = await verifyResponse.json();
-            if (!verifyResponse.ok) throw new Error(verifyData.message || 'Payment verification failed');
-
-            localStorage.setItem('builderSubscriptionPlan', verifyData.user.builderSubscriptionPlan || 'none');
-            localStorage.setItem('builderSubscriptionExpiresAt', verifyData.user.builderSubscriptionExpiresAt || '');
-            setAccessPlanMessage('Payment successful. Membership activated.');
-            window.setTimeout(() => navigate(redirectTo || '/properties'), 800);
-          } catch (error) {
-            setAccessPlanMessage(error instanceof Error ? error.message : 'Payment verification failed');
-          } finally {
-            accessPlanPaymentInProgressRef.current = false;
-            setAccessPlanLoadingValue('');
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            accessPlanPaymentInProgressRef.current = false;
-            setAccessPlanLoadingValue('');
-          }
-        }
-      });
-
-      checkout.open();
-    } catch (error) {
-      accessPlanPaymentInProgressRef.current = false;
-      setAccessPlanLoadingValue('');
-      setAccessPlanMessage(error instanceof Error ? error.message : 'Unable to start Razorpay payment');
-    }
-  };
-
-  // ---------------------------------------------------------------------
-  // Buyer Contact Packs - pay-per-reveal, independent of the two plans above
+  // Contact Reveal Packs - pay-per-reveal, works the same way for every
+  // account type (owner/mediator/builder/buyer): 1-2 free reveals, then
+  // top up with a pack. This is now the only way to unlock someone else's
+  // contact details beyond the free allowance - no marketplace-wide
+  // subscription tier anymore.
   // ---------------------------------------------------------------------
   const [loadingPackSize, setLoadingPackSize] = useState(0);
   const [buyerPackMessage, setBuyerPackMessage] = useState('');
@@ -526,119 +381,25 @@ export default function SubscriptionPlansPage() {
         </div>
       </section>
 
-      {/* Marketplace-wide "unlock complete property details" access plans */}
-      <section className="bg-slate-50 py-20">
+      {/* Contact Reveal Packs - pay-per-reveal, same mechanism for every account type */}
+      <section className="relative overflow-hidden bg-slate-50 py-20">
         <div className="ld-container">
           <div className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.18em] text-slate-500">
             <span className="h-px w-9 bg-slate-400" />
-            {accessAudience === 'builder' ? 'For Builders' : 'For Owners, Agents (Mediators) & Buyers'}
+            For Owners, Agents (Mediators), Builders &amp; Buyers
           </div>
           <h2 className="mt-6 max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
-            {accessHeading}
+            Pay only to unlock the contacts you actually need.
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700">
-            This is a separate, marketplace-wide subscription for viewing full property and owner-contact details
-            across every listing - not the posting-visibility plans above.
-          </p>
-
-          <div className="mx-auto mt-10 max-w-[784px] rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-8">
-            <div className="mx-auto grid max-w-[720px] gap-3 md:grid-cols-3">
-              {accessPlans.map((plan) => {
-                const active = selectedAccessPlanValue === plan.value;
-                return (
-                  <label
-                    key={plan.value}
-                    className={`cursor-pointer rounded-xl border px-3 py-4 transition sm:px-4 sm:py-6 ${
-                      active ? 'border-[#0877C9] bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="accessPlan"
-                        checked={active}
-                        onChange={() => setSelectedAccessPlanValue(plan.value)}
-                        className="peer sr-only"
-                      />
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                        active ? 'border-[#0877C9]' : 'border-slate-400'
-                      }`}>
-                        <span className={`h-2.5 w-2.5 rounded-full transition ${active ? 'bg-[#0877C9]' : 'bg-transparent'}`} />
-                      </span>
-                      <span className="text-[13px] font-black leading-tight text-slate-950 md:whitespace-nowrap">{plan.label}</span>
-                    </div>
-                    <p className="mt-3 text-center font-sans text-lg font-semibold leading-tight tracking-normal text-slate-900 sm:text-xl">
-                      Rs. {plan.price.toLocaleString('en-IN')}
-                    </p>
-                    <p className="mt-2 text-center text-[11px] leading-5 text-slate-600 md:whitespace-nowrap">{plan.note}</p>
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="mx-auto mt-6 max-w-4xl space-y-3 text-xs font-semibold text-slate-800 sm:text-sm">
-              {accessFeatures.map((feature) => (
-                <div key={feature} className="flex items-start gap-3">
-                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#0877C9]" />
-                  <span>{feature}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mx-auto mt-3 flex max-w-4xl items-center justify-between border-t border-slate-200 pt-4 text-sm">
-              <span className="font-semibold text-slate-600">Total Amount:</span>
-              <span className="font-sans text-lg font-semibold tracking-normal text-slate-900">
-                Rs. {selectedAccessPlan.price.toLocaleString('en-IN')}
-              </span>
-            </div>
-
-            <div className="mx-auto mt-3 flex max-w-4xl items-center gap-2 text-xs font-semibold text-slate-600 sm:text-sm">
-              <FileText className="h-4 w-4 text-slate-500" />
-              GST Invoice Available
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleSubscribeAccessPlan(selectedAccessPlan)}
-              disabled={Boolean(accessPlanLoadingValue)}
-              className="mx-auto mt-5 flex min-h-9 w-full max-w-[176px] items-center justify-center gap-2 rounded-lg bg-[#0877C9] px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#0665aa] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {accessPlanLoadingValue ? 'Opening Razorpay...' : 'Subscribe Now'}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-slate-600">
-              <span>Secured by</span>
-              <span className="inline-flex items-center gap-0.5 font-black italic text-[#1f5fbf]">Razorpay</span>
-            </p>
-          </div>
-
-          {accessPlanMessage && (
-            <p className="mx-auto mt-6 max-w-xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800">
-              {accessPlanMessage}
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* Buyer contact packs - a separate, pay-per-reveal model */}
-      <section className="relative overflow-hidden bg-white py-20">
-        <div className="ld-container">
-          <div className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.18em] text-slate-500">
-            <span className="h-px w-9 bg-slate-400" />
-            For Buyers | Property Seekers
-          </div>
-          <h2 className="mt-6 max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
-            Pay only to unlock the owners you actually want to talk to.
-          </h2>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700">
-            Buyer accounts don't need the plans above for a one-off reveal - your first owner or mediator contact
-            reveal is free, and after that you pay per pack to unlock a set number of contacts, no subscription
-            required.
+            Viewing another listing's full property and owner-contact details starts with a free reveal or two - after
+            that, top up with a pack. No subscription required, and it works the same way whether you're an Owner,
+            Agent (Mediator), Builder, or Buyer.
           </p>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-3">
             {BUYER_CONTACT_PACKS.map((pack) => (
-              <div key={pack.packSize} className="flex flex-col rounded-xl border border-teal-200 bg-slate-50 p-6 text-center shadow-xl shadow-slate-200/70">
+              <div key={pack.packSize} className="flex flex-col rounded-xl border border-teal-200 bg-white p-6 text-center shadow-xl shadow-slate-200/70">
                 <KeyRound className="mx-auto h-7 w-7 text-[#0AA6A6]" />
                 <p className="mt-3 text-sm font-bold uppercase tracking-wide text-slate-500">{pack.label}</p>
                 <p className="mt-2 text-2xl font-black text-slate-950">Rs. {pack.price.toLocaleString('en-IN')}</p>
@@ -646,7 +407,7 @@ export default function SubscriptionPlansPage() {
                   Rs. {Math.round(pack.price / pack.packSize).toLocaleString('en-IN')} per property
                 </p>
                 <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-700">
-                  <Check className="h-4 w-4" /> Unlocks {pack.packSize} owner contact{pack.packSize === 1 ? '' : 's'}
+                  <Check className="h-4 w-4" /> Unlocks {pack.packSize} contact{pack.packSize === 1 ? '' : 's'}
                 </p>
                 <button
                   type="button"
@@ -654,7 +415,7 @@ export default function SubscriptionPlansPage() {
                   disabled={loadingPackSize === pack.packSize}
                   className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-[#088f8f] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {loadingPackSize === pack.packSize ? 'Opening Razorpay...' : 'Buy Now'}
+                  {loadingPackSize === pack.packSize ? 'Opening Razorpay...' : 'Subscribe Now'}
                 </button>
               </div>
             ))}

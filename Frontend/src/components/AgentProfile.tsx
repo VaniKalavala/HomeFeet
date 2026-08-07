@@ -142,7 +142,7 @@ export default function AgentProfile() {
                       </p>
                     </div>
                   </div>
-                  <Link to="/subscription-plans?audience=owner_mediator" className="ld-btn-primary w-full">
+                  <Link to="/subscription-plans" className="ld-btn-primary w-full">
                     Unlock With Membership
                   </Link>
                 </div>

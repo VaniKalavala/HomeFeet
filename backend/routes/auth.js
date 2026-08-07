@@ -830,8 +830,8 @@ router.post('/buyer-contact-order', async (req, res) => {
     const user = await requireUser(req, res);
     if (!user) return;
 
-    if (!['owner', 'mediator', 'buyer'].includes(user.accountType)) {
-      return res.status(403).json({ message: 'Only owner, agent (mediator), and buyer accounts can buy contact-reveal packs' });
+    if (!['owner', 'mediator', 'buyer', 'builder'].includes(user.accountType)) {
+      return res.status(403).json({ message: 'Only owner, agent (mediator), builder, and buyer accounts can buy contact-reveal packs' });
     }
 
     const { packSize } = req.body;
