@@ -2198,7 +2198,14 @@ const PropertySummary = () => {
   const [propertyUrl, setPropertyUrl] = useState('');
   const [isGeneratingFromUrl, setIsGeneratingFromUrl] = useState(false);
   const [urlGenerateError, setUrlGenerateError] = useState('');
-  const [extractedImages, setExtractedImages] = useState<string[]>([]);
+  const [extractedImages, setExtractedImages] = useState<{ url: string; label: string }[]>([]);
+  // Populated from the server's suggestedUnitPlanImageUrls - images it
+  // could tell are per-unit-type ("3 BHK", "Unit Plan") from their real
+  // alt text/filename, or, when a listing has none of those, floor-wise
+  // plan images (Configurations, Ground/First/Second Floor) instead.
+  // Auto-checked into the Unit Plan pool right after generating so the
+  // admin doesn't have to hunt for them, but still fully editable.
+  const [autoSuggestedUnitPlanUrls, setAutoSuggestedUnitPlanUrls] = useState<Set<string>>(new Set());
   // Independent selections per destination - an image can be picked for
   // Project Images, Unit / Floor Plan Images, or both, without the two
   // choices interfering with each other. Toggling one on/off downloads or
@@ -2523,11 +2530,18 @@ const PropertySummary = () => {
       if (!res.ok) throw new Error(data.error || 'Could not generate a property summary from that link.');
 
       setSummary(data.text || '');
-      setExtractedImages(Array.isArray(data.images) ? data.images : []);
+      const images: { url: string; label: string }[] = Array.isArray(data.images) ? data.images : [];
+      setExtractedImages(images);
       setSelectedForProject(new Map());
       setSelectedForUnitPlan(new Map());
       setMissingFields([]);
       if (message) setMessage('');
+
+      const suggestedUrls: string[] = Array.isArray(data.suggestedUnitPlanImageUrls) ? data.suggestedUnitPlanImageUrls : [];
+      setAutoSuggestedUnitPlanUrls(new Set(suggestedUrls));
+      suggestedUrls.slice(0, MAX_UNIT_PLAN_IMAGES).forEach((url) => {
+        addExtractedImageToPool('unit', url);
+      });
     } catch (error: any) {
       setUrlGenerateError(error.message || 'Could not generate a property summary from that link.');
     } finally {
@@ -2540,26 +2554,14 @@ const PropertySummary = () => {
     return new File([blob], filename, { type: blob.type || 'image/jpeg' });
   };
 
-  // Toggling an image on immediately downloads it and adds it to the real
-  // Project Images / Unit Plan Images list; toggling it off removes that
-  // exact file again - so those boxes further down the page always match
-  // what's checked here, with no separate "Add" step.
-  const toggleExtractedImageSelection = async (pool: 'project' | 'unit', url: string) => {
-    const selectedMap = pool === 'project' ? selectedForProject : selectedForUnitPlan;
+  // Downloads one extracted image and adds it to the real Project Images /
+  // Unit Plan Images list - shared by the manual toggle buttons below and
+  // by the automatic Unit Plan suggestion that runs right after a
+  // successful "Generate Property".
+  const addExtractedImageToPool = async (pool: 'project' | 'unit', url: string) => {
     const setSelectedMap = pool === 'project' ? setSelectedForProject : setSelectedForUnitPlan;
     const setImages = pool === 'project' ? setProjectImages : setUnitPlanImages;
     const maxImages = pool === 'project' ? MAX_PROJECT_IMAGES : MAX_UNIT_PLAN_IMAGES;
-
-    const existingFile = selectedMap.get(url);
-    if (existingFile) {
-      setImages((prev) => prev.filter((file) => file !== existingFile));
-      setSelectedMap((prev) => {
-        const next = new Map(prev);
-        next.delete(url);
-        return next;
-      });
-      return;
-    }
 
     setLoadingExtractedImageUrls((prev) => new Set(prev).add(url));
     try {
@@ -2587,6 +2589,29 @@ const PropertySummary = () => {
         return next;
       });
     }
+  };
+
+  // Toggling an image on calls addExtractedImageToPool above; toggling it
+  // off removes that exact file again - so the Project Images / Unit Plan
+  // Images boxes further down the page always match what's checked here,
+  // with no separate "Add" step.
+  const toggleExtractedImageSelection = (pool: 'project' | 'unit', url: string) => {
+    const selectedMap = pool === 'project' ? selectedForProject : selectedForUnitPlan;
+    const setSelectedMap = pool === 'project' ? setSelectedForProject : setSelectedForUnitPlan;
+    const setImages = pool === 'project' ? setProjectImages : setUnitPlanImages;
+
+    const existingFile = selectedMap.get(url);
+    if (existingFile) {
+      setImages((prev) => prev.filter((file) => file !== existingFile));
+      setSelectedMap((prev) => {
+        const next = new Map(prev);
+        next.delete(url);
+        return next;
+      });
+      return;
+    }
+
+    addExtractedImageToPool(pool, url);
   };
 
   const addVoiceTextToSummary = (rawText: string) => {
@@ -2767,11 +2792,17 @@ const PropertySummary = () => {
               <p className="text-xs font-bold text-slate-800">
                 Found {extractedImages.length} image{extractedImages.length === 1 ? '' : 's'} on that page - check Project and/or Unit Plan on each one to add it there right away (an image can go to either, both, or neither). The Project Images and Unit / Floor Plan Images boxes below update as you check them.
               </p>
+              {autoSuggestedUnitPlanUrls.size > 0 && (
+                <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                  Auto-checked {autoSuggestedUnitPlanUrls.size} image{autoSuggestedUnitPlanUrls.size === 1 ? '' : 's'} into Unit Plan based on their labels (per-unit-type images if the page had any, otherwise floor plans like Configurations / Ground / First / Second Floor). Uncheck any that aren't right.
+                </p>
+              )}
               <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-4">
-                {extractedImages.map((url) => {
+                {extractedImages.map(({ url, label }) => {
                   const inProject = selectedForProject.has(url);
                   const inUnitPlan = selectedForUnitPlan.has(url);
                   const isLoading = loadingExtractedImageUrls.has(url);
+                  const isSuggested = autoSuggestedUnitPlanUrls.has(url);
                   return (
                     <div key={url} className="overflow-hidden rounded-lg border border-slate-200">
                       <div className="relative">
@@ -2780,6 +2811,11 @@ const PropertySummary = () => {
                           <div className="absolute inset-0 flex items-center justify-center bg-white/70">
                             <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
                           </div>
+                        )}
+                        {isSuggested && !isLoading && (
+                          <span className="absolute left-1 top-1 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-bold text-white" title={label || 'Suggested for Unit Plan'}>
+                            Suggested
+                          </span>
                         )}
                       </div>
                       <div className="flex divide-x divide-slate-200 border-t border-slate-200 text-[10px] font-bold">

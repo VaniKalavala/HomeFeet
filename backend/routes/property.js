@@ -189,14 +189,21 @@ const extractTextFromHtml = (html) => {
 
 // Pulls candidate photo URLs out of <img> tags, resolves them to absolute
 // URLs against the page's own address, and filters out obvious
-// icons/logos/tracking pixels by filename pattern.
+// icons/logos/tracking pixels by filename pattern. Also captures whatever
+// real, already-present text describes the image - its alt/title
+// attribute, falling back to its filename - so callers can tell a
+// "3 BHK Unit Plan" photo apart from a generic exterior shot without
+// guessing.
 const extractImageUrlsFromHtml = (html, baseUrl) => {
   const found = [];
   const seen = new Set();
-  const imgPattern = /<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  const imgPattern = /<img\b([^>]*)>/gi;
   let match;
   while ((match = imgPattern.exec(html)) && found.length < 40) {
-    const raw = match[1].trim();
+    const attrs = match[1];
+    const srcMatch = attrs.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+    if (!srcMatch) continue;
+    const raw = srcMatch[1].trim();
     if (!raw || raw.startsWith('data:')) continue;
     let absolute;
     try {
@@ -207,9 +214,36 @@ const extractImageUrlsFromHtml = (html, baseUrl) => {
     if (seen.has(absolute)) continue;
     if (/\b(logo|icon|sprite|favicon|pixel|placeholder|spinner|loader)\b/i.test(absolute)) continue;
     seen.add(absolute);
-    found.push(absolute);
+
+    const altMatch = attrs.match(/\balt\s*=\s*["']([^"']*)["']/i);
+    const titleMatch = attrs.match(/\btitle\s*=\s*["']([^"']*)["']/i);
+    let filenameLabel = '';
+    try {
+      const lastSegment = new URL(absolute).pathname.split('/').pop() || '';
+      filenameLabel = decodeURIComponent(lastSegment).replace(/\.[a-z0-9]+$/i, '').replace(/[-_+]+/g, ' ');
+    } catch {
+      filenameLabel = '';
+    }
+    const label = [altMatch?.[1], titleMatch?.[1], filenameLabel].filter(Boolean).join(' ').trim();
+
+    found.push({ url: absolute, label });
   }
   return found.slice(0, 24);
+};
+
+// Classifies extracted images so the Unit / Floor Plan Images pool can be
+// pre-filled sensibly. Prefer images explicitly labeled per unit type
+// (e.g. "3 BHK", "Unit Plan", "Typology"); when a listing has none of
+// those - common on villa brochures that show layouts per floor level
+// instead of per unit type - fall back to floor-wise plan images
+// (Configurations, Ground/First/Second/Third Floor plans, Site Plan).
+const UNIT_TYPE_IMAGE_LABEL_PATTERN = /\b\d(?:\.\d)?\s*bhk\b|\bunit\s*plan\b|\btypology\b/i;
+const FLOOR_PLAN_FALLBACK_LABEL_PATTERN = /\bconfigurations?\b|\bground\s*floor\b|\bfirst\s*floor\b|\bsecond\s*floor\b|\bthird\s*floor\b|\bfloor\s*plan\b|\bsite\s*plan\b/i;
+
+const pickSuggestedUnitPlanImageUrls = (images) => {
+  const unitWise = images.filter((img) => UNIT_TYPE_IMAGE_LABEL_PATTERN.test(img.label));
+  if (unitWise.length > 0) return unitWise.map((img) => img.url);
+  return images.filter((img) => FLOOR_PLAN_FALLBACK_LABEL_PATTERN.test(img.label)).map((img) => img.url);
 };
 
 // Excludes properties whose subscription-plan-based validity window has passed.
@@ -703,12 +737,13 @@ router.post('/fetch-property-url', async (req, res) => {
     const { html, finalUrl } = await fetchExternalUrlSafely(rawUrl);
     const text = extractTextFromHtml(html);
     const images = extractImageUrlsFromHtml(html, finalUrl);
+    const suggestedUnitPlanImageUrls = pickSuggestedUnitPlanImageUrls(images);
 
     if (!text.trim()) {
       return res.status(422).json({ error: 'Could not read any property details from that link' });
     }
 
-    res.json({ success: true, text, images, resolvedUrl: finalUrl });
+    res.json({ success: true, text, images, suggestedUnitPlanImageUrls, resolvedUrl: finalUrl });
   } catch (err) {
     console.error('Fetch property URL error:', err.message || err);
     res.status(422).json({ error: 'Could not fetch that link. Please check the URL or paste the details as text instead.' });
