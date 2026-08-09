@@ -2099,7 +2099,7 @@ const PropertiesListingPage: React.FC = () => {
                               {property.description}
                             </p>
                           )}
-                          <div className="mt-auto flex gap-1.5 pt-2">
+                          <div className="mt-2 flex gap-1.5">
                             <button
                               onClick={() => requireLoginForDetails(property)}
                               disabled={detailLoadingId === property._id}
