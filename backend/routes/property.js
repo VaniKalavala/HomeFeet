@@ -301,6 +301,20 @@ const extractGoogleMapsLinkFromHtml = (html) => {
   return match[0].replace(/&amp;/gi, '&');
 };
 
+// A listing page's real contact number/email is very often only present
+// as a "Call Now"/"Enquire" button's tel:/mailto: href, not as visible
+// text - plain-text extraction drops attribute values entirely, so this
+// scans the raw HTML for those specifically. Returns whatever it finds
+// (a builder's sales-desk number, for example) for the admin to review
+// and edit, never anything invented.
+const extractContactInfoFromHtml = (html) => {
+  const telMatch = html.match(/href\s*=\s*["']tel:([^"']+)["']/i);
+  const mailtoMatch = html.match(/href\s*=\s*["']mailto:([^"'?]+)/i);
+  const phone = telMatch ? telMatch[1].replace(/[^\d+]/g, '') : '';
+  const email = mailtoMatch ? decodeURIComponent(mailtoMatch[1].trim()) : '';
+  return { phone, email };
+};
+
 // Excludes properties whose subscription-plan-based validity window has passed.
 // expiresAt is null for listings with no plan-based expiry (unaffected).
 const notExpiredCondition = () => ({ $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] });
@@ -810,17 +824,24 @@ router.post('/fetch-property-url', async (req, res) => {
     const suggestedUnitPlanImageUrls = pickSuggestedUnitPlanImageUrls(images);
     const logoUrl = extractLogoUrlFromHtml(html, finalUrl);
     const mapLink = extractGoogleMapsLinkFromHtml(html);
+    const contactInfo = extractContactInfoFromHtml(html);
 
     if (!text.trim()) {
       return res.status(422).json({ error: 'Could not read any property details from that link' });
     }
 
-    // Carried as a plain line in the summary text (rather than a separate
-    // field the frontend has to wire up specially) so it flows through the
-    // exact same Google Maps link detection already used for pasted
-    // brochure text.
+    // Carried as plain lines in the summary text (rather than separate
+    // fields the frontend has to wire up specially) so they flow through
+    // the exact same Google Maps link / contact detail detection already
+    // used for pasted brochure text.
     if (mapLink && !text.includes(mapLink)) {
       text = `${text}\nGoogle Maps: ${mapLink}`;
+    }
+    if (contactInfo.phone && !text.includes(contactInfo.phone)) {
+      text = `${text}\nContact Number: ${contactInfo.phone}`;
+    }
+    if (contactInfo.email && !text.includes(contactInfo.email)) {
+      text = `${text}\nContact Email: ${contactInfo.email}`;
     }
 
     res.json({ success: true, text, images, suggestedUnitPlanImageUrls, logoUrl, resolvedUrl: finalUrl });

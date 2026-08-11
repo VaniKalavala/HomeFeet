@@ -440,6 +440,7 @@ const PostProperty = () => {
     const prefillContactEmail = String(prefill.contactEmail || prefill.email || '').trim();
     const prefillOwnerName = String(prefill.ownerName || prefill.contactName || '').trim();
     const ownerNameParts = prefillOwnerName.split(/\s+/).filter(Boolean);
+    const prefillContactAccountType = String(prefill.contactAccountType || '').trim().toLowerCase();
 
     setFormData(prev => ({
       ...prev,
@@ -531,6 +532,7 @@ const PostProperty = () => {
     if (canUseAssistedUpload && (prefillContactPhone || prefillContactEmail || prefillOwnerName)) {
       setAssistedOwner(prev => ({
         ...prev,
+        accountType: ['owner', 'mediator', 'builder'].includes(prefillContactAccountType) ? prefillContactAccountType : prev.accountType,
         phone: prefillContactPhone || prev.phone,
         firstName: ownerNameParts[0] || prev.firstName,
         lastName: ownerNameParts.slice(1).join(' ') || prev.lastName,

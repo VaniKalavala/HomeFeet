@@ -488,7 +488,14 @@ const insertMissingWordBoundaries = (value: string) =>
   value
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .replace(/([).,;:])([A-Za-z])/g, '$1 $2')
+    .replace(/([),;:])([A-Za-z])/g, '$1 $2')
+    // Period specifically only inserts a space before an UPPERCASE letter
+    // (the real "sentence ran into the next one" case, e.g.
+    // "Sold Out.Contact for details") - never before lowercase, since a
+    // period is immediately followed by a lowercase letter in every real
+    // email address and domain ("name@builder.com") and inserting a space
+    // there would silently break them.
+    .replace(/(\.)([A-Z])/g, '$1 $2')
     .replace(/(\d)([A-Z])/g, '$1 $2')
     .replace(/([a-z])(\d)/g, '$1 $2');
 
@@ -711,6 +718,16 @@ const extractLooseContactName = (summary = '', contactPhone = '') => {
   return '';
 };
 
+// Which of the three admin-assisted-upload account types the detected
+// contact looks like, purely from wording near it in the brochure/listing
+// text - defaults to 'owner' (matching the real form's own default)
+// whenever nothing more specific is mentioned.
+const extractContactAccountType = (summary = ''): 'owner' | 'mediator' | 'builder' => {
+  if (/\bbuilders?\b|\bdevelopers?\b|\bconstruction\s*company\b/i.test(summary)) return 'builder';
+  if (/\bmediators?\b|\bagents?\b|\bbrokers?\b|\bchannel\s*partners?\b/i.test(summary)) return 'mediator';
+  return 'owner';
+};
+
 const extractContactDetailsFromSummary = (summary = '') => {
   const labeledPhone =
     summary.match(/\b(?:contact\s*details|mobile|phone|contact\s*number)\s*[:.-]?\s*((?:\+?91[\s.-]?)?[6-9][\d\s.-]{8,20})/i)?.[1] || '';
@@ -727,8 +744,12 @@ const extractContactDetailsFromSummary = (summary = '') => {
       .map((pattern) => summary.match(pattern)?.[1] || '')
       .find((value) => cleanContactName(value)) || ''
   ) || extractLooseContactName(summary, contactPhone);
+  // Only worth guessing an account type when some other contact detail was
+  // actually found - otherwise this would silently default every property
+  // to "Owner" even when nothing about a contact was ever detected.
+  const contactAccountType = (contactPhone || contactEmail || ownerName) ? extractContactAccountType(summary) : '';
 
-  return { contactPhone, contactEmail, ownerName };
+  return { contactPhone, contactEmail, ownerName, contactAccountType };
 };
 
 const extractDeveloperRatio = (summary: string) => {
@@ -1653,6 +1674,21 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ].join('\n');
   };
 
+  // Owner / Mediator / Builder Details - kept as its own section, separate
+  // from the property itself, matching the real "Admin-Assisted Property
+  // Upload" registration card. Only shown when a contact was actually
+  // detected - an untouched "Account Type: Owner" row with nothing else
+  // would just be a fabricated-looking default, not a real finding.
+  const contactAccountTypeLabel = { owner: 'Owner', mediator: 'Agent (Mediator)', builder: 'Builder' }[parsed.contactAccountType] || '';
+  const contactDetails = (parsed.ownerName || parsed.contactPhone || parsed.contactEmail)
+    ? section('Owner / Mediator / Builder Details', [
+      ['Account Type', contactAccountTypeLabel],
+      ['Name', parsed.ownerName],
+      ['Mobile Number', parsed.contactPhone],
+      ['Email', parsed.contactEmail]
+    ])
+    : '';
+
   // Property Details
   const propertyDetails = section('Property Details', [
     ['Post Property For', parsed.listingIntent === 'development' ? 'Development' : parsed.listingIntent === 'buy' ? 'Buy' : 'Sell'],
@@ -1742,7 +1778,7 @@ const buildStructuredSummaryPreview = (summary: string, resolvedPincode = '', ha
     ['Survey Number', surveyNumber]
   ]);
 
-  return [propertyDetails, unitDetails, amenitiesDetails, commercialTerms, mediaUploads, locationDetails]
+  return [contactDetails, propertyDetails, unitDetails, amenitiesDetails, commercialTerms, mediaUploads, locationDetails]
     .filter(Boolean)
     .join('\n\n') || cleaned;
 };
