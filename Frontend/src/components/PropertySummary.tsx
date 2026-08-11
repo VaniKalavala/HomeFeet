@@ -343,7 +343,13 @@ const extractReraId = (text: string) => {
 };
 
 const extractPermissionNo = (text: string) => {
-  const match = text.match(/\b(?:hmda|dtcp|ghmc|gp|layout|building)\s*permission\s*(?:no\.?|number|regd\.?)*\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\/\-]{3,})/i);
+  // Prefer the authority-prefixed form ("HMDA Permission No. ...",
+  // "Building Permission No. ...") when present - it's the more specific
+  // match. Falls back to a bare "Permission No. <code>" since the
+  // authority is just as often embedded inside the code itself instead
+  // (e.g. "Permission No. 2189/HMDA/SWBP/2026").
+  const match = text.match(/\b(?:hmda|dtcp|ghmc|gp|layout|building)\s*permission\s*(?:no\.?|number|regd\.?)*\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\/\-]{3,})/i)
+    || text.match(/\bpermission\s*(?:no\.?|number|regd\.?)\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\/\-]{3,})/i);
   return match?.[1]?.trim() || '';
 };
 
