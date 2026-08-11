@@ -29,6 +29,7 @@ import {
   Laptop,
   Leaf,
   LifeBuoy,
+  Link2,
   MapPin,
   Music,
   Palmtree,
@@ -1526,6 +1527,99 @@ const PostProperty = () => {
   };
 
   const MAX_GALLERY_IMAGES = 10;
+
+  // Admin-only: paste a listing URL right here in Photo Gallery to pull in
+  // its images directly, without leaving the wizard for the separate
+  // Quick Add Property (paste summary) page. Same fetch-property-url /
+  // fetch-property-image endpoints and Referer-header hotlink-protection
+  // handling as that page - the admin picks which images to keep by
+  // toggling them on, and toggling off (or the normal × remove button
+  // once added) discards the ones they don't want.
+  const [linkImageUrl, setLinkImageUrl] = useState('');
+  const [isFetchingLinkImages, setIsFetchingLinkImages] = useState(false);
+  const [linkImageError, setLinkImageError] = useState('');
+  const [extractedLinkImages, setExtractedLinkImages] = useState<{ url: string; label: string }[]>([]);
+  const [selectedLinkImages, setSelectedLinkImages] = useState<Map<string, File>>(new Map());
+  const [loadingLinkImageUrls, setLoadingLinkImageUrls] = useState<Set<string>>(new Set());
+  const [failedLinkImageUrls, setFailedLinkImageUrls] = useState<Set<string>>(new Set());
+  const resolvedLinkImageUrlRef = useRef('');
+
+  const handleFetchLinkImages = async () => {
+    const url = linkImageUrl.trim();
+    if (!url) {
+      setLinkImageError('Paste a property listing link first.');
+      return;
+    }
+    setIsFetchingLinkImages(true);
+    setLinkImageError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/fetch-property-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not fetch images from that link.');
+      resolvedLinkImageUrlRef.current = typeof data.resolvedUrl === 'string' ? data.resolvedUrl : url;
+      setExtractedLinkImages(Array.isArray(data.images) ? data.images : []);
+      setSelectedLinkImages(new Map());
+      setFailedLinkImageUrls(new Set());
+    } catch (error: any) {
+      setLinkImageError(error.message || 'Could not fetch images from that link.');
+    } finally {
+      setIsFetchingLinkImages(false);
+    }
+  };
+
+  const toggleLinkImageSelection = async (url: string) => {
+    const existingFile = selectedLinkImages.get(url);
+    if (existingFile) {
+      setFormData(prev => ({ ...prev, images: prev.images.filter((file) => file !== existingFile) }));
+      setSelectedLinkImages(prev => {
+        const next = new Map(prev);
+        next.delete(url);
+        return next;
+      });
+      return;
+    }
+
+    setLoadingLinkImageUrls(prev => new Set(prev).add(url));
+    setFailedLinkImageUrls(prev => {
+      if (!prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.delete(url);
+      return next;
+    });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/fetch-property-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ url, refererUrl: resolvedLinkImageUrlRef.current })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to download image');
+      const blob = await (await fetch(data.dataUrl)).blob();
+      const file = new File([blob], `property-image-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      setSelectedLinkImages(prev => new Map(prev).set(url, file));
+      setFormData(prev => ({ ...prev, images: [...prev.images, file].slice(0, MAX_GALLERY_IMAGES) }));
+    } catch {
+      setFailedLinkImageUrls(prev => new Set(prev).add(url));
+    } finally {
+      setLoadingLinkImageUrls(prev => {
+        const next = new Set(prev);
+        next.delete(url);
+        return next;
+      });
+    }
+  };
 
   const handleGalleryImagesChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -3554,6 +3648,69 @@ const PostProperty = () => {
             <p className="mb-3 text-xs text-slate-500">
               Upload up to {MAX_GALLERY_IMAGES} clear photos of your property (exterior, interior, surroundings).
             </p>
+            {isAdminUser && (
+              <div className="mb-3 rounded-lg border border-teal-200 bg-teal-50 p-3">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-teal-800">
+                  <Link2 className="h-3.5 w-3.5" /> Admin: Grab images from a listing link
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="url"
+                    value={linkImageUrl}
+                    onChange={(e) => setLinkImageUrl(e.target.value)}
+                    placeholder="https://www.examplebuilder.com/project-name"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleFetchLinkImages}
+                    disabled={isFetchingLinkImages}
+                    className="shrink-0 rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isFetchingLinkImages ? 'Fetching...' : 'Fetch Images'}
+                  </button>
+                </div>
+                {linkImageError && <p className="mt-2 text-xs font-semibold text-red-600">{linkImageError}</p>}
+                {extractedLinkImages.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-2 text-[11px] font-semibold text-teal-800">
+                      Found {extractedLinkImages.length} image{extractedLinkImages.length === 1 ? '' : 's'} - tap to select the ones you want, tap again to drop one.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {extractedLinkImages.map(({ url }) => {
+                        const isSelected = selectedLinkImages.has(url);
+                        const isLoading = loadingLinkImageUrls.has(url);
+                        const isFailed = failedLinkImageUrls.has(url);
+                        return (
+                          <button
+                            key={url}
+                            type="button"
+                            onClick={() => toggleLinkImageSelection(url)}
+                            disabled={isLoading}
+                            className={`relative overflow-hidden rounded-lg border-2 transition disabled:cursor-not-allowed ${isSelected ? 'border-teal-600' : 'border-transparent hover:border-teal-300'}`}
+                          >
+                            <img src={url} alt="Extracted from listing" className="h-16 w-full object-cover" />
+                            {isSelected && !isLoading && (
+                              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">✓</span>
+                            )}
+                            {isLoading && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+                              </div>
+                            )}
+                            {isFailed && !isLoading && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-red-900/60 px-1 text-center text-[8px] font-bold leading-tight text-white">
+                                Blocked - tap to retry
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {existingMedia.imageUrls.length > 0 && (
               <div className="mb-3 grid grid-cols-3 gap-2">
                 {existingMedia.imageUrls.map((url, index) => (
