@@ -2305,6 +2305,18 @@ const PropertySummary = () => {
   const [selectedForProject, setSelectedForProject] = useState<Map<string, File>>(new Map());
   const [selectedForUnitPlan, setSelectedForUnitPlan] = useState<Map<string, File>>(new Map());
   const [loadingExtractedImageUrls, setLoadingExtractedImageUrls] = useState<Set<string>>(new Set());
+  // Which extracted-image downloads failed (e.g. the source site blocked
+  // it with hotlink protection) - shown as a visible "Failed" state on the
+  // thumbnail instead of the toggle silently doing nothing.
+  const [failedExtractedImageUrls, setFailedExtractedImageUrls] = useState<Set<string>>(new Set());
+  // The page's real URL after redirects, sent as the Referer header when
+  // downloading its images - many sites only serve images to requests
+  // whose Referer matches their own site. Mirrored into a ref because the
+  // auto-suggested downloads that follow immediately after "Generate
+  // Property" (in the same synchronous block that sets this) would
+  // otherwise read the state variable's stale pre-update value.
+  const [resolvedListingUrl, setResolvedListingUrl] = useState('');
+  const resolvedListingUrlRef = useRef('');
   const [mapLink, setMapLink] = useState('');
   const [mapLinkTouched, setMapLinkTouched] = useState(false);
   const [plotDiagramFile, setPlotDiagramFile] = useState<File | null>(null);
@@ -2644,6 +2656,10 @@ const PropertySummary = () => {
       setExtractedImages(images);
       setSelectedForProject(new Map());
       setSelectedForUnitPlan(new Map());
+      setFailedExtractedImageUrls(new Set());
+      const resolved = typeof data.resolvedUrl === 'string' ? data.resolvedUrl : url;
+      setResolvedListingUrl(resolved);
+      resolvedListingUrlRef.current = resolved;
       setMissingFields([]);
       if (message) setMessage('');
 
@@ -2681,6 +2697,12 @@ const PropertySummary = () => {
     const maxImages = pool === 'project' ? MAX_PROJECT_IMAGES : MAX_UNIT_PLAN_IMAGES;
 
     setLoadingExtractedImageUrls((prev) => new Set(prev).add(url));
+    setFailedExtractedImageUrls((prev) => {
+      if (!prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.delete(url);
+      return next;
+    });
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE}/fetch-property-image`, {
@@ -2689,7 +2711,7 @@ const PropertySummary = () => {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url, refererUrl: resolvedListingUrlRef.current })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to download image');
@@ -2698,7 +2720,9 @@ const PropertySummary = () => {
       setImages((prev) => [...prev, file].slice(0, maxImages));
     } catch {
       // Leave it unselected if the download failed - nothing to roll back
-      // since we never marked it selected on the way in.
+      // since we never marked it selected on the way in - but flag it so
+      // the toggle doesn't just silently appear to do nothing.
+      setFailedExtractedImageUrls((prev) => new Set(prev).add(url));
     } finally {
       setLoadingExtractedImageUrls((prev) => {
         const next = new Set(prev);
@@ -2721,7 +2745,7 @@ const PropertySummary = () => {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url, refererUrl: resolvedListingUrlRef.current })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to download logo');
@@ -2947,6 +2971,7 @@ const PropertySummary = () => {
                   const inUnitPlan = selectedForUnitPlan.has(url);
                   const isLoading = loadingExtractedImageUrls.has(url);
                   const isSuggested = autoSuggestedUnitPlanUrls.has(url);
+                  const isFailed = failedExtractedImageUrls.has(url);
                   return (
                     <div key={url} className="overflow-hidden rounded-lg border border-slate-200">
                       <div className="relative">
@@ -2956,10 +2981,15 @@ const PropertySummary = () => {
                             <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
                           </div>
                         )}
-                        {isSuggested && !isLoading && (
+                        {isSuggested && !isLoading && !isFailed && (
                           <span className="absolute left-1 top-1 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-bold text-white" title={label || 'Suggested for Unit Plan'}>
                             Suggested
                           </span>
+                        )}
+                        {isFailed && !isLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-red-900/60 px-1 text-center text-[9px] font-bold leading-tight text-white">
+                            Download blocked - tap to retry
+                          </div>
                         )}
                       </div>
                       <div className="flex divide-x divide-slate-200 border-t border-slate-200 text-[10px] font-bold">

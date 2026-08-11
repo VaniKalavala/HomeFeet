@@ -874,13 +874,33 @@ router.post('/fetch-property-image', async (req, res) => {
     }
     await assertPublicHostname(parsedUrl.hostname);
 
+    // Many sites only serve their own images when the request's Referer
+    // matches their own site (hotlink protection) - since this is a
+    // legitimate fetch-on-the-user's-behalf of a page they gave us, not
+    // hotlinking for republishing, sending the real page as Referer (the
+    // same header any browser tab open on that page would send) lets
+    // those images download instead of getting a blank 403.
+    const refererUrl = String(req.body.refererUrl || '').trim();
+    let refererHeader;
+    if (refererUrl) {
+      try {
+        refererHeader = new URL(refererUrl).origin;
+      } catch {
+        refererHeader = undefined;
+      }
+    }
+
     const response = await axios.get(rawUrl, {
       responseType: 'arraybuffer',
       maxRedirects: 3,
       timeout: 10000,
       maxContentLength: 8_000_000,
       maxBodyLength: 8_000_000,
-      headers: { 'User-Agent': 'Mozilla/5.0 HomeFeet property link resolver' }
+      headers: {
+        'User-Agent': 'Mozilla/5.0 HomeFeet property link resolver',
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        ...(refererHeader ? { Referer: refererHeader } : {})
+      }
     });
 
     const contentType = String(response.headers['content-type'] || '');
@@ -891,7 +911,11 @@ router.post('/fetch-property-image', async (req, res) => {
     const base64 = Buffer.from(response.data).toString('base64');
     res.json({ success: true, dataUrl: `data:${contentType};base64,${base64}` });
   } catch (err) {
-    console.error('Fetch property image error:', err.message || err);
+    const status = err.response?.status;
+    console.error('Fetch property image error:', status || err.message || err);
+    if (status === 403 || status === 401) {
+      return res.status(422).json({ error: 'That site blocked the image download (hotlink protection). Save the image and upload it manually instead.' });
+    }
     res.status(422).json({ error: 'Could not download that image' });
   }
 });
