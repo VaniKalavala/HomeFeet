@@ -1852,7 +1852,7 @@ const PropertiesListingPage: React.FC = () => {
                   ) : happeningProjects.map((pick) => (
                     <div
                       key={pick._id}
-                      className="grid h-44 w-[calc(50%-0.375rem)] shrink-0 snap-start grid-cols-[140px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm"
+                      className="grid h-44 w-[82%] shrink-0 snap-start grid-cols-[110px_1fr] overflow-hidden rounded-lg bg-gradient-to-br from-cyan-100 via-sky-50 to-amber-50 shadow-sm sm:w-[calc(50%-0.375rem)] sm:grid-cols-[140px_1fr]"
                     >
                       <div className="flex h-full w-full items-center justify-center bg-slate-100">
                         <img src={getProjectImage(pick)} alt={pick.projectName} className="h-full w-full object-contain" />
