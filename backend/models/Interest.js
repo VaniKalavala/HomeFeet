@@ -20,7 +20,24 @@ const interestSchema = new mongoose.Schema({
   },
   contactUnlockedAt: { type: Date, default: null, index: true },
   timestamp: { type: Date, default: Date.now },
-  respondedAt: { type: Date, default: null }
+  respondedAt: { type: Date, default: null },
+  // CRM fields - the requester's own personal pipeline tracking for this
+  // lead. Deliberately separate from `status` above: `status` still
+  // drives real access control (owner approval, contact unlock), while
+  // `crmStage` is just how the requester (e.g. a builder) organizes their
+  // own follow-up work and is never touched by the owner-response flow.
+  crmStage: {
+    type: String,
+    enum: ['new', 'contacted', 'site_visit', 'negotiation', 'won', 'lost'],
+    default: 'new'
+  },
+  notes: [{
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    createdBy: { type: String, default: '' }
+  }],
+  nextFollowUpAt: { type: Date, default: null, index: true },
+  followUpNote: { type: String, default: '' }
 });
 
 interestSchema.index({ userId: 1, propertyId: 1 }, { unique: true });

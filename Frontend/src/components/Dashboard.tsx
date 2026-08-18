@@ -23,6 +23,26 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Rejected'
 };
 
+// My Leads (builder CRM) - the requester's own pipeline for an Interest,
+// independent of the real requested/accepted/rejected status.
+const CRM_STAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'site_visit', label: 'Site Visit' },
+  { value: 'negotiation', label: 'Negotiation' },
+  { value: 'won', label: 'Won' },
+  { value: 'lost', label: 'Lost' }
+];
+
+const CRM_STAGE_STYLES: Record<string, string> = {
+  new: 'border-slate-300 bg-slate-100 text-slate-700',
+  contacted: 'border-sky-300 bg-sky-100 text-sky-700',
+  site_visit: 'border-amber-300 bg-amber-100 text-amber-700',
+  negotiation: 'border-purple-300 bg-purple-100 text-purple-700',
+  won: 'border-green-300 bg-green-100 text-green-700',
+  lost: 'border-red-300 bg-red-100 text-red-700'
+};
+
 const timelineLabels: Record<string, string> = {
   immediate: 'Property Looking Immediately',
   '3_months': '3 Months Time',
@@ -78,7 +98,7 @@ const Dashboard: React.FC = () => {
   const paymentInProgressRef = useRef(false);
   const isAdmin = isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
 
-  const [activeTab, setActiveTab] = useState<'posted' | 'subscription' | 'shortlisted' | 'contacted' | 'prospectBuyers'>('posted');
+  const [activeTab, setActiveTab] = useState<'posted' | 'subscription' | 'shortlisted' | 'contacted' | 'prospectBuyers' | 'myLeads'>('posted');
   const [defaultTabApplied, setDefaultTabApplied] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [accountType, setAccountType] = useState('owner');
@@ -109,6 +129,10 @@ const Dashboard: React.FC = () => {
   const [prospectBuyers, setProspectBuyers] = useState<any[]>([]);
   const [loadingProspectBuyers, setLoadingProspectBuyers] = useState(true);
   const [prospectBuyersAccessRequired, setProspectBuyersAccessRequired] = useState(false);
+  const [myLeads, setMyLeads] = useState<any[]>([]);
+  const [loadingMyLeads, setLoadingMyLeads] = useState(true);
+  const [savingLeadId, setSavingLeadId] = useState('');
+  const [noteDraftByLead, setNoteDraftByLead] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -262,12 +286,76 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // My Leads (builder CRM) - reuses the same /my-interests?as=buyer feed
+  // that Owners You Contacted (InterestShown.tsx) already shows, but adds
+  // the requester's own pipeline stage, follow-up reminder, and notes on
+  // top of each record.
+  const fetchMyLeads = async () => {
+    try {
+      setLoadingMyLeads(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/my-interests?as=buyer`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setMyLeads(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching leads:', err);
+    } finally {
+      setLoadingMyLeads(false);
+    }
+  };
+
+  const updateLeadCrm = async (id: string, update: { crmStage?: string; nextFollowUpAt?: string | null }) => {
+    setSavingLeadId(id);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/interests/${id}/crm`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(update)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update lead');
+      setMyLeads((prev) => prev.map((lead) => (lead._id === id ? data.interest : lead)));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update lead');
+    } finally {
+      setSavingLeadId('');
+    }
+  };
+
+  const addLeadNote = async (id: string) => {
+    const text = (noteDraftByLead[id] || '').trim();
+    if (!text) return;
+    setSavingLeadId(id);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/interests/${id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to add note');
+      setMyLeads((prev) => prev.map((lead) => (lead._id === id ? data.interest : lead)));
+      setNoteDraftByLead((prev) => ({ ...prev, [id]: '' }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to add note');
+    } finally {
+      setSavingLeadId('');
+    }
+  };
+
   useEffect(() => {
     fetchProperties();
     fetchInterestCounts();
     fetchShortlist();
     fetchContacted();
     fetchProspectBuyers();
+    fetchMyLeads();
   }, []);
 
   const handleCloseDeal = async (id: string) => {
@@ -632,6 +720,17 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 Prospect Buyers
+              </button>
+            )}
+            {accountType === 'builder' && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('myLeads')}
+                className={`px-4 py-2 text-sm font-bold transition ${
+                  activeTab === 'myLeads' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                My Leads
               </button>
             )}
             <button
@@ -1114,6 +1213,126 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'myLeads' && accountType === 'builder' && (
+            <div>
+              <h1 className="text-2xl font-black text-slate-950">My Leads</h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Every owner you've requested contact for, with your own pipeline stage, follow-up reminders, and notes.
+              </p>
+
+              {loadingMyLeads ? (
+                <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+                  <p className="text-sm text-slate-500">Loading...</p>
+                </div>
+              ) : myLeads.length === 0 ? (
+                <div className="mt-6 rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+                  <Users className="mx-auto h-8 w-8 text-teal-700" />
+                  <p className="mt-3 text-sm text-slate-500">
+                    You haven't requested contact for any owners yet. Once you do, they'll show up here to track.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-5 space-y-4">
+                  {myLeads.map((lead) => {
+                    const property = lead.propertyId || {};
+                    const isSaving = savingLeadId === lead._id;
+                    const followUpDue = Boolean(lead.nextFollowUpAt) && new Date(lead.nextFollowUpAt) <= new Date();
+                    const stage = lead.crmStage || 'new';
+                    return (
+                      <div
+                        key={lead._id}
+                        className={`overflow-hidden rounded-lg border bg-white p-5 shadow-sm ${followUpDue ? 'border-amber-400' : 'border-slate-200'}`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                              <MapPin className="h-4 w-4 text-slate-400" />
+                              {property.societyName || property.locality || 'Property'}
+                            </p>
+                            <p className="mt-0.5 text-sm text-slate-600">{property.locality}, {property.city}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              Requested {lead.timestamp ? formatDate(lead.timestamp) : ''} · Owner response: <span className="capitalize">{lead.status}</span>
+                            </p>
+                            {lead.contact && (
+                              <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
+                                {lead.contact.phone && (
+                                  <a href={`tel:${lead.contact.phone}`} className="flex items-center gap-1 font-bold text-teal-700 hover:underline">
+                                    <Phone className="h-3.5 w-3.5" /> {lead.contact.phone}
+                                  </a>
+                                )}
+                                {lead.contact.email && (
+                                  <a href={`mailto:${lead.contact.email}`} className="flex items-center gap-1 font-semibold text-slate-600 hover:underline">
+                                    <Mail className="h-3.5 w-3.5" /> {lead.contact.email}
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <select
+                            value={stage}
+                            disabled={isSaving}
+                            onChange={(e) => updateLeadCrm(lead._id, { crmStage: e.target.value })}
+                            className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-60 ${CRM_STAGE_STYLES[stage] || CRM_STAGE_STYLES.new}`}
+                          >
+                            {CRM_STAGE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                            Follow-up date:
+                            <input
+                              type="date"
+                              value={lead.nextFollowUpAt ? String(lead.nextFollowUpAt).slice(0, 10) : ''}
+                              disabled={isSaving}
+                              onChange={(e) => updateLeadCrm(lead._id, { nextFollowUpAt: e.target.value || null })}
+                              className="rounded-lg border border-slate-200 px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                            />
+                          </label>
+                          {followUpDue && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Follow-up due</span>
+                          )}
+                        </div>
+
+                        {Array.isArray(lead.notes) && lead.notes.length > 0 && (
+                          <div className="mt-3 space-y-1.5 rounded-lg bg-slate-50 p-3">
+                            {lead.notes.map((note: any, index: number) => (
+                              <p key={index} className="text-xs leading-5 text-slate-600">
+                                <span className="font-semibold text-slate-800">{note.createdBy || 'You'}</span>
+                                {' · '}{note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}: {note.text}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            type="text"
+                            value={noteDraftByLead[lead._id] || ''}
+                            onChange={(e) => setNoteDraftByLead((prev) => ({ ...prev, [lead._id]: e.target.value }))}
+                            placeholder="Add a note about this lead..."
+                            className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={isSaving}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addLeadNote(lead._id)}
+                            disabled={isSaving || !(noteDraftByLead[lead._id] || '').trim()}
+                            className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Add Note
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

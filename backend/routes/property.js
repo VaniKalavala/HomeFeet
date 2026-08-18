@@ -1782,6 +1782,91 @@ router.get('/my-interests', async (req, res) => {
   }
 });
 
+const CRM_STAGES = ['new', 'contacted', 'site_visit', 'negotiation', 'won', 'lost'];
+
+// PATCH /api/interests/:id/crm - the requester's own lead-pipeline
+// tracking (stage + follow-up reminder) for one of their Interest
+// records. Only the requester who created the lead can manage it - this
+// is their personal CRM, not something the property owner sees or
+// controls, and it never touches the real `status`/contact-unlock logic.
+router.patch('/interests/:id/crm', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const update = {};
+    if (req.body.crmStage !== undefined) {
+      if (!CRM_STAGES.includes(req.body.crmStage)) {
+        return res.status(400).json({ error: 'Invalid CRM stage' });
+      }
+      update.crmStage = req.body.crmStage;
+    }
+    if (req.body.nextFollowUpAt !== undefined) {
+      const parsed = req.body.nextFollowUpAt ? new Date(req.body.nextFollowUpAt) : null;
+      if (parsed && Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: 'Invalid follow-up date' });
+      }
+      update.nextFollowUpAt = parsed;
+    }
+    if (req.body.followUpNote !== undefined) {
+      update.followUpNote = String(req.body.followUpNote || '').trim().slice(0, 300);
+    }
+    if (!Object.keys(update).length) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    const interest = await Interest.findOneAndUpdate(
+      { _id: req.params.id, userId: user._id.toString() },
+      update,
+      { new: true }
+    ).populate('propertyId');
+    if (!interest) return res.status(404).json({ error: 'Lead not found' });
+
+    res.json({ success: true, interest: serializeInterestForUser(interest, user) });
+  } catch (err) {
+    console.error('CRM update error:', err);
+    res.status(500).json({ error: 'Failed to update lead' });
+  }
+});
+
+// POST /api/interests/:id/notes - append a note to a lead's activity log.
+router.post('/interests/:id/notes', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const text = String(req.body.text || '').trim();
+    if (!text) return res.status(400).json({ error: 'Note text is required' });
+    if (text.length > 1000) return res.status(400).json({ error: 'Note is too long (max 1000 characters)' });
+
+    const interest = await Interest.findOneAndUpdate(
+      { _id: req.params.id, userId: user._id.toString() },
+      {
+        $push: {
+          notes: {
+            text,
+            createdAt: new Date(),
+            createdBy: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.phone || ''
+          }
+        }
+      },
+      { new: true }
+    ).populate('propertyId');
+    if (!interest) return res.status(404).json({ error: 'Lead not found' });
+
+    res.json({ success: true, interest: serializeInterestForUser(interest, user) });
+  } catch (err) {
+    console.error('Add note error:', err);
+    res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
 router.patch('/interests/:id/respond', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
