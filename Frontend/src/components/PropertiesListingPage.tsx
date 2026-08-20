@@ -971,6 +971,7 @@ const PropertiesListingPage: React.FC = () => {
     const intent = (property.listingIntent || listingIntent || 'development').toLowerCase();
     if (intent === 'buy') return 'Buy';
     if (intent === 'sell') return 'Sell';
+    if (intent === 'lease') return 'Lease';
     return 'Development';
   };
   const getPropertyIntent = (property: Property) =>

@@ -20,7 +20,7 @@ const propertySchema = new mongoose.Schema({
   },
   listingIntent: {
     type: String,
-    enum: ['development', 'buy', 'sell'],
+    enum: ['development', 'buy', 'sell', 'lease'],
     default: 'development',
     index: true
   },
@@ -141,6 +141,23 @@ const propertySchema = new mongoose.Schema({
     default: ''
   },
   squareFeetPrice: {
+    type: String,
+    default: ''
+  },
+  // Commercial Lease terms only (listingIntent === 'lease').
+  rentPerSqFt: {
+    type: String,
+    default: ''
+  },
+  securityDeposit: {
+    type: String,
+    default: ''
+  },
+  depositDuration: {
+    type: String,
+    default: ''
+  },
+  leaseDurationYears: {
     type: String,
     default: ''
   },

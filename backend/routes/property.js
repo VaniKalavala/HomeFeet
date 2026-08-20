@@ -931,7 +931,7 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       facing, roadFacingDirection, roadSize, frontageWidth, pincode, zoningClassification,
       developerRatio, partlySale, partlySaleUnit, partlySaleValue, partlySalePrice,
       state, city, locality, societyName, landmark, map, goodwill, advance,
-      squareYardPrice, squareFeetPrice, totalBudget, totalBudgetOnwards, amenitiesChargeExtra, priceRange, purchaseTimeline, description, address, selectedAmenities, coordinates,
+      squareYardPrice, squareFeetPrice, rentPerSqFt, securityDeposit, depositDuration, leaseDurationYears, totalBudget, totalBudgetOnwards, amenitiesChargeExtra, priceRange, purchaseTimeline, description, address, selectedAmenities, coordinates,
       bedrooms, bathrooms, bhkBathrooms, floorNumber, totalFloors, furnishingStatus, possessionStatus,
       possessionDate, reraId, permissionNo, localityHighlights, projectHighlights
     } = req.body;
@@ -1041,6 +1041,10 @@ router.post('/add', handlePropertyUpload, async (req, res) => {
       advance: listingIntent === 'development' ? (advance || '') : '',
       squareYardPrice: listingIntent === 'development' ? '' : (squareYardPrice || ''),
       squareFeetPrice: squareFeetPrice || '',
+      rentPerSqFt: listingIntent === 'lease' ? (rentPerSqFt || '') : '',
+      securityDeposit: listingIntent === 'lease' ? (securityDeposit || '') : '',
+      depositDuration: listingIntent === 'lease' ? (depositDuration || '') : '',
+      leaseDurationYears: listingIntent === 'lease' ? (leaseDurationYears || '') : '',
       totalBudget: totalBudget || '',
       totalBudgetOnwards: totalBudgetOnwards === 'true' || totalBudgetOnwards === true,
       amenitiesChargeExtra: amenitiesChargeExtra || '',

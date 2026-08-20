@@ -1328,6 +1328,40 @@ const PropertyDetails: React.FC = () => {
               </div>
             )}
 
+            {property.listingIntent === 'lease' && property.rentPerSqFt && (
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-[0.9rem] font-black uppercase tracking-wide text-slate-500">Lease Terms</p>
+                <p className="mt-1 text-xl font-black text-[#F97316]">{formatMoney(property.rentPerSqFt)}/sft/month</p>
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
+                  {property.leaseDurationYears && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Lease Duration</span>
+                      <span className="font-bold text-slate-950">{property.leaseDurationYears} {Number(property.leaseDurationYears) === 1 ? 'Year' : 'Years'}</span>
+                    </div>
+                  )}
+                  {property.securityDeposit && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Security Deposit</span>
+                      <span className="font-bold text-slate-950">{formatMoney(property.securityDeposit)}</span>
+                    </div>
+                  )}
+                  {property.depositDuration && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Deposit Duration</span>
+                      <span className="font-bold text-slate-950">{property.depositDuration}</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleShowContact}
+                  className="mx-auto mt-4 block w-4/5 rounded-lg bg-[#F97316] px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#C2410C]"
+                >
+                  Request Cost Sheet
+                </button>
+              </div>
+            )}
+
             {property.totalBudget && (
               <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">

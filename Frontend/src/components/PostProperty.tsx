@@ -328,6 +328,11 @@ const PostProperty = () => {
     squareFeetPrice: '',
     totalBudget: '',
     totalBudgetOnwards: false,
+    // Commercial Lease terms only (Post Property For = Lease).
+    rentPerSqFt: '',
+    securityDeposit: '',
+    depositDuration: '',
+    leaseDurationYears: '',
     amenitiesChargeExtra: '',
     priceRange: '',
     purchaseTimeline: '',
@@ -495,6 +500,10 @@ const PostProperty = () => {
       partlySalePrice: prefill.partlySalePrice || prev.partlySalePrice,
       squareYardPrice: prefill.squareYardPrice || prev.squareYardPrice,
       squareFeetPrice: prefill.squareFeetPrice || prev.squareFeetPrice,
+      rentPerSqFt: prefill.rentPerSqFt || prev.rentPerSqFt,
+      securityDeposit: prefill.securityDeposit || prev.securityDeposit,
+      depositDuration: prefill.depositDuration || prev.depositDuration,
+      leaseDurationYears: prefill.leaseDurationYears || prev.leaseDurationYears,
       totalBudget: prefill.totalBudget || prev.totalBudget,
       totalBudgetOnwards: prefill.totalBudgetOnwards ?? prev.totalBudgetOnwards,
       amenitiesChargeExtra: prefill.amenitiesChargeExtra || prev.amenitiesChargeExtra,
@@ -750,6 +759,10 @@ const PostProperty = () => {
           advance: property.advance || '',
           squareYardPrice: property.squareYardPrice || '',
           squareFeetPrice: property.squareFeetPrice || '',
+          rentPerSqFt: property.rentPerSqFt || '',
+          securityDeposit: property.securityDeposit || '',
+          depositDuration: property.depositDuration || '',
+          leaseDurationYears: property.leaseDurationYears || '',
           totalBudget: property.totalBudget || '',
           totalBudgetOnwards: Boolean(property.totalBudgetOnwards),
           amenitiesChargeExtra: property.amenitiesChargeExtra || '',
@@ -1468,6 +1481,8 @@ const PostProperty = () => {
       setFormData(prev => ({
         ...prev,
         listingIntent: value,
+        // Leasing is a commercial-only deal type on this platform.
+        propertyCategory: value === 'lease' ? 'commercial' : prev.propertyCategory,
         developmentType: value !== 'development' && /acre/i.test(prev.areaUnit) && !prev.developmentType ? 'farm-house' : prev.developmentType,
         developerRatio: value === 'development' ? prev.developerRatio : '',
         partlySale: value === 'development' ? prev.partlySale : '',
@@ -1476,7 +1491,11 @@ const PostProperty = () => {
         partlySalePrice: value === 'development' ? prev.partlySalePrice : '',
         goodwill: value === 'development' ? prev.goodwill : '',
         advance: value === 'development' ? prev.advance : '',
-        squareYardPrice: value === 'development' ? '' : prev.squareYardPrice
+        squareYardPrice: value === 'development' ? '' : prev.squareYardPrice,
+        rentPerSqFt: value === 'lease' ? prev.rentPerSqFt : '',
+        securityDeposit: value === 'lease' ? prev.securityDeposit : '',
+        depositDuration: value === 'lease' ? prev.depositDuration : '',
+        leaseDurationYears: value === 'lease' ? prev.leaseDurationYears : ''
       }));
       return;
     }
@@ -2400,8 +2419,13 @@ const PostProperty = () => {
       setIsSubmitting(false);
       return;
     }
-    if (formData.listingIntent !== 'development' && (!formData.squareFeetPrice || Number(formData.squareFeetPrice) <= 0)) {
+    if (formData.listingIntent !== 'development' && formData.listingIntent !== 'lease' && (!formData.squareFeetPrice || Number(formData.squareFeetPrice) <= 0)) {
       alert('Please enter square feet price');
+      setIsSubmitting(false);
+      return;
+    }
+    if (formData.listingIntent === 'lease' && (!formData.rentPerSqFt || Number(formData.rentPerSqFt) <= 0)) {
+      alert('Please enter the rent per Sq Ft per month');
       setIsSubmitting(false);
       return;
     }
@@ -2478,6 +2502,10 @@ const PostProperty = () => {
     data.append('advance', formData.listingIntent === 'development' ? formData.advance : '');
     data.append('squareYardPrice', formData.listingIntent === 'development' ? '' : formData.squareYardPrice);
     data.append('squareFeetPrice', formData.squareFeetPrice);
+    data.append('rentPerSqFt', formData.listingIntent === 'lease' ? formData.rentPerSqFt : '');
+    data.append('securityDeposit', formData.listingIntent === 'lease' ? formData.securityDeposit : '');
+    data.append('depositDuration', formData.listingIntent === 'lease' ? formData.depositDuration : '');
+    data.append('leaseDurationYears', formData.listingIntent === 'lease' ? formData.leaseDurationYears : '');
     data.append('totalBudget', parseBudgetValue(formData.totalBudget));
     data.append('totalBudgetOnwards', String(formData.totalBudgetOnwards));
     data.append('amenitiesChargeExtra', formData.amenitiesChargeExtra);
@@ -2674,8 +2702,14 @@ const PostProperty = () => {
       createTitle: 'Submit a verified apartment or commercial space listing',
       editTitle: 'Edit your apartment or commercial space listing',
       description: 'Share property details, location, and price so serious buyers and mediators can shortlist faster.'
+    },
+    lease: {
+      eyebrow: 'Commercial leasing desk',
+      createTitle: 'Submit a verified commercial space for lease',
+      editTitle: 'Edit your commercial lease listing',
+      description: 'Share rent, deposit, and lease term details so serious tenants and mediators can shortlist faster.'
     }
-  }[formData.listingIntent as 'development' | 'buy' | 'sell'];
+  }[formData.listingIntent as 'development' | 'buy' | 'sell' | 'lease'];
 
   if (isLoadingProperty) {
     return (
@@ -2948,6 +2982,7 @@ const PostProperty = () => {
             {[
               { value: 'buy', label: 'Buy' },
               { value: 'sell', label: 'Sell' },
+              { value: 'lease', label: 'Lease (Commercial)' },
               ...(formData.listingIntent === 'development' ? [{ value: 'development', label: 'Development' }] : [])
             ].map((option) => (
               <label
@@ -3556,7 +3591,50 @@ const PostProperty = () => {
           />
         </div>
       )}
-      {formData.listingIntent !== 'development' && (
+      {formData.listingIntent === 'lease' && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input
+            name="rentPerSqFt"
+            onChange={handleChange}
+            value={formData.rentPerSqFt}
+            placeholder="Rent per Sq Ft per Month (Rs) *"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            type="number"
+            min="0"
+            step="any"
+            required
+          />
+          <input
+            name="leaseDurationYears"
+            onChange={handleChange}
+            value={formData.leaseDurationYears}
+            placeholder="Lease Duration (Years)"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            type="number"
+            min="0"
+            step="any"
+          />
+          <input
+            name="securityDeposit"
+            onChange={handleChange}
+            value={formData.securityDeposit}
+            placeholder="Security Deposit (Rs)"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            type="number"
+            min="0"
+            step="any"
+          />
+          <input
+            name="depositDuration"
+            onChange={handleChange}
+            value={formData.depositDuration}
+            placeholder="Deposit Duration - e.g. 6 months rent"
+            className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-teal-500"
+            type="text"
+          />
+        </div>
+      )}
+      {formData.listingIntent !== 'development' && formData.listingIntent !== 'lease' && (
         <>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input
