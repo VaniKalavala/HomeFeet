@@ -11,6 +11,7 @@ const WhatsAppIntake = require('../models/WhatsAppIntake');
 const BuilderContact = require('../models/BuilderContact');
 const Testimonial = require('../models/Testimonial');
 const LoginHistory = require('../models/LoginHistory');
+const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const { sendTodayBuilderDigest, getMissingWhatsAppConfig } = require('../lib/builderDigest');
 const hyderabadBuilderContacts = require('../data/hyderabadBuilderContacts');
@@ -126,6 +127,44 @@ router.patch('/properties/:id/reject', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error rejecting property:', error);
     res.status(500).json({ error: 'Failed to reject property' });
+  }
+});
+
+// PUT marketing leads Google Sheet link for a project, then sync it.
+// An empty url unlinks the sheet and removes its imported leads.
+router.put('/properties/:id/marketing-sheet', isAdmin, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    try {
+      const result = await setPropertyMarketingSheet(property, req.body?.url);
+      res.json({ success: true, ...result, property });
+    } catch (syncErr) {
+      // A saved link that failed to import keeps its error on the property
+      // so admin can see why (usually sharing settings).
+      res.status(syncErr.status || 422).json({ error: syncErr.message, property });
+    }
+  } catch (error) {
+    console.error('Error saving marketing sheet:', error);
+    res.status(500).json({ error: 'Failed to save marketing sheet link' });
+  }
+});
+
+// POST re-sync a project's marketing leads sheet
+router.post('/properties/:id/marketing-sheet/sync', isAdmin, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+    try {
+      const result = await syncPropertyMarketingLeads(property);
+      res.json({ success: true, ...result, property });
+    } catch (syncErr) {
+      res.status(422).json({ error: syncErr.message, property });
+    }
+  } catch (error) {
+    console.error('Error syncing marketing sheet:', error);
+    res.status(500).json({ error: 'Sync failed' });
   }
 });
 

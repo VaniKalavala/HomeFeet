@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, Check, KeyRound, Mail, MapPin, Pencil, Phone, Users } from 'lucide-react';
 import ListingsSidebar from './ListingsSidebar';
 import LoginModal from './LoginModal';
+import MarketingLeadsPanel, { MarketingLead, MarketingProject } from './MarketingLeadsPanel';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import { RAZORPAY_CHECKOUT_URL, razorpayConfig } from '../config/razorpay.config';
 import { isAdminUser } from '../lib/admin';
@@ -133,6 +134,13 @@ const Dashboard: React.FC = () => {
   const [loadingMyLeads, setLoadingMyLeads] = useState(true);
   const [savingLeadId, setSavingLeadId] = useState('');
   const [noteDraftByLead, setNoteDraftByLead] = useState<Record<string, string>>({});
+  // Marketing leads imported from the admin-linked Google Sheet per project.
+  const [marketingProjects, setMarketingProjects] = useState<MarketingProject[]>([]);
+  const [marketingLeads, setMarketingLeads] = useState<MarketingLead[]>([]);
+  const [loadingMarketingLeads, setLoadingMarketingLeads] = useState(true);
+  const [showMarketingLeads, setShowMarketingLeads] = useState(false);
+  const [marketingProjectFilter, setMarketingProjectFilter] = useState('all');
+  const [syncingMarketingId, setSyncingMarketingId] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -349,6 +357,45 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const fetchMarketingLeads = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/my-marketing-leads`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setMarketingProjects(Array.isArray(data.projects) ? data.projects : []);
+      setMarketingLeads(Array.isArray(data.leads) ? data.leads : []);
+    } catch (err) {
+      console.error('Error fetching marketing leads:', err);
+    } finally {
+      setLoadingMarketingLeads(false);
+    }
+  };
+
+  const refreshMarketingSheet = async (propertyId: string) => {
+    setSyncingMarketingId(propertyId);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/my-marketing-leads/${propertyId}/sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) alert(data.error || 'Could not refresh leads from the sheet.');
+      await fetchMarketingLeads();
+    } finally {
+      setSyncingMarketingId('');
+    }
+  };
+
+  const openMarketingLeads = (propertyId = 'all') => {
+    setMarketingProjectFilter(propertyId);
+    setShowMarketingLeads(true);
+  };
+
   useEffect(() => {
     fetchProperties();
     fetchInterestCounts();
@@ -356,6 +403,7 @@ const Dashboard: React.FC = () => {
     fetchContacted();
     fetchProspectBuyers();
     fetchMyLeads();
+    fetchMarketingLeads();
   }, []);
 
   const handleCloseDeal = async (id: string) => {
@@ -805,9 +853,9 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-1.5 text-sm">
                       <button
                         type="button"
-                        onClick={() => setSubCategoryFilter('all')}
+                        onClick={() => { setSubCategoryFilter('all'); setShowMarketingLeads(false); }}
                         className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
-                          subCategoryFilter === 'all' ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
+                          subCategoryFilter === 'all' && !showMarketingLeads ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                         }`}
                       >
                         All <span>({subCategoryCounts.all || 0})</span>
@@ -816,9 +864,9 @@ const Dashboard: React.FC = () => {
                         <button
                           key={value}
                           type="button"
-                          onClick={() => setSubCategoryFilter(value)}
+                          onClick={() => { setSubCategoryFilter(value); setShowMarketingLeads(false); }}
                           className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
-                            subCategoryFilter === value ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
+                            subCategoryFilter === value && !showMarketingLeads ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                           }`}
                         >
                           {label} <span>({subCategoryCounts[value] || 0})</span>
@@ -826,11 +874,24 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
 
+                    <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Marketing</p>
+                    <div className="space-y-1.5 text-sm">
+                      <button
+                        type="button"
+                        onClick={() => openMarketingLeads('all')}
+                        className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
+                          showMarketingLeads ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Marketing Leads <span>({marketingLeads.length})</span>
+                      </button>
+                    </div>
+
                     <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Status</p>
                     <div className="space-y-1.5 text-sm">
                       <button
                         type="button"
-                        onClick={() => setStatusFilter('all')}
+                        onClick={() => { setStatusFilter('all'); setShowMarketingLeads(false); }}
                         className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
                           statusFilter === 'all' ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                         }`}
@@ -841,7 +902,7 @@ const Dashboard: React.FC = () => {
                         <button
                           key={value}
                           type="button"
-                          onClick={() => setStatusFilter(value as StatusBucket)}
+                          onClick={() => { setStatusFilter(value as StatusBucket); setShowMarketingLeads(false); }}
                           className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
                             statusFilter === value ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                           }`}
@@ -853,6 +914,22 @@ const Dashboard: React.FC = () => {
                   </aside>
 
                   <div className="min-w-0 flex-1">
+                    {showMarketingLeads ? (
+                      <MarketingLeadsPanel
+                        projects={marketingProjects}
+                        leads={marketingLeads}
+                        loading={loadingMarketingLeads}
+                        projectFilter={marketingProjectFilter}
+                        onProjectFilterChange={setMarketingProjectFilter}
+                        onRefresh={refreshMarketingSheet}
+                        syncingId={syncingMarketingId}
+                        onLeadUpdated={(updated) =>
+                          setMarketingLeads((prev) => prev.map((l) => (l._id === updated._id ? updated : l)))
+                        }
+                        ownedProjects={properties.map((p) => ({ _id: String(p._id), projectName: p.projectName }))}
+                        onSheetChanged={fetchMarketingLeads}
+                      />
+                    ) : (<>
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <select
@@ -953,6 +1030,15 @@ const Dashboard: React.FC = () => {
                                       {interestedCount} interested buyer{interestedCount === 1 ? '' : 's'}
                                     </Link>
                                   )}
+                                  {marketingProjects.some((p) => p.propertyId === property._id) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openMarketingLeads(property._id)}
+                                      className="font-semibold text-teal-700 hover:underline"
+                                    >
+                                      {marketingLeads.filter((l) => l.propertyId === property._id).length} marketing leads
+                                    </button>
+                                  )}
                                 </div>
 
                                 <div className="mt-3 flex flex-wrap gap-2">
@@ -990,6 +1076,7 @@ const Dashboard: React.FC = () => {
                         })}
                       </div>
                     )}
+                    </>)}
                   </div>
                 </div>
               )}

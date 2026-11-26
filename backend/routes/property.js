@@ -11,6 +11,8 @@ const Interest = require('../models/Interest');
 const Shortlist = require('../models/Shortlist');
 const Message = require('../models/Message');
 const ContactInquiry = require('../models/ContactInquiry');
+const MarketingLead = require('../models/MarketingLead');
+const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
 
 const router = express.Router();
 const ADMIN_PHONES = (process.env.ADMIN_PHONES || '9014011885,7416995503')
@@ -1222,6 +1224,152 @@ router.get('/user-properties', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch user properties' });
+  }
+});
+
+// Marketing leads (imported from the admin-linked Google Sheet) for the
+// projects this user owns - same ownership rule as /user-properties.
+const findOwnedProperties = async (req) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return { status: 401 };
+  const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+  const user = await User.findById(decoded.id);
+  if (!user) return { status: 404 };
+  const ownerMatch = [{ userId: user._id.toString() }];
+  if (user.phone) ownerMatch.push({ phone: user.phone });
+  const properties = await Property.find({ $or: ownerMatch })
+    .select('projectName locality city marketingSheetUrl marketingSheetSyncedAt marketingSheetLeadCount marketingSheetError marketingSheetTabs');
+  return { properties };
+};
+
+// GET /api/my-marketing-leads
+router.get('/my-marketing-leads', async (req, res) => {
+  try {
+    const { status, properties } = await findOwnedProperties(req);
+    if (status) return res.status(status).json({ error: 'Unauthorized' });
+
+    const linked = properties.filter((p) => p.marketingSheetUrl);
+    const leads = await MarketingLead.find({ propertyId: { $in: linked.map((p) => String(p._id)) } })
+      .sort({ leadAt: -1, createdAt: -1 })
+      .select('-rowKey -__v')
+      .lean();
+
+    res.json({
+      projects: linked.map((p) => ({
+        propertyId: String(p._id),
+        projectName: p.projectName || 'Untitled Project',
+        locality: p.locality,
+        city: p.city,
+        sheetUrl: p.marketingSheetUrl,
+        syncedAt: p.marketingSheetSyncedAt,
+        leadCount: p.marketingSheetLeadCount,
+        error: p.marketingSheetError,
+        tabs: p.marketingSheetTabs || []
+      })),
+      leads
+    });
+  } catch (err) {
+    console.error('Error fetching marketing leads:', err);
+    res.status(500).json({ error: 'Failed to fetch marketing leads' });
+  }
+});
+
+// PUT /api/my-marketing-leads/:propertyId/sheet { url } - project owner links
+// their own leads sheet (every tab is imported); empty url unlinks it.
+router.put('/my-marketing-leads/:propertyId/sheet', async (req, res) => {
+  try {
+    const { status, properties } = await findOwnedProperties(req);
+    if (status) return res.status(status).json({ error: 'Unauthorized' });
+    if (!properties.some((p) => String(p._id) === req.params.propertyId)) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const property = await Property.findById(req.params.propertyId);
+    const result = await setPropertyMarketingSheet(property, req.body?.url);
+    res.json({ success: true, count: result.count, tabs: result.tabs, unlinked: Boolean(result.unlinked) });
+  } catch (err) {
+    res.status(err.status || 422).json({ error: err.message || 'Could not import the sheet' });
+  }
+});
+
+// POST /api/my-marketing-leads/:propertyId/sync - owner re-imports the linked sheet.
+router.post('/my-marketing-leads/:propertyId/sync', async (req, res) => {
+  try {
+    const { status, properties } = await findOwnedProperties(req);
+    if (status) return res.status(status).json({ error: 'Unauthorized' });
+    const owned = properties.find((p) => String(p._id) === req.params.propertyId);
+    if (!owned) return res.status(404).json({ error: 'Project not found' });
+
+    const result = await syncPropertyMarketingLeads(req.params.propertyId);
+    res.json({ success: true, count: result.count, syncedAt: result.syncedAt });
+  } catch (err) {
+    res.status(422).json({ error: err.message || 'Sync failed' });
+  }
+});
+
+// Marketing-lead CRM: only the owner of the lead's project can manage it.
+const findOwnedMarketingLead = async (req) => {
+  const { status, properties } = await findOwnedProperties(req);
+  if (status) return { status };
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) return { status: 404 };
+  const lead = await MarketingLead.findById(req.params.id);
+  if (!lead || !properties.some((p) => String(p._id) === lead.propertyId)) return { status: 404 };
+  return { lead };
+};
+
+const serializeMarketingLead = (lead) => {
+  const obj = lead.toObject();
+  delete obj.rowKey;
+  delete obj.__v;
+  return obj;
+};
+
+// PATCH /api/my-marketing-leads/lead/:id/crm  { crmStage?, nextFollowUpAt? }
+router.patch('/my-marketing-leads/lead/:id/crm', async (req, res) => {
+  try {
+    const { status, lead } = await findOwnedMarketingLead(req);
+    if (status) return res.status(status).json({ error: status === 401 ? 'Unauthorized' : 'Lead not found' });
+
+    let changed = false;
+    if (req.body.crmStage !== undefined) {
+      if (!CRM_STAGES.includes(req.body.crmStage)) return res.status(400).json({ error: 'Invalid CRM stage' });
+      lead.crmStage = req.body.crmStage;
+      changed = true;
+    }
+    if (req.body.nextFollowUpAt !== undefined) {
+      const parsed = req.body.nextFollowUpAt ? new Date(req.body.nextFollowUpAt) : null;
+      if (parsed && Number.isNaN(parsed.getTime())) return res.status(400).json({ error: 'Invalid follow-up date' });
+      lead.nextFollowUpAt = parsed;
+      changed = true;
+    }
+    if (!changed) return res.status(400).json({ error: 'Nothing to update' });
+
+    await lead.save();
+    res.json({ success: true, lead: serializeMarketingLead(lead) });
+  } catch (err) {
+    console.error('Marketing lead CRM update error:', err);
+    res.status(500).json({ error: 'Failed to update lead' });
+  }
+});
+
+// POST /api/my-marketing-leads/lead/:id/notes  { text }
+router.post('/my-marketing-leads/lead/:id/notes', async (req, res) => {
+  try {
+    const { status, lead } = await findOwnedMarketingLead(req);
+    if (status) return res.status(status).json({ error: status === 401 ? 'Unauthorized' : 'Lead not found' });
+
+    const text = String(req.body.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'Note cannot be empty' });
+
+    const token = req.headers.authorization.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const user = await User.findById(decoded.id).select('firstName lastName phone');
+    const author = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.phone || '';
+    lead.notes.push({ text, createdBy: author });
+    await lead.save();
+    res.json({ success: true, lead: serializeMarketingLead(lead) });
+  } catch (err) {
+    console.error('Marketing lead note error:', err);
+    res.status(500).json({ error: 'Failed to add note' });
   }
 });
 

@@ -36,7 +36,98 @@ interface Property {
   totalFloors?: string;
   furnishingStatus?: string;
   possessionStatus?: string;
+  marketingSheetUrl?: string;
+  marketingSheetSyncedAt?: string | null;
+  marketingSheetLeadCount?: number;
+  marketingSheetError?: string;
 }
+
+// Admin links a project's marketing leads Google Sheet; the backend imports
+// the rows and the project owner sees them date-wise on their dashboard.
+const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Property) => void }> = ({ property, onUpdated }) => {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState(property.marketingSheetUrl || '');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const call = async (method: 'PUT' | 'POST', path: string, body?: object) => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/admin/properties/${property._id}/${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.property) onUpdated(data.property);
+      if (!res.ok) setMessage(data.error || 'Failed');
+      else if (typeof data.count === 'number') setMessage(`Imported ${data.count} leads.`);
+      else setMessage('Sheet unlinked.');
+    } catch (err: any) {
+      setMessage(err.message || 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const linked = Boolean(property.marketingSheetUrl);
+
+  return (
+    <div className="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between font-semibold text-slate-700">
+        <span className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-teal-700" />
+          Marketing Leads Sheet
+          {linked && (
+            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-800">
+              {property.marketingSheetLeadCount || 0} leads
+            </span>
+          )}
+          {property.marketingSheetError && <span className="text-xs font-bold text-red-600">sync error</span>}
+        </span>
+        <span className="text-xs text-slate-500">{open ? 'Hide' : linked ? 'Manage' : 'Add link'}</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+          />
+          <p className="text-xs text-slate-500">
+            Sheet must be shared as "Anyone with the link - Viewer". Every tab is imported (one per campaign); each needs a date and a name or phone column. Other columns (BHK, budget, feedback...) are picked up automatically.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={busy || !url.trim()} onClick={() => call('PUT', 'marketing-sheet', { url })}
+              className="rounded-lg bg-teal-600 px-3 py-1.5 font-semibold text-white hover:bg-teal-700 disabled:opacity-50">
+              {busy ? 'Working...' : 'Save & Import'}
+            </button>
+            {linked && (
+              <>
+                <button type="button" disabled={busy} onClick={() => call('POST', 'marketing-sheet/sync')}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50">
+                  Re-sync
+                </button>
+                <button type="button" disabled={busy} onClick={() => { setUrl(''); call('PUT', 'marketing-sheet', { url: '' }); }}
+                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                  Unlink
+                </button>
+              </>
+            )}
+          </div>
+          {property.marketingSheetSyncedAt && (
+            <p className="text-xs text-slate-500">Last synced: {new Date(property.marketingSheetSyncedAt).toLocaleString('en-IN')}</p>
+          )}
+          {property.marketingSheetError && <p className="text-xs font-semibold text-red-600">{property.marketingSheetError}</p>}
+          {message && <p className="text-xs font-semibold text-slate-700">{message}</p>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const stateCapitalOptions = [
   { state: 'Telangana', capital: 'Hyderabad' },
@@ -3519,6 +3610,12 @@ const AdminPanel: React.FC = () => {
                             <span className="font-bold">Feedback sent:</span> {property.rejectionReason}
                           </div>
                         )}
+                        <MarketingSheetControl
+                          property={property}
+                          onUpdated={(updated) =>
+                            setProperties((prev) => prev.map((p) => (p._id === updated._id ? { ...p, ...updated } : p)))
+                          }
+                        />
                       </div>
                     </div>
                   </div>

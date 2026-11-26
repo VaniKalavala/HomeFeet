@@ -385,8 +385,22 @@ const propertySchema = new mongoose.Schema({
     enum: ['', 'morning', 'evening'],
     default: '',
     index: true
+  },
+  // Marketing leads Google Sheet - set by admin, synced into MarketingLead.
+  marketingSheetUrl: { type: String, default: '' },
+  marketingSheetSyncedAt: { type: Date, default: null },
+  marketingSheetLeadCount: { type: Number, default: 0 },
+  marketingSheetError: { type: String, default: '' },
+  // Cached column mappings keyed by header-row hash, reused while a tab's
+  // header row is unchanged. (marketingSheetHeaderSig is legacy, unused.)
+  marketingSheetHeaderSig: { type: String, default: '' },
+  marketingSheetColumnMap: { type: mongoose.Schema.Types.Mixed, default: null },
+  // Every tab of the linked spreadsheet is imported; this is the last sync's report.
+  marketingSheetTabs: {
+    type: [{ _id: false, gid: String, name: String, leadCount: Number, skipped: String }],
+    default: []
   }
-}, { 
+}, {
   timestamps: true 
 });
 
