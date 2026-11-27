@@ -4,7 +4,7 @@ import { API_BASE } from '../lib/api';
 
 // Same pipeline stages as the builder "Direct Leads" CRM.
 const CRM_STAGES: { value: string; label: string }[] = [
-  { value: 'new', label: 'New' },
+  { value: 'new', label: 'New Lead' },
   { value: 'contacted', label: 'Contacted' },
   { value: 'site_visit', label: 'Site Visit' },
   { value: 'negotiation', label: 'Negotiation' },

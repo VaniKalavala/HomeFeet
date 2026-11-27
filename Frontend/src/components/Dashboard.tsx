@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
 // Direct Leads (builder CRM) - the requester's own pipeline for an Interest,
 // independent of the real requested/accepted/rejected status.
 const CRM_STAGE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'new', label: 'New' },
+  { value: 'new', label: 'New Lead' },
   { value: 'contacted', label: 'Contacted' },
   { value: 'site_visit', label: 'Site Visit' },
   { value: 'negotiation', label: 'Negotiation' },
