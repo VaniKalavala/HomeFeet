@@ -19,11 +19,12 @@ const MarketingLead = require('../models/MarketingLead');
 // Write every lead that already has a stage, follow-up or notes into the
 // sheet. Runs in the background (Apps Script takes ~1-3s per call); returns
 // how many leads were queued.
+const findUpdatedLeads = (property) => MarketingLead.find({
+  propertyId: String(property._id),
+  $or: [{ crmStage: { $nin: ['', 'new'] } }, { nextFollowUpAt: { $ne: null } }, { 'notes.0': { $exists: true } }]
+});
 const backfillSheetWriteBack = async (property) => {
-  const leads = await MarketingLead.find({
-    propertyId: String(property._id),
-    $or: [{ crmStage: { $nin: ['', 'new'] } }, { nextFollowUpAt: { $ne: null } }, { 'notes.0': { $exists: true } }]
-  });
+  const leads = await findUpdatedLeads(property);
   (async () => {
     for (const lead of leads) await writeBackLead(lead, property);
   })().catch((err) => console.error('Sheet write-back backfill failed:', err.message));
@@ -172,6 +173,32 @@ router.put('/properties/:id/marketing-sheet', isAdmin, async (req, res) => {
 // admins must share each leads sheet with (as Editor).
 router.get('/marketing-sheet-writeback', isAdmin, (_req, res) => {
   res.json(getWriteBackConfig());
+});
+
+// POST write every lead's stage/notes into the project's sheet now, and say
+// how it went. Stops at the first lead if the sheet is not reachable at all
+// (not shared / not set up), so admin sees why straight away.
+router.post('/properties/:id/marketing-sheet-writeback/run', isAdmin, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id).select('+marketingSheetScriptUrl');
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+    const leads = await findUpdatedLeads(property);
+    if (!leads.length) return res.json({ success: true, message: 'No leads have a stage, follow-up or notes yet.', property });
+    let ok = 0;
+    let missing = 0;
+    for (const lead of leads) {
+      const result = await writeBackLead(lead, property);
+      if (result.status === 'ok') ok += 1;
+      else if (['not_shared', 'not_configured'].includes(result.status)) {
+        return res.status(422).json({ error: result.message, property });
+      } else missing += 1;
+    }
+    const message = `Wrote ${ok} lead${ok === 1 ? '' : 's'} into the sheet${missing ? `; ${missing} not found in the sheet (no matching phone number)` : ''}.`;
+    res.json({ success: true, message, property });
+  } catch (error) {
+    console.error('Error writing leads to sheet:', error);
+    res.status(500).json({ error: 'Failed to write leads to the sheet' });
+  }
 });
 
 // PUT the project's write-back Apps Script web app URL { url }; empty unlinks.

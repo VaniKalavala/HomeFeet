@@ -106,8 +106,19 @@ const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; bu
           <span>Not connected. Owner notes stay in HomeFeet only.</span>
         )}
         {linked && !label && <span className="font-bold text-green-700">Connected</span>}
-        <button type="button" onClick={() => setOpen((v) => !v)} className="font-semibold text-teal-700 hover:underline">
-          {linked ? 'Change script' : 'Connect with Apps Script'}
+        {(linked || config.configured) && (
+          <button
+            type="button"
+            disabled={Boolean(busy)}
+            onClick={() => call('writeback', 'POST', 'marketing-sheet-writeback/run')}
+            className="flex items-center gap-1 font-semibold text-teal-700 hover:underline disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${busy === 'writeback' ? 'animate-spin' : ''}`} />
+            {busy === 'writeback' ? 'Writing to sheet...' : 'Write all to sheet'}
+          </button>
+        )}
+        <button type="button" onClick={() => setOpen((v) => !v)} className="font-semibold text-slate-600 hover:underline">
+          {linked ? 'Change script' : config.configured ? 'Or use Apps Script' : 'Connect with Apps Script'}
         </button>
         {linked && (
           <button
@@ -120,6 +131,16 @@ const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; bu
           </button>
         )}
       </div>
+      {config.configured && !linked && (
+        <p className="mt-1 text-slate-500">
+          Share the sheet as <b>Editor</b> with{' '}
+          <code className="rounded bg-white px-1.5 py-0.5 text-slate-800 ring-1 ring-slate-200">{config.email}</code>{' '}
+          <button type="button" onClick={() => copy('email', config.email)} className="font-semibold text-teal-700 hover:underline">
+            {copied === 'email' ? 'Copied' : 'Copy'}
+          </button>
+          , then click Write all to sheet. Stages go in Lead_Status and notes in FeedBack; the team's text there is kept.
+        </p>
+      )}
 
       {open && (
         <div className="mt-2 space-y-2 rounded-lg bg-white p-3 ring-1 ring-slate-200">
@@ -214,7 +235,8 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
         setMessage(data.error || (res.status === 404 ? 'Server does not have this feature yet (HTTP 404).' : `Failed (HTTP ${res.status})`));
         return false;
       }
-      if (typeof data.count === 'number') setMessage(`Imported ${data.count} unique leads.`);
+      if (typeof data.message === 'string') setMessage(data.message);
+      else if (typeof data.count === 'number') setMessage(`Imported ${data.count} unique leads.`);
       else if (data.sheetName) {
         setMessage(`Write-back connected to "${data.sheetName}".${data.backfill ? ` Writing ${data.backfill} updated lead${data.backfill === 1 ? '' : 's'} into the sheet now.` : ''}`);
       }
