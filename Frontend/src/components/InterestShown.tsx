@@ -28,7 +28,7 @@ const InterestShown: React.FC = () => {
 
   return (
     <div className="bg-slate-50">
-      <div className="mx-auto flex w-full max-w-7xl">
+      <div className="mx-auto flex w-full max-w-7xl flex-col">
       <ListingsSidebar activePage="shown" />
       <div className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold mb-2 text-slate-900">Owners You Contacted</h1>

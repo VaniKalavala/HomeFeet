@@ -105,7 +105,7 @@ const UserProfile: React.FC = () => {
 
   return (
     <div className="bg-slate-50">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl flex-col">
       <ListingsSidebar activePage="profile" />
       <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8">
         <section className="relative overflow-hidden rounded-lg border border-teal-100 bg-[#eefdfd] p-6 shadow-sm sm:p-8">

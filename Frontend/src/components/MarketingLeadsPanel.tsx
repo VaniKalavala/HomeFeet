@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BellRing, CalendarDays, Mail, MessageSquareText, Phone, RefreshCw, Search, StickyNote } from 'lucide-react';
+import { BellRing, CalendarDays, Mail, MessageSquareText, Pencil, Phone, Search, StickyNote, Trash2 } from 'lucide-react';
 import { API_BASE } from '../lib/api';
 
 // Same pipeline stages as the builder "My Leads" CRM.
@@ -41,101 +41,17 @@ export interface MarketingProject {
   leadCount?: number;
   error?: string;
   tabs?: { gid: string; name: string; leadCount: number; skipped?: string }[];
+  autoWhatsApp?: boolean;
+  autoWhatsAppSince?: string | null;
+  autoWhatsAppLastRunAt?: string | null;
+  autoWhatsAppLastResult?: string;
 }
 
-// Paste a Google Sheet link for one of your projects; every tab is imported.
-const SheetConnectForm: React.FC<{
-  ownedProjects: { _id: string; projectName: string }[];
-  defaultProjectId?: string;
-  defaultUrl?: string;
-  onDone: () => void;
-  onCancel?: () => void;
-}> = ({ ownedProjects, defaultProjectId, defaultUrl, onDone, onCancel }) => {
-  const [projectId, setProjectId] = useState(defaultProjectId || ownedProjects[0]?._id || '');
-  const [url, setUrl] = useState(defaultUrl || '');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const submit = async () => {
-    if (!projectId || !url.trim()) return;
-    setBusy(true);
-    setError('');
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE}/my-marketing-leads/${projectId}/sheet`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url: url.trim() })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-          (res.status === 404
-            ? 'The server does not have the Marketing Leads feature yet (HTTP 404). Deploy the latest backend and try again.'
-            : `Could not import the sheet (HTTP ${res.status}).`)
-        );
-      }
-      onDone();
-    } catch (err: any) {
-      setError(err.message || 'Could not import the sheet');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!ownedProjects.length) {
-    return <p className="text-sm text-slate-500">Post a project first, then connect its marketing leads sheet here.</p>;
-  }
-
-  return (
-    <div className="space-y-3 text-left">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr]">
-        <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
-          Project
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-800"
-          >
-            {ownedProjects.map((p) => <option key={p._id} value={p._id}>{p.projectName || 'Untitled Project'}</option>)}
-          </select>
-        </label>
-        <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
-          Google Sheet link
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm normal-case tracking-normal text-slate-800"
-          />
-        </label>
-      </div>
-      <ul className="list-disc space-y-0.5 pl-5 text-xs text-slate-500">
-        <li>In Google Sheets: Share → General access → <b>Anyone with the link · Viewer</b>, then Copy link.</li>
-        <li>Every tab is imported (e.g. one tab per campaign). Each tab needs a date column and a name or phone column.</li>
-        <li>Same name + phone in any tab is shown once and marked <b className="text-red-600">Repeated lead</b>.</li>
-      </ul>
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={busy || !url.trim() || !projectId}
-          className="flex items-center gap-2 rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white hover:bg-teal-700 disabled:opacity-50"
-        >
-          {busy && <RefreshCw className="h-4 w-4 animate-spin" />}
-          {busy ? 'Importing all tabs...' : 'Connect & Import Leads'}
-        </button>
-        {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            Cancel
-          </button>
-        )}
-      </div>
-    </div>
-  );
+const WHATSAPP_STATUS: Record<string, { label: string; cls: string }> = {
+  sent: { label: 'WhatsApp sent', cls: 'bg-green-100 text-green-800' },
+  sending: { label: 'WhatsApp sending', cls: 'bg-slate-100 text-slate-600' },
+  failed: { label: 'WhatsApp failed', cls: 'bg-red-100 text-red-700' },
+  skipped: { label: 'WhatsApp skipped', cls: 'bg-slate-100 text-slate-600' }
 };
 
 export interface MarketingLead {
@@ -151,9 +67,12 @@ export interface MarketingLead {
   repeatCount?: number;
   enquiryDates?: string[];
   campaigns?: string[];
+  whatsappStatus?: string;
+  whatsappSentAt?: string | null;
+  whatsappError?: string;
   crmStage?: string;
   nextFollowUpAt?: string | null;
-  notes?: { _id?: string; text: string; createdAt: string; createdBy?: string }[];
+  notes?: { _id?: string; text: string; createdAt: string; createdBy?: string; editedAt?: string | null }[];
 }
 
 const shortDate = (value: string) =>
@@ -165,11 +84,7 @@ interface Props {
   loading: boolean;
   projectFilter: string;
   onProjectFilterChange: (propertyId: string) => void;
-  onRefresh: (propertyId: string) => void;
-  syncingId: string;
   onLeadUpdated: (lead: MarketingLead) => void;
-  ownedProjects: { _id: string; projectName: string }[];
-  onSheetChanged: () => void;
 }
 
 const IST = 'Asia/Kolkata';
@@ -201,32 +116,10 @@ const timeLabel = (value?: string | null) => {
   return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: IST });
 };
 
-const syncedLabel = (value?: string | null) => {
-  if (!value) return 'Not synced yet';
-  return `Synced ${new Date(value).toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: IST
-  })}`;
-};
-
 const MarketingLeadsPanel: React.FC<Props> = ({
-  projects, leads, loading, projectFilter, onProjectFilterChange, onRefresh, syncingId, onLeadUpdated,
-  ownedProjects, onSheetChanged
+  projects, leads, loading, projectFilter, onProjectFilterChange, onLeadUpdated
 }) => {
   const [campaignFilter, setCampaignFilter] = useState('all');
-  // '' = closed, 'new' = connect another project, or a propertyId being re-linked.
-  const [sheetFormFor, setSheetFormFor] = useState('');
-
-  const unlinkSheet = async (propertyId: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_BASE}/my-marketing-leads/${propertyId}/sheet`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ url: '' })
-    });
-    if (!res.ok) alert('Could not unlink the sheet.');
-    onSheetChanged();
-  };
-
   const campaignOptions = useMemo(
     () => Array.from(new Set(leads.flatMap((l) => l.campaigns || []))).sort(),
     [leads]
@@ -237,14 +130,16 @@ const MarketingLeadsPanel: React.FC<Props> = ({
   const [openNotesId, setOpenNotesId] = useState('');
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
-  const saveLead = async (id: string, path: 'crm' | 'notes', body: object) => {
+  const [editingNote, setEditingNote] = useState<{ leadId: string; noteId: string; text: string } | null>(null);
+
+  const saveLead = async (id: string, path: string, body?: object, method?: 'PATCH' | 'POST' | 'DELETE') => {
     setSavingId(id);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE}/my-marketing-leads/lead/${id}/${path}`, {
-        method: path === 'crm' ? 'PATCH' : 'POST',
+        method: method || (path === 'crm' ? 'PATCH' : 'POST'),
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body)
+        body: body ? JSON.stringify(body) : undefined
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to update lead');
@@ -323,8 +218,6 @@ const MarketingLeadsPanel: React.FC<Props> = ({
     };
   }, [leads, projectFilter]);
 
-  const visibleProjects = projectFilter === 'all' ? projects : projects.filter((p) => p.propertyId === projectFilter);
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-slate-200 bg-white">
@@ -335,18 +228,15 @@ const MarketingLeadsPanel: React.FC<Props> = ({
 
   if (projects.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 sm:p-8">
-        <p className="text-lg font-black text-slate-900">Connect your marketing leads sheet</p>
-        <p className="mt-1 mb-5 text-sm text-slate-500">
-          Paste the Google Sheet where your Meta / Google ad leads land. Leads show up here day by day,
+      <div className="rounded-lg border border-slate-200 bg-white p-10 text-center">
+        <p className="text-lg font-bold text-slate-800">No marketing leads yet</p>
+        <p className="mt-2 text-sm text-slate-500">
+          Once your project is enrolled for marketing, the HomeFeet team adds its leads here day by day,
           with a CRM to track calls, follow-ups and site visits.
         </p>
-        <SheetConnectForm ownedProjects={ownedProjects} onDone={onSheetChanged} />
       </div>
     );
   }
-
-  const unlinkedProjects = ownedProjects.filter((p) => !projects.some((lp) => lp.propertyId === p._id));
 
   return (
     <div>
@@ -429,81 +319,6 @@ const MarketingLeadsPanel: React.FC<Props> = ({
             </div>
           ))}
         </div>
-
-        <div className="mt-3 space-y-2">
-          {visibleProjects.map((p) => (
-            <div key={p.propertyId} className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="font-bold text-slate-700">{p.projectName}</span>
-                <span>{syncedLabel(p.syncedAt)}</span>
-                {p.sheetUrl && (
-                  <a href={p.sheetUrl} target="_blank" rel="noreferrer" className="font-semibold text-slate-600 hover:underline">
-                    Open sheet ↗
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onRefresh(p.propertyId)}
-                  disabled={syncingId === p.propertyId}
-                  className="flex items-center gap-1 font-semibold text-teal-700 hover:underline disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${syncingId === p.propertyId ? 'animate-spin' : ''}`} />
-                  {syncingId === p.propertyId ? 'Refreshing...' : 'Refresh from sheet'}
-                </button>
-                <button type="button" onClick={() => setSheetFormFor(p.propertyId)} className="font-semibold text-slate-600 hover:underline">
-                  Change link
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`Unlink the sheet from ${p.projectName}? Its imported leads, stages and notes will be removed.`)) {
-                      unlinkSheet(p.propertyId);
-                    }
-                  }}
-                  className="font-semibold text-red-600 hover:underline"
-                >
-                  Unlink
-                </button>
-              </div>
-              {(p.tabs || []).length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {(p.tabs || []).map((t) => (
-                    <span key={t.gid} className={`rounded-full px-2 py-0.5 ${t.skipped ? 'bg-slate-200 text-slate-500' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
-                      {t.name || 'Sheet'}: {t.skipped ? `skipped (${t.skipped})` : `${t.leadCount} rows`}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {p.error && <p className="mt-1 font-semibold text-red-600">Last sync failed: {p.error}</p>}
-              {sheetFormFor === p.propertyId && (
-                <div className="mt-3 rounded-md bg-white p-3">
-                  <SheetConnectForm
-                    ownedProjects={ownedProjects.filter((o) => o._id === p.propertyId)}
-                    defaultProjectId={p.propertyId}
-                    defaultUrl={p.sheetUrl}
-                    onDone={() => { setSheetFormFor(''); onSheetChanged(); }}
-                    onCancel={() => setSheetFormFor('')}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-          {unlinkedProjects.length > 0 && (
-            sheetFormFor === 'new' ? (
-              <div className="rounded-md border border-dashed border-slate-300 p-3">
-                <SheetConnectForm
-                  ownedProjects={unlinkedProjects}
-                  onDone={() => { setSheetFormFor(''); onSheetChanged(); }}
-                  onCancel={() => setSheetFormFor('')}
-                />
-              </div>
-            ) : (
-              <button type="button" onClick={() => setSheetFormFor('new')} className="text-xs font-bold text-teal-700 hover:underline">
-                + Connect a leads sheet for another project
-              </button>
-            )
-          )}
-        </div>
       </div>
 
       {groups.length === 0 ? (
@@ -531,6 +346,18 @@ const MarketingLeadsPanel: React.FC<Props> = ({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate font-bold text-slate-950">{lead.name || 'Unnamed lead'}</p>
+                          {/* Campaign = the sheet tab the lead came from (e.g. "Diwali Offer Leads"). */}
+                          {(lead.campaigns || []).map((c) => (
+                            <span key={c} className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700">{c}</span>
+                          ))}
+                          {lead.whatsappStatus && WHATSAPP_STATUS[lead.whatsappStatus] && (
+                            <span
+                              title={lead.whatsappError || (lead.whatsappSentAt ? new Date(lead.whatsappSentAt).toLocaleString('en-IN') : '')}
+                              className={`rounded-full px-2 py-0.5 text-xs font-bold ${WHATSAPP_STATUS[lead.whatsappStatus].cls}`}
+                            >
+                              {WHATSAPP_STATUS[lead.whatsappStatus].label}
+                            </span>
+                          )}
                           {lead.isRepeated && (
                             <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
                               Repeated lead{(lead.repeatCount || 1) > 1 ? ` ×${lead.repeatCount}` : ''}
@@ -545,39 +372,32 @@ const MarketingLeadsPanel: React.FC<Props> = ({
                         {projectFilter === 'all' && projects.length > 1 && (
                           <p className="text-xs font-semibold text-slate-400">{projectName[lead.propertyId]}</p>
                         )}
-                        {(lead.campaigns || []).length > 0 && (
-                          <div className="mt-0.5 flex flex-wrap gap-1">
-                            {(lead.campaigns || []).map((c) => (
-                              <span key={c} className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">{c}</span>
-                            ))}
-                          </div>
-                        )}
                       </div>
                       <span className="shrink-0 text-xs font-semibold text-slate-500">{timeLabel(lead.leadAt)}</span>
                     </div>
 
-                    {(lead.phone || lead.email) && (
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    {/* Contact + form answers on one line (wraps on small screens). */}
+                    {(lead.phone || lead.email || (lead.answers && lead.answers.length > 0)) && (
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
                         {lead.phone && (
-                          <a href={`tel:${lead.phone}`} className="flex items-center gap-1 font-semibold text-teal-700 hover:underline">
+                          <a href={`tel:${lead.phone}`} className="flex shrink-0 items-center gap-1 font-semibold text-teal-700 hover:underline">
                             <Phone className="h-3.5 w-3.5" /> {lead.phone}
                           </a>
                         )}
                         {lead.email && (
-                          <a href={`mailto:${lead.email}`} className="flex items-center gap-1 text-slate-600 hover:underline">
+                          <a href={`mailto:${lead.email}`} className="flex shrink-0 items-center gap-1 text-slate-600 hover:underline">
                             <Mail className="h-3.5 w-3.5" /> {lead.email}
                           </a>
                         )}
-                      </div>
-                    )}
-
-                    {lead.answers && lead.answers.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {lead.answers.map((a) => (
-                          <span key={a.label} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
-                            <span className="font-semibold text-slate-500">{a.label}:</span> {a.value}
-                          </span>
-                        ))}
+                        {lead.answers && lead.answers.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {lead.answers.map((a) => (
+                              <span key={a.label} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
+                                <span className="font-semibold text-slate-500">{a.label}:</span> {a.value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -627,16 +447,80 @@ const MarketingLeadsPanel: React.FC<Props> = ({
                         {(lead.notes || []).length === 0 ? (
                           <p className="text-xs text-slate-500">No notes yet. Log each call or visit here.</p>
                         ) : (
-                          [...(lead.notes || [])].reverse().map((note, i) => (
-                            <div key={note._id || i} className="text-sm">
-                              <p className="text-slate-800">{note.text}</p>
-                              <p className="text-xs text-slate-400">
-                                {note.createdBy || 'You'} · {new Date(note.createdAt).toLocaleString('en-IN', {
-                                  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: IST
-                                })}
-                              </p>
-                            </div>
-                          ))
+                          [...(lead.notes || [])].reverse().map((note, i) => {
+                            const isEditing = editingNote?.leadId === lead._id && editingNote?.noteId === note._id;
+                            const saveEdit = async () => {
+                              const text = editingNote?.text.trim();
+                              if (!text || !note._id) return;
+                              if (await saveLead(lead._id, `notes/${note._id}`, { text }, 'PATCH')) setEditingNote(null);
+                            };
+                            return (
+                              <div key={note._id || i} className="group text-sm">
+                                {isEditing ? (
+                                  <div className="flex gap-2">
+                                    <input
+                                      autoFocus
+                                      value={editingNote!.text}
+                                      onChange={(e) => setEditingNote({ ...editingNote!, text: e.target.value })}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') saveEdit();
+                                        if (e.key === 'Escape') setEditingNote(null);
+                                      }}
+                                      className="min-w-0 flex-1 rounded border border-teal-300 px-2 py-1 text-sm"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={saveEdit}
+                                      disabled={savingId === lead._id || !editingNote!.text.trim()}
+                                      className="rounded bg-teal-600 px-3 py-1 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingNote(null)}
+                                      className="rounded border border-slate-300 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-white"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <p className="text-slate-800">{note.text}</p>
+                                )}
+                                <p className="flex flex-wrap items-center gap-x-2 text-xs text-slate-400">
+                                  <span>
+                                    {note.createdBy || 'You'} · {new Date(note.createdAt).toLocaleString('en-IN', {
+                                      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: IST
+                                    })}
+                                    {note.editedAt && ' · edited'}
+                                  </span>
+                                  {note._id && !isEditing && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingNote({ leadId: lead._id, noteId: note._id!, text: note.text })}
+                                        className="flex items-center gap-0.5 font-semibold text-teal-700 hover:underline"
+                                      >
+                                        <Pencil className="h-3 w-3" /> Edit
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={savingId === lead._id}
+                                        onClick={() => {
+                                          if (window.confirm('Delete this note?')) {
+                                            saveLead(lead._id, `notes/${note._id}`, undefined, 'DELETE');
+                                          }
+                                        }}
+                                        className="flex items-center gap-0.5 font-semibold text-red-600 hover:underline disabled:opacity-50"
+                                      >
+                                        <Trash2 className="h-3 w-3" /> Delete
+                                      </button>
+                                    </>
+                                  )}
+                                </p>
+                              </div>
+                            );
+                          })
                         )}
                         <div className="flex gap-2">
                           <input

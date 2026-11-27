@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Check, Eye, FileText, Filter, Mail, MapPin, MessageCircle, Pencil, Phone, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { Building2, Check, Eye, FileText, Filter, Mail, MapPin, MessageCircle, Pencil, Phone, RefreshCw, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { API_BASE, API_ORIGIN } from '../lib/api';
 import { isAdminUser } from '../lib/admin';
 import { PLAN_TIERS, FEATURE_ROWS, BUYER_CONTACT_PACKS } from '../lib/plans';
@@ -40,18 +40,34 @@ interface Property {
   marketingSheetSyncedAt?: string | null;
   marketingSheetLeadCount?: number;
   marketingSheetError?: string;
+  marketingSheetTabs?: { gid: string; name: string; leadCount: number; skipped?: string }[];
+  marketingAutoWhatsApp?: boolean;
+  marketingAutoWhatsAppSince?: string | null;
+  marketingAutoWhatsAppLastRunAt?: string | null;
+  marketingAutoWhatsAppLastResult?: string;
 }
 
-// Admin links a project's marketing leads Google Sheet; the backend imports
-// the rows and the project owner sees them date-wise on their dashboard.
-const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Property) => void }> = ({ property, onUpdated }) => {
-  const [open, setOpen] = useState(false);
-  const [url, setUrl] = useState(property.marketingSheetUrl || '');
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+// Marketing leads for an approved, enrolled project: admin links the
+// project's leads Google Sheet (every tab is imported), keeps it synced and
+// switches on auto WhatsApp. The project owner sees the leads date-wise on
+// their dashboard under Marketing Leads.
+const formatSyncTime = (value?: string | null) =>
+  value
+    ? new Date(value).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
+      })
+    : '';
 
-  const call = async (method: 'PUT' | 'POST', path: string, body?: object) => {
-    setBusy(true);
+const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Property) => void }> = ({ property, onUpdated }) => {
+  const linked = Boolean(property.marketingSheetUrl);
+  const [editing, setEditing] = useState(!linked);
+  const [url, setUrl] = useState(property.marketingSheetUrl || '');
+  const [busy, setBusy] = useState('');
+  const [message, setMessage] = useState('');
+  const [missingConfig, setMissingConfig] = useState<string[]>([]);
+
+  const call = async (key: string, method: 'PUT' | 'POST' | 'PATCH', path: string, body?: object) => {
+    setBusy(key);
     setMessage('');
     try {
       const token = localStorage.getItem('token');
@@ -62,69 +78,147 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
       });
       const data = await res.json().catch(() => ({}));
       if (data.property) onUpdated(data.property);
-      if (!res.ok) setMessage(data.error || 'Failed');
-      else if (typeof data.count === 'number') setMessage(`Imported ${data.count} leads.`);
-      else setMessage('Sheet unlinked.');
+      if (Array.isArray(data.whatsappMissingConfig)) setMissingConfig(data.whatsappMissingConfig);
+      if (!res.ok) {
+        setMessage(data.error || (res.status === 404 ? 'Server does not have this feature yet (HTTP 404).' : `Failed (HTTP ${res.status})`));
+        return false;
+      }
+      if (typeof data.count === 'number') setMessage(`Imported ${data.count} unique leads.`);
+      else if (data.unlinked) setMessage('Sheet unlinked.');
+      return true;
     } catch (err: any) {
       setMessage(err.message || 'Failed');
+      return false;
     } finally {
-      setBusy(false);
+      setBusy('');
     }
   };
 
-  const linked = Boolean(property.marketingSheetUrl);
+  const save = async () => {
+    if (await call('save', 'PUT', 'marketing-sheet', { url })) setEditing(false);
+  };
 
   return (
-    <div className="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between font-semibold text-slate-700">
-        <span className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-teal-700" />
-          Marketing Leads Sheet
-          {linked && (
-            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-800">
-              {property.marketingSheetLeadCount || 0} leads
-            </span>
+    <div className="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <FileText className="h-4 w-4 text-teal-700" /> Marketing Leads
+        {linked && (
+          <span className="rounded-full bg-teal-100 px-2 py-0.5 normal-case tracking-normal text-teal-800">
+            {property.marketingSheetLeadCount || 0} leads
+          </span>
+        )}
+      </div>
+
+      {linked && (
+        <>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="font-bold text-slate-800">{property.projectName}</span>
+            {property.marketingSheetSyncedAt && <span>Synced {formatSyncTime(property.marketingSheetSyncedAt)}</span>}
+            <a href={property.marketingSheetUrl} target="_blank" rel="noreferrer" className="font-semibold text-slate-700 hover:underline">
+              Open sheet ↗
+            </a>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => call('sync', 'POST', 'marketing-sheet/sync')}
+              className="flex items-center gap-1 font-semibold text-teal-700 hover:underline disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${busy === 'sync' ? 'animate-spin' : ''}`} />
+              {busy === 'sync' ? 'Refreshing...' : 'Refresh from sheet'}
+            </button>
+            <button type="button" onClick={() => setEditing((v) => !v)} className="font-semibold text-slate-700 hover:underline">
+              Change link
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => {
+                if (window.confirm(`Unlink the leads sheet from ${property.projectName}? Its imported leads, stages and notes will be removed.`)) {
+                  setUrl('');
+                  call('unlink', 'PUT', 'marketing-sheet', { url: '' }).then((ok) => ok && setEditing(true));
+                }
+              }}
+              className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+            >
+              Unlink
+            </button>
+          </div>
+
+          {(property.marketingSheetTabs || []).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(property.marketingSheetTabs || []).map((t) => (
+                <span
+                  key={t.gid}
+                  className={`rounded-full px-2.5 py-0.5 text-xs ${t.skipped ? 'bg-slate-200 text-slate-500' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}
+                >
+                  {t.name || 'Sheet'}: {t.skipped ? `skipped (${t.skipped})` : `${t.leadCount} rows`}
+                </span>
+              ))}
+            </div>
           )}
-          {property.marketingSheetError && <span className="text-xs font-bold text-red-600">sync error</span>}
-        </span>
-        <span className="text-xs text-slate-500">{open ? 'Hide' : linked ? 'Manage' : 'Add link'}</span>
-      </button>
-      {open && (
-        <div className="mt-2 space-y-2">
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
-          <p className="text-xs text-slate-500">
-            Sheet must be shared as "Anyone with the link - Viewer". Every tab is imported (one per campaign); each needs a date and a name or phone column. Other columns (BHK, budget, feedback...) are picked up automatically.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={busy || !url.trim()} onClick={() => call('PUT', 'marketing-sheet', { url })}
-              className="rounded-lg bg-teal-600 px-3 py-1.5 font-semibold text-white hover:bg-teal-700 disabled:opacity-50">
-              {busy ? 'Working...' : 'Save & Import'}
+          {property.marketingSheetError && <p className="mt-1 text-xs font-semibold text-red-600">Last sync failed: {property.marketingSheetError}</p>}
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-200 pt-2">
+            <label className="flex cursor-pointer items-center gap-2 font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={Boolean(property.marketingAutoWhatsApp)}
+                disabled={Boolean(busy)}
+                onChange={(e) => call('auto', 'PATCH', 'marketing-auto-whatsapp', { enabled: e.target.checked })}
+                className="h-4 w-4 accent-green-600"
+              />
+              Auto WhatsApp new leads (every 30 min)
+            </label>
+            <span className="text-xs">
+              {property.marketingAutoWhatsApp
+                ? `On since ${formatSyncTime(property.marketingAutoWhatsAppSince)}${
+                    property.marketingAutoWhatsAppLastRunAt
+                      ? ` · last run ${formatSyncTime(property.marketingAutoWhatsAppLastRunAt)}: ${property.marketingAutoWhatsAppLastResult}`
+                      : ''
+                  }`
+                : 'New leads get the project details and builder/owner contact number on WhatsApp. Existing leads are not messaged.'}
+            </span>
+          </div>
+          {property.marketingAutoWhatsApp && missingConfig.length > 0 && (
+            <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+              Not sending yet: WhatsApp is not set up on the server ({missingConfig.join(', ')}).
+            </p>
+          )}
+        </>
+      )}
+
+      {editing && (
+        <div className={`${linked ? 'mt-3 border-t border-slate-200 pt-3' : ''} space-y-2`}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && url.trim()) save(); }}
+              placeholder="Paste the project's leads Google Sheet link"
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-800"
+            />
+            <button
+              type="button"
+              disabled={Boolean(busy) || !url.trim()}
+              onClick={save}
+              className="rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+            >
+              {busy === 'save' ? 'Importing all tabs...' : linked ? 'Save & Re-import' : 'Link & Import Leads'}
             </button>
             {linked && (
-              <>
-                <button type="button" disabled={busy} onClick={() => call('POST', 'marketing-sheet/sync')}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50">
-                  Re-sync
-                </button>
-                <button type="button" disabled={busy} onClick={() => { setUrl(''); call('PUT', 'marketing-sheet', { url: '' }); }}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                  Unlink
-                </button>
-              </>
+              <button type="button" onClick={() => { setEditing(false); setUrl(property.marketingSheetUrl || ''); }}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-100">
+                Cancel
+              </button>
             )}
           </div>
-          {property.marketingSheetSyncedAt && (
-            <p className="text-xs text-slate-500">Last synced: {new Date(property.marketingSheetSyncedAt).toLocaleString('en-IN')}</p>
-          )}
-          {property.marketingSheetError && <p className="text-xs font-semibold text-red-600">{property.marketingSheetError}</p>}
-          {message && <p className="text-xs font-semibold text-slate-700">{message}</p>}
+          <p className="text-xs">
+            Share the sheet as "Anyone with the link - Viewer". Every tab is imported (one per campaign); each needs a date
+            and a name or phone column. Same name + phone in any tab is shown once as a Repeated lead.
+          </p>
         </div>
       )}
+      {message && <p className="mt-2 text-xs font-semibold text-slate-700">{message}</p>}
     </div>
   );
 };
@@ -3610,12 +3704,14 @@ const AdminPanel: React.FC = () => {
                             <span className="font-bold">Feedback sent:</span> {property.rejectionReason}
                           </div>
                         )}
-                        <MarketingSheetControl
-                          property={property}
-                          onUpdated={(updated) =>
-                            setProperties((prev) => prev.map((p) => (p._id === updated._id ? { ...p, ...updated } : p)))
-                          }
-                        />
+                        {property.status === 'approved' && (
+                          <MarketingSheetControl
+                            property={property}
+                            onUpdated={(updated) =>
+                              setProperties((prev) => prev.map((p) => (p._id === updated._id ? { ...p, ...updated } : p)))
+                            }
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

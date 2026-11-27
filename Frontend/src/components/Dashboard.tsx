@@ -140,7 +140,6 @@ const Dashboard: React.FC = () => {
   const [loadingMarketingLeads, setLoadingMarketingLeads] = useState(true);
   const [showMarketingLeads, setShowMarketingLeads] = useState(false);
   const [marketingProjectFilter, setMarketingProjectFilter] = useState('all');
-  const [syncingMarketingId, setSyncingMarketingId] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -375,21 +374,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const refreshMarketingSheet = async (propertyId: string) => {
-    setSyncingMarketingId(propertyId);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE}/my-marketing-leads/${propertyId}/sync`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) alert(data.error || 'Could not refresh leads from the sheet.');
-      await fetchMarketingLeads();
-    } finally {
-      setSyncingMarketingId('');
-    }
-  };
 
   const openMarketingLeads = (propertyId = 'all') => {
     setMarketingProjectFilter(propertyId);
@@ -723,10 +707,10 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex max-w-7xl gap-6 px-4 py-8">
-        <ListingsSidebar activePage="dashboard" />
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8">
+        <ListingsSidebar activePage="dashboard" flush />
         <main className="min-w-0 flex-1">
-          <div className="mb-6 flex gap-2 border-b border-slate-200">
+          <div className="mb-6 flex flex-wrap items-end gap-2 border-b border-slate-200">
             {accountType === 'buyer' ? (
               <>
                 <button
@@ -790,23 +774,19 @@ const Dashboard: React.FC = () => {
             >
               Subscription Plans
             </button>
+            {activeTab === 'posted' && (
+              <button
+                type="button"
+                onClick={() => navigate('/post-property')}
+                className="mb-1.5 ml-auto rounded-lg bg-[#0AA6A6] px-4 py-2 text-sm font-bold text-white hover:bg-teal-700"
+              >
+                + Post New Property
+              </button>
+            )}
           </div>
 
           {activeTab === 'posted' && (
             <div>
-              <div className="mb-6 flex flex-col justify-between gap-4 rounded-lg bg-slate-950 p-6 text-white shadow-xl md:flex-row md:items-center">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Owner Desk</p>
-                  <h1 className="mt-1 text-2xl font-black">Posted Properties</h1>
-                  <p className="mt-2 text-slate-300">Track moderation status, edit submissions, and manage your listings.</p>
-                </div>
-                <button
-                  onClick={() => navigate('/post-property')}
-                  className="ld-btn-primary bg-white text-slate-950 hover:bg-teal-50"
-                >
-                  + Post New Property
-                </button>
-              </div>
 
               {loadingProperties ? (
                 <div className="flex h-64 items-center justify-center">
@@ -921,13 +901,9 @@ const Dashboard: React.FC = () => {
                         loading={loadingMarketingLeads}
                         projectFilter={marketingProjectFilter}
                         onProjectFilterChange={setMarketingProjectFilter}
-                        onRefresh={refreshMarketingSheet}
-                        syncingId={syncingMarketingId}
                         onLeadUpdated={(updated) =>
                           setMarketingLeads((prev) => prev.map((l) => (l._id === updated._id ? updated : l)))
                         }
-                        ownedProjects={properties.map((p) => ({ _id: String(p._id), projectName: p.projectName }))}
-                        onSheetChanged={fetchMarketingLeads}
                       />
                     ) : (<>
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">

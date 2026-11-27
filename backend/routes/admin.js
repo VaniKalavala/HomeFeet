@@ -12,6 +12,7 @@ const BuilderContact = require('../models/BuilderContact');
 const Testimonial = require('../models/Testimonial');
 const LoginHistory = require('../models/LoginHistory');
 const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
+const { getMissingConfig: getMissingLeadWhatsAppConfig } = require('../lib/marketingLeadWhatsApp');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const { sendTodayBuilderDigest, getMissingWhatsAppConfig } = require('../lib/builderDigest');
 const hyderabadBuilderContacts = require('../data/hyderabadBuilderContacts');
@@ -148,6 +149,26 @@ router.put('/properties/:id/marketing-sheet', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error saving marketing sheet:', error);
     res.status(500).json({ error: 'Failed to save marketing sheet link' });
+  }
+});
+
+// PATCH auto WhatsApp for a project's new marketing leads { enabled }.
+// Switching on starts the clock: only leads arriving after now are messaged.
+router.patch('/properties/:id/marketing-auto-whatsapp', isAdmin, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+    const enabled = Boolean(req.body?.enabled);
+    if (enabled && !property.marketingSheetUrl) {
+      return res.status(400).json({ error: 'Link a leads sheet for this project first.' });
+    }
+    if (enabled && !property.marketingAutoWhatsApp) property.marketingAutoWhatsAppSince = new Date();
+    property.marketingAutoWhatsApp = enabled;
+    await property.save();
+    res.json({ success: true, property, whatsappMissingConfig: getMissingLeadWhatsAppConfig() });
+  } catch (error) {
+    console.error('Error updating auto WhatsApp:', error);
+    res.status(500).json({ error: 'Failed to update auto WhatsApp' });
   }
 });
 

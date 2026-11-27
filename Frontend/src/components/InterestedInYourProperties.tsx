@@ -33,7 +33,7 @@ const InterestedInYourProperties = () => {
 
   return (
     <div className="bg-slate-50">
-      <div className="mx-auto flex w-full max-w-7xl">
+      <div className="mx-auto flex w-full max-w-7xl flex-col">
       <ListingsSidebar activePage="interested" />
       <div className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Contact Requests</h1>

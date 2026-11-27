@@ -395,6 +395,12 @@ const propertySchema = new mongoose.Schema({
   // header row is unchanged. (marketingSheetHeaderSig is legacy, unused.)
   marketingSheetHeaderSig: { type: String, default: '' },
   marketingSheetColumnMap: { type: mongoose.Schema.Types.Mixed, default: null },
+  // Auto WhatsApp to new marketing leads (every 30 min). Only leads that
+  // arrive after `Since` are messaged, so switching it on never blasts old leads.
+  marketingAutoWhatsApp: { type: Boolean, default: false, index: true },
+  marketingAutoWhatsAppSince: { type: Date, default: null },
+  marketingAutoWhatsAppLastRunAt: { type: Date, default: null },
+  marketingAutoWhatsAppLastResult: { type: String, default: '' },
   // Every tab of the linked spreadsheet is imported; this is the last sync's report.
   marketingSheetTabs: {
     type: [{ _id: false, gid: String, name: String, leadCount: Number, skipped: String }],

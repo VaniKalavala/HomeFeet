@@ -12,7 +12,9 @@ const Shortlist = require('../models/Shortlist');
 const Message = require('../models/Message');
 const ContactInquiry = require('../models/ContactInquiry');
 const MarketingLead = require('../models/MarketingLead');
-const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
+// Sheet linking / auto-WhatsApp are admin-only (routes/admin.js); owners
+// only view and work their leads here.
+const { runAutoWhatsAppCycle } = require('../lib/marketingLeadWhatsApp');
 
 const router = express.Router();
 const ADMIN_PHONES = (process.env.ADMIN_PHONES || '9014011885,7416995503')
@@ -1238,7 +1240,7 @@ const findOwnedProperties = async (req) => {
   const ownerMatch = [{ userId: user._id.toString() }];
   if (user.phone) ownerMatch.push({ phone: user.phone });
   const properties = await Property.find({ $or: ownerMatch })
-    .select('projectName locality city marketingSheetUrl marketingSheetSyncedAt marketingSheetLeadCount marketingSheetError marketingSheetTabs');
+    .select('projectName locality city marketingSheetUrl marketingSheetSyncedAt marketingSheetLeadCount');
   return { properties };
 };
 
@@ -1260,11 +1262,8 @@ router.get('/my-marketing-leads', async (req, res) => {
         projectName: p.projectName || 'Untitled Project',
         locality: p.locality,
         city: p.city,
-        sheetUrl: p.marketingSheetUrl,
         syncedAt: p.marketingSheetSyncedAt,
-        leadCount: p.marketingSheetLeadCount,
-        error: p.marketingSheetError,
-        tabs: p.marketingSheetTabs || []
+        leadCount: p.marketingSheetLeadCount
       })),
       leads
     });
@@ -1274,35 +1273,18 @@ router.get('/my-marketing-leads', async (req, res) => {
   }
 });
 
-// PUT /api/my-marketing-leads/:propertyId/sheet { url } - project owner links
-// their own leads sheet (every tab is imported); empty url unlinks it.
-router.put('/my-marketing-leads/:propertyId/sheet', async (req, res) => {
-  try {
-    const { status, properties } = await findOwnedProperties(req);
-    if (status) return res.status(status).json({ error: 'Unauthorized' });
-    if (!properties.some((p) => String(p._id) === req.params.propertyId)) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    const property = await Property.findById(req.params.propertyId);
-    const result = await setPropertyMarketingSheet(property, req.body?.url);
-    res.json({ success: true, count: result.count, tabs: result.tabs, unlinked: Boolean(result.unlinked) });
-  } catch (err) {
-    res.status(err.status || 422).json({ error: err.message || 'Could not import the sheet' });
+// POST /api/marketing-leads/run-auto-whatsapp - lets an external cron
+// (Render Cron Job, cron-job.org) run the 30-minute cycle when the server
+// may have been asleep. Needs header x-cron-secret = CRON_SECRET.
+router.post('/marketing-leads/run-auto-whatsapp', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers['x-cron-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-});
-
-// POST /api/my-marketing-leads/:propertyId/sync - owner re-imports the linked sheet.
-router.post('/my-marketing-leads/:propertyId/sync', async (req, res) => {
   try {
-    const { status, properties } = await findOwnedProperties(req);
-    if (status) return res.status(status).json({ error: 'Unauthorized' });
-    const owned = properties.find((p) => String(p._id) === req.params.propertyId);
-    if (!owned) return res.status(404).json({ error: 'Project not found' });
-
-    const result = await syncPropertyMarketingLeads(req.params.propertyId);
-    res.json({ success: true, count: result.count, syncedAt: result.syncedAt });
+    res.json({ success: true, summary: await runAutoWhatsAppCycle() });
   } catch (err) {
-    res.status(422).json({ error: err.message || 'Sync failed' });
+    res.status(500).json({ error: err.message || 'Run failed' });
   }
 });
 
@@ -1370,6 +1352,44 @@ router.post('/my-marketing-leads/lead/:id/notes', async (req, res) => {
   } catch (err) {
     console.error('Marketing lead note error:', err);
     res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
+// PATCH /api/my-marketing-leads/lead/:id/notes/:noteId  { text } - edit a note
+router.patch('/my-marketing-leads/lead/:id/notes/:noteId', async (req, res) => {
+  try {
+    const { status, lead } = await findOwnedMarketingLead(req);
+    if (status) return res.status(status).json({ error: status === 401 ? 'Unauthorized' : 'Lead not found' });
+
+    const note = lead.notes.id(req.params.noteId);
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    const text = String(req.body.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'Note cannot be empty' });
+
+    note.text = text;
+    note.editedAt = new Date();
+    await lead.save();
+    res.json({ success: true, lead: serializeMarketingLead(lead) });
+  } catch (err) {
+    console.error('Marketing lead note edit error:', err);
+    res.status(500).json({ error: 'Failed to edit note' });
+  }
+});
+
+// DELETE /api/my-marketing-leads/lead/:id/notes/:noteId
+router.delete('/my-marketing-leads/lead/:id/notes/:noteId', async (req, res) => {
+  try {
+    const { status, lead } = await findOwnedMarketingLead(req);
+    if (status) return res.status(status).json({ error: status === 401 ? 'Unauthorized' : 'Lead not found' });
+
+    const note = lead.notes.id(req.params.noteId);
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    note.deleteOne();
+    await lead.save();
+    res.json({ success: true, lead: serializeMarketingLead(lead) });
+  } catch (err) {
+    console.error('Marketing lead note delete error:', err);
+    res.status(500).json({ error: 'Failed to delete note' });
   }
 });
 

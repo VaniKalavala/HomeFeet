@@ -31,8 +31,14 @@ const marketingLeadSchema = new mongoose.Schema({
   notes: [{
     text: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
-    createdBy: { type: String, default: '' }
+    createdBy: { type: String, default: '' },
+    editedAt: { type: Date, default: null }
   }],
+  // Auto WhatsApp welcome message (never written by the sheet sync).
+  whatsappStatus: { type: String, enum: ['', 'sending', 'sent', 'failed', 'skipped'], default: '' },
+  whatsappSentAt: { type: Date, default: null },
+  whatsappError: { type: String, default: '' },
+  whatsappMessageId: { type: String, default: '' },
   // Every other sheet column (form answers, campaign, etc.) as label/value pairs.
   answers: {
     type: [{ _id: false, label: String, value: String }],

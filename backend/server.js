@@ -420,6 +420,9 @@ app.get('/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5174;
+// Every 30 min: re-import leads sheets and WhatsApp new leads (projects that opted in).
+require('./lib/marketingLeadWhatsApp').startAutoWhatsAppScheduler();
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 Server running on http://localhost:5174');
   console.log('📱 Phone OTP authentication enabled');

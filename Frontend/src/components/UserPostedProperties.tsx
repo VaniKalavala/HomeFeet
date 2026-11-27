@@ -128,7 +128,7 @@ const UserPostedProperties: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-slate-50">
-        <div className="mx-auto flex w-full max-w-7xl">
+        <div className="mx-auto flex w-full max-w-7xl flex-col">
         <ListingsSidebar activePage="posted" />
         <div className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-64">
@@ -146,7 +146,7 @@ const UserPostedProperties: React.FC = () => {
   if (error) {
     return (
       <div className="bg-slate-50">
-        <div className="mx-auto flex w-full max-w-7xl">
+        <div className="mx-auto flex w-full max-w-7xl flex-col">
         <ListingsSidebar activePage="posted" />
         <div className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-64">
@@ -168,7 +168,7 @@ const UserPostedProperties: React.FC = () => {
 
   return (
     <div className="bg-slate-50">
-      <div className="mx-auto flex w-full max-w-7xl">
+      <div className="mx-auto flex w-full max-w-7xl flex-col">
       <ListingsSidebar activePage="posted" />
       <div className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 rounded-lg bg-slate-950 p-6 text-white shadow-xl md:flex-row md:items-center">
