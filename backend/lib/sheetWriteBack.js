@@ -86,7 +86,9 @@ const SCRIPT_TIMEOUT_MS = 30000;
 // Lead_Status / FeedBack columns.
 // v3 checks HOMEFEET_KEY and can confirm it can edit the project's sheet.
 // v4 writes without the "[HomeFeet]" marker, replacing the lines it wrote last.
-const SCRIPT_VERSION = 4;
+// v5 only reads cells and writes the cells HomeFeet sends (all formatting
+// happens here, so later changes need no script update).
+const SCRIPT_VERSION = 5;
 const OLD_SCRIPT_MESSAGE = 'The sheet has an old HomeFeet script. In the sheet: Extensions -> Apps Script, paste the new script from HomeFeet over the old one, Save, then Deploy -> Manage deployments -> edit (pencil) -> Version: New version -> Deploy. The URL stays the same.';
 
 class ScriptError extends Error {}
@@ -160,7 +162,7 @@ const setPropertySheetScript = async (property, rawUrl) => {
     throw httpError(`This script is in a different sheet ("${info.sheetName}"). Add it to this project's leads sheet.`, 422);
   }
   try {
-    info = await callScript(url, { key: scriptKey(), sheetId: projectSheet, ping: true });
+    info = await callScript(url, { key: scriptKey(), sheetId: projectSheet, action: 'ping' });
   } catch (e) {
     throw httpError(e.code === 'no_access'
       ? `The Google account that deployed the script (${info.account || 'yours'}) cannot open this project's sheet. Share the sheet with it as Editor, or add the script inside this sheet.`
@@ -292,23 +294,22 @@ const pickColumns = (header) => {
   return { statusCol, feedbackCol };
 };
 
-// Update one tab. Returns the number of rows written.
-const writeTab = async (sheetId, tab, lead, last10) => {
-  const range = encodeURIComponent(`${quoteTab(tab.title)}!A1:ZZ5000`);
-  const { values = [] } = await sheetsCall(`${sheetId}/values/${range}?majorDimension=ROWS`);
-  if (!values.length) return 0;
-
+// Which cells of one tab to change for this lead. values = the tab's cell
+// text (row 0 is the header). null when the lead's phone is not in the tab.
+// Cell/column numbers are 0-based.
+const planTabWrite = (values, lead, last10) => {
+  if (!values.length) return null;
   const header = values[0].map((h) => String(h || '').trim());
   const rows = [];
   values.forEach((row, i) => {
     if (i > 0 && rowMatchesPhone(row, last10)) rows.push(i);
   });
-  if (!rows.length) return 0;
+  if (!rows.length) return null;
 
   const { status, notes, both } = writtenTexts(lead);
   const prev = lead.sheetWritten || [];
   let { statusCol, feedbackCol } = pickColumns(header);
-  const data = [];
+  const cells = [];
   let statusValue = status;
   let feedbackValue = notes;
   if (statusCol < 0) feedbackValue = both;
@@ -317,28 +318,65 @@ const writeTab = async (sheetId, tab, lead, last10) => {
     // No usable column in this tab: add one at the end.
     feedbackCol = Math.max(...values.map((r) => r.length));
     feedbackValue = both;
-    if (feedbackCol + 1 > tab.columnCount) {
-      await sheetsCall(`${sheetId}:batchUpdate`, {
-        method: 'POST',
-        body: JSON.stringify({ requests: [{ appendDimension: { sheetId: tab.sheetId, dimension: 'COLUMNS', length: feedbackCol + 1 - tab.columnCount } }] })
-      });
-    }
-    data.push({ range: `${quoteTab(tab.title)}!${columnLetter(feedbackCol)}1`, values: [['Lead_Status']] });
+    cells.push({ r: 0, c: feedbackCol, value: 'Lead_Status' });
   }
-
-  const put = (r, c, text) => data.push({
-    range: `${quoteTab(tab.title)}!${columnLetter(c)}${r + 1}`,
-    values: [[mergeOwnText(values[r][c], text, prev)]]
-  });
+  const current = (r, c) => (values[r] && values[r][c]) || '';
   rows.forEach((r) => {
-    if (statusCol >= 0) put(r, statusCol, statusValue);
-    if (feedbackCol >= 0) put(r, feedbackCol, feedbackValue);
+    if (statusCol >= 0) cells.push({ r, c: statusCol, value: mergeOwnText(current(r, statusCol), statusValue, prev) });
+    if (feedbackCol >= 0) cells.push({ r, c: feedbackCol, value: mergeOwnText(current(r, feedbackCol), feedbackValue, prev) });
   });
+  return { rows: rows.length, cells, columns: Math.max(statusCol, feedbackCol) + 1 };
+};
+
+// Service account: update one tab. Returns the number of rows written.
+const writeTab = async (sheetId, tab, lead, last10) => {
+  const range = encodeURIComponent(`${quoteTab(tab.title)}!A1:ZZ5000`);
+  const { values = [] } = await sheetsCall(`${sheetId}/values/${range}?majorDimension=ROWS`);
+  const plan = planTabWrite(values, lead, last10);
+  if (!plan) return 0;
+  if (plan.columns > tab.columnCount) {
+    await sheetsCall(`${sheetId}:batchUpdate`, {
+      method: 'POST',
+      body: JSON.stringify({ requests: [{ appendDimension: { sheetId: tab.sheetId, dimension: 'COLUMNS', length: plan.columns - tab.columnCount } }] })
+    });
+  }
   await sheetsCall(`${sheetId}/values:batchUpdate`, {
     method: 'POST',
-    body: JSON.stringify({ valueInputOption: 'RAW', data })
+    body: JSON.stringify({
+      valueInputOption: 'RAW',
+      data: plan.cells.map(({ r, c, value }) => ({ range: `${quoteTab(tab.title)}!${columnLetter(c)}${r + 1}`, values: [[value]] }))
+    })
   });
-  return rows.length;
+  return plan.rows;
+};
+
+// Apps Script (v5): read the tabs, work out the cells here, send them back
+// to be written. Returns the number of rows written.
+const writeViaScript = async (scriptUrl, sheetId, lead, last10) => {
+  const base = { key: scriptKey(), sheetId };
+  let read;
+  try {
+    read = await callScript(scriptUrl, { ...base, action: 'read', tabs: lead.campaigns || [] });
+  } catch (err) {
+    // v3/v4 scripts answer a read with "No phone number" (and write nothing).
+    if (/No phone number/.test(err.message)) throw new ScriptError(OLD_SCRIPT_MESSAGE);
+    throw err;
+  }
+  if ((read.version || 1) < SCRIPT_VERSION) throw new ScriptError(OLD_SCRIPT_MESSAGE);
+  let written = 0;
+  for (const tab of read.tabs || []) {
+    const plan = planTabWrite(tab.values || [], lead, last10);
+    if (!plan) continue;
+    await callScript(scriptUrl, {
+      ...base,
+      action: 'write',
+      tab: tab.title,
+      columns: plan.columns,
+      cells: plan.cells.map(({ r, c, value }) => ({ row: r + 1, col: c + 1, value }))
+    });
+    written += plan.rows;
+  }
+  return written;
 };
 
 // Write the lead's status + notes to every row of it in the property's sheet.
@@ -351,22 +389,16 @@ const writeBackLead = async (lead, property) => {
     // This project's own script first, else the service account (if set).
     const scriptUrl = property?.marketingSheetScriptUrl;
     if (scriptUrl && last10.length >= 10) {
-      let data;
+      let written;
       try {
-        const { status, notes } = writtenTexts(lead);
-        data = await callScript(scriptUrl, {
-          key: scriptKey(), sheetId, phone: last10, tabs: lead.campaigns || [], status, notes, prev: lead.sheetWritten || []
-        });
+        written = await writeViaScript(scriptUrl, sheetId, lead, last10);
       } catch (err) {
         if (err.code === 'no_access') {
           throw new NotSharedError('The Google account that deployed the script cannot edit this sheet - share it as Editor');
         }
         throw err;
       }
-      const { written = 0, version = 1 } = data;
-      result = version < SCRIPT_VERSION
-        ? { status: 'failed', message: OLD_SCRIPT_MESSAGE }
-        : written
+      result = written
         ? { status: 'ok', message: `Updated ${written} row${written === 1 ? '' : 's'}` }
         : { status: 'failed', message: 'Could not find this phone number in the sheet' };
     } else if (scriptUrl) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
