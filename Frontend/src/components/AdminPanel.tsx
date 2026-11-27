@@ -45,13 +45,15 @@ interface Property {
   marketingAutoWhatsAppSince?: string | null;
   marketingAutoWhatsAppLastRunAt?: string | null;
   marketingAutoWhatsAppLastResult?: string;
+  marketingSheetScriptLinked?: boolean;
   marketingSheetWriteBackStatus?: string;
   marketingSheetWriteBackMessage?: string;
 }
 
 // Sheet write-back setup (service account email to share sheets with),
 // fetched once for all project cards.
-let writeBackConfigPromise: Promise<{ configured: boolean; email: string }> | null = null;
+type WriteBackConfig = { configured: boolean; email: string; scriptCode?: string };
+let writeBackConfigPromise: Promise<WriteBackConfig> | null = null;
 const loadWriteBackConfig = () => {
   if (!writeBackConfigPromise) {
     const token = localStorage.getItem('token');
@@ -66,7 +68,110 @@ const WRITE_BACK_LABELS: Record<string, { text: string; cls: string }> = {
   ok: { text: 'Notes are syncing to the sheet', cls: 'text-green-700' },
   not_shared: { text: 'Sheet write-back: not shared', cls: 'text-amber-700' },
   failed: { text: 'Last sheet write-back failed', cls: 'text-red-600' },
-  not_configured: { text: 'Sheet write-back is not set up on the server', cls: 'text-slate-500' }
+  not_configured: { text: 'Sheet write-back is not connected', cls: 'text-slate-500' }
+};
+
+type AdminCall = (key: string, method: 'PUT' | 'POST' | 'PATCH', path: string, body?: object) => Promise<boolean>;
+
+// Write the owner's lead stages & notes back into the leads sheet, through a
+// small Google Apps Script the admin adds to that sheet (no keys needed).
+// A server service account (GOOGLE_SERVICE_ACCOUNT_JSON), if set, is the fallback.
+const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; busy: string; call: AdminCall }> = ({ property, config, busy, call }) => {
+  const linked = Boolean(property.marketingSheetScriptLinked);
+  const [open, setOpen] = useState(false);
+  const [scriptUrl, setScriptUrl] = useState('');
+  const [copied, setCopied] = useState('');
+  const status = property.marketingSheetWriteBackStatus;
+  const label = status ? WRITE_BACK_LABELS[status] : undefined;
+
+  const copy = (key: string, text: string) => {
+    navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500); });
+  };
+  const connect = async () => {
+    if (await call('script', 'PUT', 'marketing-sheet-script', { url: scriptUrl })) { setOpen(false); setScriptUrl(''); }
+  };
+
+  return (
+    <div className="mt-2 border-t border-slate-200 pt-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-bold text-slate-700">Sheet write-back:</span>
+        {linked || config.configured ? (
+          label && (
+            <span title={property.marketingSheetWriteBackMessage} className={`font-bold ${label.cls}`}>
+              {status === 'ok' ? property.marketingSheetWriteBackMessage || label.text : label.text}
+              {status === 'failed' && `: ${property.marketingSheetWriteBackMessage}`}
+            </span>
+          )
+        ) : (
+          <span>Not connected. Owner notes stay in HomeFeet only.</span>
+        )}
+        {linked && !label && <span className="font-bold text-green-700">Connected</span>}
+        <button type="button" onClick={() => setOpen((v) => !v)} className="font-semibold text-teal-700 hover:underline">
+          {linked ? 'Change script' : 'Connect with Apps Script'}
+        </button>
+        {linked && (
+          <button
+            type="button"
+            disabled={Boolean(busy)}
+            onClick={() => { if (window.confirm('Stop writing owner notes to this sheet?')) call('script', 'PUT', 'marketing-sheet-script', { url: '' }); }}
+            className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+          >
+            Disconnect
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="mt-2 space-y-2 rounded-lg bg-white p-3 ring-1 ring-slate-200">
+          <ol className="list-decimal space-y-1 pl-4 text-slate-600">
+            <li>
+              Open the sheet → <b>Extensions → Apps Script</b>. Delete the sample code, paste the HomeFeet script and click Save.{' '}
+              <button
+                type="button"
+                disabled={!config.scriptCode}
+                onClick={() => copy('code', config.scriptCode || '')}
+                className="font-semibold text-teal-700 hover:underline disabled:opacity-50"
+              >
+                {copied === 'code' ? 'Script copied' : 'Copy script'}
+              </button>
+            </li>
+            <li>
+              <b>Deploy → New deployment</b> → type <b>Web app</b>. Execute as <b>Me</b>, Who has access <b>Anyone</b> → Deploy, and allow access.
+            </li>
+            <li>Copy the <b>Web app URL</b> (ends in /exec) and paste it here.</li>
+          </ol>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={scriptUrl}
+              onChange={(e) => setScriptUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && scriptUrl.trim()) connect(); }}
+              placeholder="https://script.google.com/macros/s/.../exec"
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-slate-800"
+            />
+            <button
+              type="button"
+              disabled={Boolean(busy) || !scriptUrl.trim()}
+              onClick={connect}
+              className="rounded-lg bg-teal-600 px-3 py-1.5 font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+            >
+              {busy === 'script' ? 'Checking...' : 'Connect'}
+            </button>
+          </div>
+          <p className="text-slate-500">
+            Adds two columns at the end of each tab, <b>HomeFeet Status</b> and <b>HomeFeet Notes</b>. The team's own columns are never changed.
+          </p>
+          {config.configured && !linked && (
+            <p className="text-slate-500">
+              Or share the sheet as Editor with <code className="rounded bg-slate-100 px-1">{config.email}</code>{' '}
+              <button type="button" onClick={() => copy('email', config.email)} className="font-semibold text-teal-700 hover:underline">
+                {copied === 'email' ? 'Copied' : 'Copy'}
+              </button>
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 // Marketing leads for an approved, enrolled project: admin links the
@@ -87,8 +192,7 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   const [missingConfig, setMissingConfig] = useState<string[]>([]);
-  const [writeBack, setWriteBack] = useState<{ configured: boolean; email: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [writeBack, setWriteBack] = useState<WriteBackConfig | null>(null);
   useEffect(() => { if (linked) loadWriteBackConfig().then(setWriteBack); }, [linked]);
 
   const call = async (key: string, method: 'PUT' | 'POST' | 'PATCH', path: string, body?: object) => {
@@ -109,7 +213,8 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
         return false;
       }
       if (typeof data.count === 'number') setMessage(`Imported ${data.count} unique leads.`);
-      else if (data.unlinked) setMessage('Sheet unlinked.');
+      else if (data.sheetName) setMessage(`Write-back connected to "${data.sheetName}".`);
+      else if (data.unlinked) setMessage(path === 'marketing-sheet-script' ? 'Write-back disconnected.' : 'Sheet unlinked.');
       return true;
     } catch (err: any) {
       setMessage(err.message || 'Failed');
@@ -204,40 +309,7 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
                 : 'New leads get the project details and builder/owner contact number on WhatsApp. Existing leads are not messaged.'}
             </span>
           </div>
-          {writeBack && (
-            <div className="mt-2 border-t border-slate-200 pt-2 text-xs">
-              {writeBack.configured ? (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {property.marketingSheetWriteBackStatus && WRITE_BACK_LABELS[property.marketingSheetWriteBackStatus] && (
-                    <span
-                      title={property.marketingSheetWriteBackMessage}
-                      className={`font-bold ${WRITE_BACK_LABELS[property.marketingSheetWriteBackStatus].cls}`}
-                    >
-                      {WRITE_BACK_LABELS[property.marketingSheetWriteBackStatus].text}
-                      {property.marketingSheetWriteBackStatus === 'failed' && `: ${property.marketingSheetWriteBackMessage}`}
-                      {' · '}
-                    </span>
-                  )}
-                  <span>
-                    So the owner's stages &amp; notes appear in the sheet (HomeFeet Status / HomeFeet Notes columns), share the
-                    sheet as <b>Editor</b> with
-                  </span>
-                  <code className="rounded bg-white px-1.5 py-0.5 text-slate-800 ring-1 ring-slate-200">{writeBack.email}</code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(writeBack.email).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
-                    }}
-                    className="font-semibold text-teal-700 hover:underline"
-                  >
-                    {copied ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-              ) : (
-                <span>Sheet write-back is not set up on the server (GOOGLE_SERVICE_ACCOUNT_JSON). Notes stay in HomeFeet only.</span>
-              )}
-            </div>
-          )}
+          {writeBack && <SheetWriteBack property={property} config={writeBack} busy={busy} call={call} />}
           {property.marketingAutoWhatsApp && missingConfig.length > 0 && (
             <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
               Not sending yet: WhatsApp is not set up on the server ({missingConfig.join(', ')}).

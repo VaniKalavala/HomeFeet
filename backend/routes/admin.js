@@ -13,7 +13,7 @@ const Testimonial = require('../models/Testimonial');
 const LoginHistory = require('../models/LoginHistory');
 const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
 const { getMissingConfig: getMissingLeadWhatsAppConfig } = require('../lib/marketingLeadWhatsApp');
-const { getWriteBackConfig } = require('../lib/sheetWriteBack');
+const { getWriteBackConfig, setPropertySheetScript } = require('../lib/sheetWriteBack');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const { sendTodayBuilderDigest, getMissingWhatsAppConfig } = require('../lib/builderDigest');
 const hyderabadBuilderContacts = require('../data/hyderabadBuilderContacts');
@@ -157,6 +157,24 @@ router.put('/properties/:id/marketing-sheet', isAdmin, async (req, res) => {
 // admins must share each leads sheet with (as Editor).
 router.get('/marketing-sheet-writeback', isAdmin, (_req, res) => {
   res.json(getWriteBackConfig());
+});
+
+// PUT the project's write-back Apps Script web app URL { url }; empty unlinks.
+// The script is checked (it must be HomeFeet's, in this project's sheet).
+router.put('/properties/:id/marketing-sheet-script', isAdmin, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+    try {
+      const result = await setPropertySheetScript(property, req.body?.url);
+      res.json({ success: true, ...result, property });
+    } catch (linkErr) {
+      res.status(linkErr.status || 422).json({ error: linkErr.message, property });
+    }
+  } catch (error) {
+    console.error('Error saving sheet script:', error);
+    res.status(500).json({ error: 'Failed to save Apps Script URL' });
+  }
 });
 
 // PATCH auto WhatsApp for a project's new marketing leads { enabled }.

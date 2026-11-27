@@ -1299,11 +1299,11 @@ const findOwnedMarketingLead = async (req) => {
   return { lead };
 };
 
-// Mirror the lead's stage + notes into its Google Sheet rows (when the sheet
-// is shared with the service account). Never fails the request; the outcome
+// Mirror the lead's stage + notes into its Google Sheet rows (through the
+// project's Apps Script, or the service account). Never fails the request; the outcome
 // is recorded on the lead (sheetSyncStatus) and shown in the UI.
 const syncLeadToSheet = async (lead) => {
-  const property = await Property.findById(lead.propertyId).catch(() => null);
+  const property = await Property.findById(lead.propertyId).select('+marketingSheetScriptUrl').catch(() => null);
   if (property) await writeBackLead(lead, property);
 };
 

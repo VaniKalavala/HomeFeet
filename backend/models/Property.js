@@ -402,6 +402,11 @@ const propertySchema = new mongoose.Schema({
   marketingAutoWhatsAppLastRunAt: { type: Date, default: null },
   marketingAutoWhatsAppLastResult: { type: String, default: '' },
   // Result of the latest write-back of a lead's stage/notes into the sheet.
+  // Apps Script web app (in the leads sheet) that writes stage/notes back.
+  // Anyone with the URL can write the HomeFeet columns, so it is never sent
+  // out with the property (select: false); the UI only sees the flag.
+  marketingSheetScriptUrl: { type: String, default: '', select: false },
+  marketingSheetScriptLinked: { type: Boolean, default: false },
   marketingSheetWriteBackStatus: { type: String, default: '' },
   marketingSheetWriteBackMessage: { type: String, default: '' },
   // Every tab of the linked spreadsheet is imported; this is the last sync's report.

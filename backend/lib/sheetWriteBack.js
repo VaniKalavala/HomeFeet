@@ -1,8 +1,15 @@
 // Write a lead's CRM status and notes back into its Google Sheet.
 //
 // The import reads sheets through their public CSV export, which is
-// read-only. Writing needs a Google service account that the sheet is
-// shared with as Editor:
+// read-only. Writing goes one of two ways:
+//
+// 1. Google Apps Script (preferred, no keys): admin pastes
+//    backend/scripts/homefeet-sheet-writeback.gs into the sheet, deploys it as
+//    a web app (Execute as: Me, Access: Anyone) and saves its /exec URL on the
+//    project (property.marketingSheetScriptUrl). We POST each update to it.
+//
+// 2. Fallback - a Google service account that the sheet is shared with as
+//    Editor:
 //   GOOGLE_SERVICE_ACCOUNT_JSON = the service account key file's JSON
 //   (raw JSON or base64 of it). Its client_email is what admins share the
 //   sheet with.
@@ -13,6 +20,8 @@
 //   HomeFeet Notes  - latest note first, with date and author
 // The importer skips these columns (OWN_COLUMN_RE), so they never come back
 // in as "sheet feedback".
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 
 const STATUS_HEADER = 'HomeFeet Status';
@@ -44,9 +53,93 @@ const getCredentials = () => {
   return credentials;
 };
 
+let scriptCode;
+const getScriptCode = () => {
+  if (scriptCode === undefined) {
+    try {
+      scriptCode = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'homefeet-sheet-writeback.gs'), 'utf8');
+    } catch {
+      scriptCode = '';
+    }
+  }
+  return scriptCode;
+};
+
 const getWriteBackConfig = () => {
   const c = getCredentials();
-  return { configured: Boolean(c), email: c ? c.email : '' };
+  return { configured: Boolean(c), email: c ? c.email : '', scriptCode: getScriptCode() };
+};
+
+const SCRIPT_URL_RE = /^https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
+const SCRIPT_TIMEOUT_MS = 30000;
+
+class ScriptError extends Error {}
+
+// Apps Script answers POST/GET with a redirect to the result; fetch follows
+// it. HTML instead of JSON means the deployment is not open to "Anyone".
+const callScript = async (url, body) => {
+  const res = await fetchWithTimeout(url, body
+    ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' }
+    : { redirect: 'follow' }, SCRIPT_TIMEOUT_MS);
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new ScriptError(res.status === 404
+      ? 'Apps Script URL not found - copy the Web app URL from Deploy -> Manage deployments'
+      : 'Apps Script did not answer - deploy it as a Web app with "Who has access: Anyone"');
+  }
+  if (!data.ok) throw new ScriptError(`Apps Script error: ${data.error || 'unknown'}`);
+  return data;
+};
+
+const sheetIdOf = (url) => (String(url || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/) || [])[1];
+
+// Link (or unlink with an empty url) a project's write-back Apps Script.
+// Checks the script is ours and sits in the project's leads sheet.
+const setPropertySheetScript = async (property, rawUrl) => {
+  // Accept the URL with /exec or /dev, a query string or a trailing slash.
+  const raw = String(rawUrl || '').trim();
+  const url = raw && `${raw.replace(/\?.*$/, '').replace(/\/+$/, '').replace(/\/(dev|exec)$/, '')}/exec`;
+  if (!url) {
+    property.marketingSheetScriptUrl = '';
+    property.marketingSheetScriptLinked = false;
+    property.marketingSheetWriteBackStatus = '';
+    property.marketingSheetWriteBackMessage = '';
+    await property.save();
+    return { unlinked: true };
+  }
+  if (!SCRIPT_URL_RE.test(url)) {
+    const err = new Error('That is not an Apps Script web app URL. It looks like https://script.google.com/macros/s/.../exec');
+    err.status = 400;
+    throw err;
+  }
+  let info;
+  try {
+    info = await callScript(url);
+  } catch (e) {
+    const err = new Error(e.message);
+    err.status = 422;
+    throw err;
+  }
+  if (info.app !== 'homefeet-writeback') {
+    const err = new Error('This web app is not the HomeFeet write-back script. Paste the HomeFeet script and deploy again.');
+    err.status = 422;
+    throw err;
+  }
+  const projectSheet = sheetIdOf(property.marketingSheetUrl);
+  if (projectSheet && info.sheetId && info.sheetId !== projectSheet) {
+    const err = new Error(`This script is in a different sheet ("${info.sheetName}"). Add it to this project's leads sheet.`);
+    err.status = 422;
+    throw err;
+  }
+  property.marketingSheetScriptUrl = url;
+  property.marketingSheetScriptLinked = true;
+  property.marketingSheetWriteBackStatus = 'ok';
+  property.marketingSheetWriteBackMessage = `Connected to "${info.sheetName}"`;
+  await property.save();
+  return { sheetName: info.sheetName };
 };
 
 let cachedToken = { value: '', expiresAt: 0 };
@@ -70,9 +163,9 @@ const getAccessToken = async () => {
   return cachedToken.value;
 };
 
-const fetchWithTimeout = async (url, opts = {}) => {
+const fetchWithTimeout = async (url, opts = {}, timeoutMs = TIMEOUT_MS) => {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...opts, signal: controller.signal });
   } catch (err) {
@@ -182,9 +275,18 @@ const writeTab = async (sheetId, tab, lead, last10) => {
 const writeBackLead = async (lead, property) => {
   let result;
   try {
-    const sheetId = (String(property?.marketingSheetUrl || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/) || [])[1];
+    const sheetId = sheetIdOf(property?.marketingSheetUrl);
     const last10 = String(lead.phone || '').replace(/\D/g, '').slice(-10);
-    if (!getCredentials()) result = { status: 'not_configured', message: 'GOOGLE_SERVICE_ACCOUNT_JSON is not set on the server' };
+    const scriptUrl = property?.marketingSheetScriptUrl;
+    if (scriptUrl && last10.length >= 10) {
+      const { written = 0 } = await callScript(scriptUrl, {
+        phone: last10, tabs: lead.campaigns || [], status: statusText(lead), notes: notesText(lead)
+      });
+      result = written
+        ? { status: 'ok', message: `Updated ${written} row${written === 1 ? '' : 's'}` }
+        : { status: 'failed', message: 'Could not find this phone number in the sheet' };
+    } else if (scriptUrl) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
+    else if (!getCredentials()) result = { status: 'not_configured', message: 'Connect the write-back Apps Script for this project' };
     else if (!sheetId) result = { status: 'failed', message: 'Project has no leads sheet linked' };
     else if (last10.length < 10) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
     else {
@@ -203,8 +305,8 @@ const writeBackLead = async (lead, property) => {
         : { status: 'failed', message: 'Could not find this phone number in the sheet' };
     }
   } catch (err) {
-    result = err instanceof NotSharedError
-      ? { status: 'not_shared', message: err.message }
+    result = err instanceof NotSharedError || err instanceof ScriptError
+      ? { status: err instanceof ScriptError ? 'failed' : 'not_shared', message: err.message }
       : { status: 'failed', message: String(err.message || err).slice(0, 300) };
   }
 
@@ -220,4 +322,4 @@ const writeBackLead = async (lead, property) => {
   return result;
 };
 
-module.exports = { OWN_COLUMN_RE, getWriteBackConfig, writeBackLead, statusText, notesText, columnLetter };
+module.exports = { OWN_COLUMN_RE, getWriteBackConfig, setPropertySheetScript, writeBackLead, statusText, notesText, columnLetter };

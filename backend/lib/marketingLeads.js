@@ -516,12 +516,18 @@ const syncPropertyMarketingLeads = async (propertyOrId) => {
 
 // Link (or, with an empty url, unlink) a project's sheet, then import it.
 // Shared by the admin panel and the project owner's dashboard.
+const NO_SCRIPT = {
+  marketingSheetScriptUrl: '', marketingSheetScriptLinked: false,
+  marketingSheetWriteBackStatus: '', marketingSheetWriteBackMessage: ''
+};
+
 const setPropertyMarketingSheet = async (property, rawUrl) => {
   const url = String(rawUrl || '').trim();
   if (!url) {
     Object.assign(property, {
       marketingSheetUrl: '', marketingSheetSyncedAt: null, marketingSheetLeadCount: 0,
-      marketingSheetError: '', marketingSheetHeaderSig: '', marketingSheetColumnMap: null, marketingSheetTabs: []
+      marketingSheetError: '', marketingSheetHeaderSig: '', marketingSheetColumnMap: null, marketingSheetTabs: [],
+      ...NO_SCRIPT
     });
     await property.save();
     await MarketingLead.deleteMany({ propertyId: String(property._id) });
@@ -534,6 +540,8 @@ const setPropertyMarketingSheet = async (property, rawUrl) => {
   }
   if (getSheetId(property.marketingSheetUrl) !== getSheetId(url)) {
     property.marketingSheetColumnMap = null;
+    // The write-back script lives in the old sheet.
+    Object.assign(property, NO_SCRIPT);
   }
   property.marketingSheetUrl = url;
   await property.save();
