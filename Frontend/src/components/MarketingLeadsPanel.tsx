@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BellRing, CalendarDays, Mail, MessageSquareText, Pencil, Phone, Search, StickyNote, Trash2 } from 'lucide-react';
 import { API_BASE } from '../lib/api';
 
-// Same pipeline stages as the builder "My Leads" CRM.
+// Same pipeline stages as the builder "Direct Leads" CRM.
 const CRM_STAGES: { value: string; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'contacted', label: 'Contacted' },
@@ -70,6 +70,8 @@ export interface MarketingLead {
   whatsappStatus?: string;
   whatsappSentAt?: string | null;
   whatsappError?: string;
+  sheetSyncStatus?: string;
+  sheetSyncMessage?: string;
   crmStage?: string;
   nextFollowUpAt?: string | null;
   notes?: { _id?: string; text: string; createdAt: string; createdBy?: string; editedAt?: string | null }[];
@@ -433,10 +435,16 @@ const MarketingLeadsPanel: React.FC<Props> = ({
                       {isFollowUpDue(lead) && (
                         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">Follow-up due</span>
                       )}
+                      {lead.sheetSyncStatus === 'ok' && (
+                        <span title={lead.sheetSyncMessage} className="ml-auto text-xs font-semibold text-green-700">✓ Saved to sheet</span>
+                      )}
+                      {lead.sheetSyncStatus === 'failed' && (
+                        <span title={lead.sheetSyncMessage} className="ml-auto text-xs font-semibold text-red-600">Not saved to sheet</span>
+                      )}
                       <button
                         type="button"
                         onClick={() => setOpenNotesId(openNotesId === lead._id ? '' : lead._id)}
-                        className="ml-auto flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline"
+                        className={`${lead.sheetSyncStatus === 'ok' || lead.sheetSyncStatus === 'failed' ? '' : 'ml-auto '}flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline`}
                       >
                         <StickyNote className="h-3.5 w-3.5" /> Notes ({lead.notes?.length || 0})
                       </button>

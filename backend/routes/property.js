@@ -15,6 +15,7 @@ const MarketingLead = require('../models/MarketingLead');
 // Sheet linking / auto-WhatsApp are admin-only (routes/admin.js); owners
 // only view and work their leads here.
 const { runAutoWhatsAppCycle } = require('../lib/marketingLeadWhatsApp');
+const { writeBackLead } = require('../lib/sheetWriteBack');
 
 const router = express.Router();
 const ADMIN_PHONES = (process.env.ADMIN_PHONES || '9014011885,7416995503')
@@ -1298,6 +1299,14 @@ const findOwnedMarketingLead = async (req) => {
   return { lead };
 };
 
+// Mirror the lead's stage + notes into its Google Sheet rows (when the sheet
+// is shared with the service account). Never fails the request; the outcome
+// is recorded on the lead (sheetSyncStatus) and shown in the UI.
+const syncLeadToSheet = async (lead) => {
+  const property = await Property.findById(lead.propertyId).catch(() => null);
+  if (property) await writeBackLead(lead, property);
+};
+
 const serializeMarketingLead = (lead) => {
   const obj = lead.toObject();
   delete obj.rowKey;
@@ -1326,6 +1335,7 @@ router.patch('/my-marketing-leads/lead/:id/crm', async (req, res) => {
     if (!changed) return res.status(400).json({ error: 'Nothing to update' });
 
     await lead.save();
+    await syncLeadToSheet(lead);
     res.json({ success: true, lead: serializeMarketingLead(lead) });
   } catch (err) {
     console.error('Marketing lead CRM update error:', err);
@@ -1348,6 +1358,7 @@ router.post('/my-marketing-leads/lead/:id/notes', async (req, res) => {
     const author = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.phone || '';
     lead.notes.push({ text, createdBy: author });
     await lead.save();
+    await syncLeadToSheet(lead);
     res.json({ success: true, lead: serializeMarketingLead(lead) });
   } catch (err) {
     console.error('Marketing lead note error:', err);
@@ -1369,6 +1380,7 @@ router.patch('/my-marketing-leads/lead/:id/notes/:noteId', async (req, res) => {
     note.text = text;
     note.editedAt = new Date();
     await lead.save();
+    await syncLeadToSheet(lead);
     res.json({ success: true, lead: serializeMarketingLead(lead) });
   } catch (err) {
     console.error('Marketing lead note edit error:', err);
@@ -1386,6 +1398,7 @@ router.delete('/my-marketing-leads/lead/:id/notes/:noteId', async (req, res) => 
     if (!note) return res.status(404).json({ error: 'Note not found' });
     note.deleteOne();
     await lead.save();
+    await syncLeadToSheet(lead);
     res.json({ success: true, lead: serializeMarketingLead(lead) });
   } catch (err) {
     console.error('Marketing lead note delete error:', err);

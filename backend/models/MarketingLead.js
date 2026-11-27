@@ -34,6 +34,11 @@ const marketingLeadSchema = new mongoose.Schema({
     createdBy: { type: String, default: '' },
     editedAt: { type: Date, default: null }
   }],
+  // Last write of stage/notes back into the Google Sheet (sheetWriteBack.js):
+  // ok | failed | not_shared | not_configured | skipped.
+  sheetSyncStatus: { type: String, default: '' },
+  sheetSyncMessage: { type: String, default: '' },
+  sheetSyncedAt: { type: Date, default: null },
   // Auto WhatsApp welcome message (never written by the sheet sync).
   whatsappStatus: { type: String, enum: ['', 'sending', 'sent', 'failed', 'skipped'], default: '' },
   whatsappSentAt: { type: Date, default: null },

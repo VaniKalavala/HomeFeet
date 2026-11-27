@@ -10,6 +10,9 @@
 // the result is cached on the property until the header row changes.
 const crypto = require('crypto');
 const axios = require('axios');
+// "HomeFeet Status" / "HomeFeet Notes" are written by us (sheetWriteBack.js)
+// and must never be read back as lead data or feedback.
+const { OWN_COLUMN_RE } = require('./sheetWriteBack');
 const Property = require('../models/Property');
 const MarketingLead = require('../models/MarketingLead');
 
@@ -75,11 +78,11 @@ const heuristicMap = (headers) => {
   Object.entries(ROLE_PATTERNS).forEach(([role, patterns]) => {
     map[role] = null;
     for (const pattern of patterns) {
-      const hit = headers.find((h) => !used.has(h) && pattern.test(h.trim()));
+      const hit = headers.find((h) => !used.has(h) && !OWN_COLUMN_RE.test(h.trim()) && pattern.test(h.trim()));
       if (hit) { map[role] = hit; used.add(hit); break; }
     }
   });
-  map.ignoreColumns = headers.filter((h) => SYSTEM_COLUMNS.test(h.trim()));
+  map.ignoreColumns = headers.filter((h) => SYSTEM_COLUMNS.test(h.trim()) || OWN_COLUMN_RE.test(h.trim()));
   map.labels = {};
   return map;
 };
@@ -174,7 +177,7 @@ ${JSON.stringify(sample, null, 2)}`
     const parsed = JSON.parse(text);
 
     // Only trust column names that really exist in the sheet.
-    const valid = new Set(headers);
+    const valid = new Set(headers.filter((h) => !OWN_COLUMN_RE.test(h.trim())));
     const clean = (col) => (col && valid.has(col) ? col : null);
     const map = {
       dateColumn: clean(parsed.dateColumn),
@@ -340,7 +343,7 @@ const extractTabRows = (headers, dataRows, map, campaign) => {
   const ignored = new Set(map.ignoreColumns || []);
   const answerCols = headers
     .map((h, i) => ({ h, i }))
-    .filter(({ h, i }) => h && !roleIdx.has(i) && !ignored.has(h) && !SYSTEM_COLUMNS.test(h));
+    .filter(({ h, i }) => h && !roleIdx.has(i) && !ignored.has(h) && !SYSTEM_COLUMNS.test(h) && !OWN_COLUMN_RE.test(h));
   // Form-question columns before the name column, in sheet order - Meta
   // keeps the same order in its raw export, which realignRow relies on.
   const questionCols = answerCols.filter(({ i }) => idx.name < 0 || i < idx.name);
@@ -368,7 +371,7 @@ const extractTabRows = (headers, dataRows, map, campaign) => {
   // Teams often keep a second notes column (e.g. "Lead_Status" next to
   // "FeedBack", or notes typed under Meta's empty "id" column). Pick those
   // up, but never ids like "l:1234" or status codes like "CREATED".
-  const isSpillColumn = (h) => !h || ignored.has(h) || SYSTEM_COLUMNS.test(h.trim());
+  const isSpillColumn = (h) => !OWN_COLUMN_RE.test(String(h || '').trim()) && (!h || ignored.has(h) || SYSTEM_COLUMNS.test(h.trim()));
   const looksLikeCode = (v) => /^([a-z]{1,3}:)?[\d\s:_-]+$/i.test(v) || /^[A-Z_]+$/.test(v);
   const feedbackFor = (row) => {
     const notes = [cell(row, idx.feedback)];

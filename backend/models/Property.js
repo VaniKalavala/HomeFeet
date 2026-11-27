@@ -401,6 +401,9 @@ const propertySchema = new mongoose.Schema({
   marketingAutoWhatsAppSince: { type: Date, default: null },
   marketingAutoWhatsAppLastRunAt: { type: Date, default: null },
   marketingAutoWhatsAppLastResult: { type: String, default: '' },
+  // Result of the latest write-back of a lead's stage/notes into the sheet.
+  marketingSheetWriteBackStatus: { type: String, default: '' },
+  marketingSheetWriteBackMessage: { type: String, default: '' },
   // Every tab of the linked spreadsheet is imported; this is the last sync's report.
   marketingSheetTabs: {
     type: [{ _id: false, gid: String, name: String, leadCount: Number, skipped: String }],

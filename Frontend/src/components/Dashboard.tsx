@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Rejected'
 };
 
-// My Leads (builder CRM) - the requester's own pipeline for an Interest,
+// Direct Leads (builder CRM) - the requester's own pipeline for an Interest,
 // independent of the real requested/accepted/rejected status.
 const CRM_STAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'new', label: 'New' },
@@ -292,7 +292,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // My Leads (builder CRM) - reuses the same /my-interests?as=buyer feed
+  // Direct Leads (builder CRM) - reuses the same /my-interests?as=buyer feed
   // that Owners You Contacted (InterestShown.tsx) already shows, but adds
   // the requester's own pipeline stage, follow-up reminder, and notes on
   // top of each record.
@@ -760,7 +760,7 @@ const Dashboard: React.FC = () => {
                   activeTab === 'myLeads' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                My Leads
+                Direct Leads
               </button>
             )}
             {accountType !== 'buyer' && (
@@ -1279,7 +1279,7 @@ const Dashboard: React.FC = () => {
 
           {activeTab === 'myLeads' && accountType === 'builder' && (
             <div>
-              <h1 className="text-2xl font-black text-slate-950">My Leads</h1>
+              <h1 className="text-2xl font-black text-slate-950">Direct Leads</h1>
               <p className="mt-1 text-sm text-slate-600">
                 Every owner you've requested contact for, with your own pipeline stage, follow-up reminders, and notes.
               </p>

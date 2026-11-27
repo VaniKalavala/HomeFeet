@@ -13,6 +13,7 @@ const Testimonial = require('../models/Testimonial');
 const LoginHistory = require('../models/LoginHistory');
 const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
 const { getMissingConfig: getMissingLeadWhatsAppConfig } = require('../lib/marketingLeadWhatsApp');
+const { getWriteBackConfig } = require('../lib/sheetWriteBack');
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const { sendTodayBuilderDigest, getMissingWhatsAppConfig } = require('../lib/builderDigest');
 const hyderabadBuilderContacts = require('../data/hyderabadBuilderContacts');
@@ -150,6 +151,12 @@ router.put('/properties/:id/marketing-sheet', isAdmin, async (req, res) => {
     console.error('Error saving marketing sheet:', error);
     res.status(500).json({ error: 'Failed to save marketing sheet link' });
   }
+});
+
+// GET whether sheet write-back is set up, and the service account email
+// admins must share each leads sheet with (as Editor).
+router.get('/marketing-sheet-writeback', isAdmin, (_req, res) => {
+  res.json(getWriteBackConfig());
 });
 
 // PATCH auto WhatsApp for a project's new marketing leads { enabled }.

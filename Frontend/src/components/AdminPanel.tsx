@@ -45,7 +45,29 @@ interface Property {
   marketingAutoWhatsAppSince?: string | null;
   marketingAutoWhatsAppLastRunAt?: string | null;
   marketingAutoWhatsAppLastResult?: string;
+  marketingSheetWriteBackStatus?: string;
+  marketingSheetWriteBackMessage?: string;
 }
+
+// Sheet write-back setup (service account email to share sheets with),
+// fetched once for all project cards.
+let writeBackConfigPromise: Promise<{ configured: boolean; email: string }> | null = null;
+const loadWriteBackConfig = () => {
+  if (!writeBackConfigPromise) {
+    const token = localStorage.getItem('token');
+    writeBackConfigPromise = fetch(`${API_BASE}/admin/marketing-sheet-writeback`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : { configured: false, email: '' }))
+      .catch(() => ({ configured: false, email: '' }));
+  }
+  return writeBackConfigPromise;
+};
+
+const WRITE_BACK_LABELS: Record<string, { text: string; cls: string }> = {
+  ok: { text: 'Notes are syncing to the sheet', cls: 'text-green-700' },
+  not_shared: { text: 'Sheet write-back: not shared', cls: 'text-amber-700' },
+  failed: { text: 'Last sheet write-back failed', cls: 'text-red-600' },
+  not_configured: { text: 'Sheet write-back is not set up on the server', cls: 'text-slate-500' }
+};
 
 // Marketing leads for an approved, enrolled project: admin links the
 // project's leads Google Sheet (every tab is imported), keeps it synced and
@@ -65,6 +87,9 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   const [missingConfig, setMissingConfig] = useState<string[]>([]);
+  const [writeBack, setWriteBack] = useState<{ configured: boolean; email: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { if (linked) loadWriteBackConfig().then(setWriteBack); }, [linked]);
 
   const call = async (key: string, method: 'PUT' | 'POST' | 'PATCH', path: string, body?: object) => {
     setBusy(key);
@@ -179,6 +204,40 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
                 : 'New leads get the project details and builder/owner contact number on WhatsApp. Existing leads are not messaged.'}
             </span>
           </div>
+          {writeBack && (
+            <div className="mt-2 border-t border-slate-200 pt-2 text-xs">
+              {writeBack.configured ? (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {property.marketingSheetWriteBackStatus && WRITE_BACK_LABELS[property.marketingSheetWriteBackStatus] && (
+                    <span
+                      title={property.marketingSheetWriteBackMessage}
+                      className={`font-bold ${WRITE_BACK_LABELS[property.marketingSheetWriteBackStatus].cls}`}
+                    >
+                      {WRITE_BACK_LABELS[property.marketingSheetWriteBackStatus].text}
+                      {property.marketingSheetWriteBackStatus === 'failed' && `: ${property.marketingSheetWriteBackMessage}`}
+                      {' · '}
+                    </span>
+                  )}
+                  <span>
+                    So the owner's stages &amp; notes appear in the sheet (HomeFeet Status / HomeFeet Notes columns), share the
+                    sheet as <b>Editor</b> with
+                  </span>
+                  <code className="rounded bg-white px-1.5 py-0.5 text-slate-800 ring-1 ring-slate-200">{writeBack.email}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(writeBack.email).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+                    }}
+                    className="font-semibold text-teal-700 hover:underline"
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              ) : (
+                <span>Sheet write-back is not set up on the server (GOOGLE_SERVICE_ACCOUNT_JSON). Notes stay in HomeFeet only.</span>
+              )}
+            </div>
+          )}
           {property.marketingAutoWhatsApp && missingConfig.length > 0 && (
             <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
               Not sending yet: WhatsApp is not set up on the server ({missingConfig.join(', ')}).
