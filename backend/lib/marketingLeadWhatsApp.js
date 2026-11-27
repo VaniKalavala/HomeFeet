@@ -3,12 +3,13 @@
 // Every 30 minutes: for each project with auto-WhatsApp switched on,
 // re-import its leads sheet, then send each NEW lead (one that arrived after
 // auto-WhatsApp was switched on, has a phone, and hasn't been messaged yet)
-// a WhatsApp template with the project's details and the builder/owner's
-// contact number.
+// a WhatsApp template with the project's description, price, type, size,
+// possession and amenities, its brochure, Google Maps and project page links,
+// and the builder/owner's contact number.
 //
 // WhatsApp only allows business-initiated messages through an approved
 // template, so this needs WHATSAPP_LEAD_WELCOME_TEMPLATE set to a template
-// approved in Meta with 7 body variables (see LEAD_TEMPLATE_BODY below).
+// approved in Meta with 14 body variables (see LEAD_TEMPLATE_BODY below).
 const Property = require('../models/Property');
 const User = require('../models/User');
 const MarketingLead = require('../models/MarketingLead');
@@ -19,48 +20,105 @@ const INTERVAL_MS = 30 * 60 * 1000;
 const MAX_LEAD_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const API_VERSION = 'v20.0';
 
-// Text to submit in Meta WhatsApp Manager (category: Marketing or Utility).
+// Text to submit in Meta WhatsApp Manager (category: Marketing). Same layout
+// as the project's "Share on WhatsApp" message. 14 body variables; a missing
+// value is sent as "-" (WhatsApp does not allow empty ones).
 const LEAD_TEMPLATE_BODY = [
-  'Hi {{1}}, thank you for your interest in {{2}}.',
+  '🏠 Hi {{1}}, thank you for your interest!',
   '',
-  'Project details: {{3}}',
-  'Location: {{4}}',
-  'Photos, floor plans & price: {{5}}',
+  '📍 Checkout *{{2}}* in *{{3}}* - an amazing project worth exploring!',
   '',
-  'For a site visit or any questions, call {{6}} at {{7}}.',
+  '📝 {{4}}',
   '',
-  '- Team HomeFeet'
+  '*Key details -*',
+  '💰 Price: {{5}}',
+  '🛏️ Type: *{{6}}*',
+  '📐 Size: {{7}}',
+  '',
+  '*Additional info -*',
+  '📅 Possession: {{8}}',
+  '🎯 Top Amenities: {{9}}',
+  '',
+  '📄 Brochure: {{10}}',
+  '🗺️ Location: {{11}}',
+  '🚀 Floor plans, photos & more details: {{12}}',
+  '',
+  '📞 For a site visit or any questions, call {{13}} at {{14}}.'
 ].join('\n');
 
 const REQUIRED_ENV = ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_LEAD_WELCOME_TEMPLATE'];
 const getMissingConfig = () => REQUIRED_ENV.filter((key) => !process.env[key]);
 
 // WhatsApp rejects template parameters with newlines, tabs or 4+ spaces.
-const param = (value, fallback = '-') => {
+const param = (value, fallback = '-', max = 300) => {
   const text = String(value ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {4,}/g, '   ').trim();
-  return (text || fallback).slice(0, 300);
+  const out = text || fallback;
+  return out.length > max ? `${out.slice(0, max - 1).replace(/\s+\S*$/, '')}…` : out;
 };
 
-const formatInr = (value) => {
-  const num = parseInt(String(value || '').replace(/,/g, ''), 10);
-  if (!num || Number.isNaN(num)) return '';
-  if (num >= 10000000) return `₹${(num / 10000000).toFixed(2).replace(/\.?0+$/, '')} Cr`;
-  if (num >= 100000) return `₹${(num / 100000).toFixed(1).replace(/\.0$/, '')} L`;
-  return `₹${num.toLocaleString('en-IN')}`;
+const toNumber = (value) => Number(String(value ?? '').replace(/[^\d.]/g, '')) || 0;
+const formatRs = (num) => (num ? `Rs. ${Math.round(num).toLocaleString('en-IN')}` : '');
+
+const priceText = (property) => {
+  const prices = (property.floorPlanUnits || []).map((u) => toNumber(u.price)).filter((n) => n > 0);
+  if (prices.length) {
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max ? formatRs(min) : `${formatRs(min)} - ${formatRs(max)}`;
+  }
+  if (property.priceRange) return property.priceRange;
+  const budget = formatRs(toNumber(property.totalBudget));
+  if (budget) return `${budget}${property.totalBudgetOnwards ? ' onwards' : ''}`;
+  const perSft = formatRs(toNumber(property.squareFeetPrice));
+  return perSft ? `${perSft} per sq.ft.` : 'Price on request';
 };
 
-const projectDetailsText = (property) => {
-  const parts = [];
-  if (property.bedrooms) parts.push(/bhk/i.test(property.bedrooms) ? property.bedrooms : `${property.bedrooms} BHK`);
-  if (property.flatSizeMin && property.flatSizeMax) parts.push(`${property.flatSizeMin}-${property.flatSizeMax} sft`);
-  else if (property.flatSize) parts.push(`${property.flatSize} sft`);
-  const price = formatInr(property.totalBudget);
-  if (price) parts.push(`${price}${property.totalBudgetOnwards ? ' onwards' : ''}`);
-  else if (property.squareFeetPrice) parts.push(`${formatInr(property.squareFeetPrice)}/sft`);
-  if (property.possessionStatus) parts.push(property.possessionStatus);
-  if (property.reraId) parts.push(`RERA ${property.reraId}`);
-  return parts.join(' | ') || property.developmentType || 'Details on the project page';
+const cleanType = (value) => String(value || '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+const typeText = (property) => {
+  const bhks = [...new Set((property.floorPlanUnits || []).map((u) => String(u.bedrooms || '').trim()).filter(Boolean))]
+    .map((b) => (/bhk/i.test(b) ? b.replace(/\s*bhk/i, ' BHK') : `${b} BHK`));
+  const bedrooms = bhks.length ? bhks.join(', ')
+    : property.bedrooms ? (/bhk/i.test(property.bedrooms) ? property.bedrooms : `${property.bedrooms} BHK`) : '';
+  return [bedrooms, cleanType(property.developmentType)].filter(Boolean).join(' ');
 };
+
+const sizeText = (property) => {
+  if (property.flatSizeMin && property.flatSizeMax) return `${property.flatSizeMin} - ${property.flatSizeMax} sq.ft.`;
+  if (property.flatSize) return `${property.flatSize} sq.ft.`;
+  if (property.totalArea) return `${property.totalArea} ${property.areaUnit || 'Sq Yd'}`;
+  return '';
+};
+
+// Uploaded files (the brochure is propertyFormUrl) are "/uploads/..." paths
+// on the API server.
+const absoluteFileUrl = (url) => {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  const api = (process.env.API_PUBLIC_ORIGIN || 'https://homefeet.onrender.com').replace(/\/$/, '');
+  return `${api}${value.startsWith('/') ? '' : '/'}${value}`;
+};
+
+// Google Maps link: the saved map link, else the map pin, else the address.
+const mapsLink = (property) => {
+  const map = String(property.map || '').trim();
+  if (/^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(map)) return map;
+  let query = '';
+  try {
+    const c = JSON.parse(property.coordinates || '');
+    if (c && c.lat && c.lng) query = `${c.lat},${c.lng}`;
+  } catch { /* not JSON */ }
+  if (!query) {
+    const m = map.match(/(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+    if (m) query = `${m[1]},${m[2]}`;
+  }
+  if (!query) query = [property.projectName, property.address || property.landmark, property.locality, property.city].filter(Boolean).join(', ');
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : '';
+};
+
+const descriptionText = (property) => property.description || property.projectHighlights
+  || `${cleanType(property.developmentType) || 'Project'} by ${property.companyName || 'a trusted builder'}`;
 
 const contactFor = (property, owner) => {
   const name = owner?.builderCompanyName || owner?.agentCompanyName || property.companyName
@@ -79,12 +137,21 @@ const toWhatsAppNumber = (phone) => {
 const buildTemplateParams = (property, owner, lead) => {
   const site = (process.env.PUBLIC_SITE_URL || 'https://www.homefeet.in').replace(/\/$/, '');
   const contact = contactFor(property, owner);
+  const possession = property.possessionDate || property.possessionStatus;
+  const amenities = (property.selectedAmenities || []).slice(0, 3).join(', ');
   return [
     param(lead.name?.split(/\s+/)[0], 'there'),
     param(property.projectName, 'our project'),
-    param(projectDetailsText(property)),
-    param([property.locality, property.city].filter(Boolean).join(', ')),
-    param(`${site}/project/${property._id}`),
+    param([property.locality, property.city].filter(Boolean).join(', '), 'Hyderabad'),
+    param(descriptionText(property), '-', 250),
+    param(priceText(property)),
+    param(typeText(property)),
+    param(sizeText(property)),
+    param(possession),
+    param(amenities),
+    param(absoluteFileUrl(property.propertyFormUrl), 'on the project page'),
+    param(mapsLink(property), 'on the project page'),
+    param(`${site}/share/property/${property._id}`),
     param(contact.name),
     param(contact.phone, 'the number on the project page')
   ];
