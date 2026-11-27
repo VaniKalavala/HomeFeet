@@ -213,7 +213,9 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
         return false;
       }
       if (typeof data.count === 'number') setMessage(`Imported ${data.count} unique leads.`);
-      else if (data.sheetName) setMessage(`Write-back connected to "${data.sheetName}".`);
+      else if (data.sheetName) {
+        setMessage(`Write-back connected to "${data.sheetName}".${data.backfill ? ` Writing ${data.backfill} updated lead${data.backfill === 1 ? '' : 's'} into the sheet now.` : ''}`);
+      }
       else if (data.unlinked) setMessage(path === 'marketing-sheet-script' ? 'Write-back disconnected.' : 'Sheet unlinked.');
       return true;
     } catch (err: any) {

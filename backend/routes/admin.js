@@ -13,7 +13,22 @@ const Testimonial = require('../models/Testimonial');
 const LoginHistory = require('../models/LoginHistory');
 const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
 const { getMissingConfig: getMissingLeadWhatsAppConfig } = require('../lib/marketingLeadWhatsApp');
-const { getWriteBackConfig, setPropertySheetScript } = require('../lib/sheetWriteBack');
+const { getWriteBackConfig, setPropertySheetScript, writeBackLead } = require('../lib/sheetWriteBack');
+const MarketingLead = require('../models/MarketingLead');
+
+// Write every lead that already has a stage, follow-up or notes into the
+// sheet. Runs in the background (Apps Script takes ~1-3s per call); returns
+// how many leads were queued.
+const backfillSheetWriteBack = async (property) => {
+  const leads = await MarketingLead.find({
+    propertyId: String(property._id),
+    $or: [{ crmStage: { $nin: ['', 'new'] } }, { nextFollowUpAt: { $ne: null } }, { 'notes.0': { $exists: true } }]
+  });
+  (async () => {
+    for (const lead of leads) await writeBackLead(lead, property);
+  })().catch((err) => console.error('Sheet write-back backfill failed:', err.message));
+  return leads.length;
+};
 const { createPendingPropertyFromIntake } = require('../lib/whatsappIntake');
 const { sendTodayBuilderDigest, getMissingWhatsAppConfig } = require('../lib/builderDigest');
 const hyderabadBuilderContacts = require('../data/hyderabadBuilderContacts');
@@ -167,7 +182,9 @@ router.put('/properties/:id/marketing-sheet-script', isAdmin, async (req, res) =
     if (!property) return res.status(404).json({ error: 'Property not found' });
     try {
       const result = await setPropertySheetScript(property, req.body?.url);
-      res.json({ success: true, ...result, property });
+      // Send stages/notes already entered before the script was connected.
+      const backfill = result.unlinked ? 0 : await backfillSheetWriteBack(property);
+      res.json({ success: true, ...result, backfill, property });
     } catch (linkErr) {
       res.status(linkErr.status || 422).json({ error: linkErr.message, property });
     }

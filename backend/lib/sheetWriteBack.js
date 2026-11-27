@@ -110,6 +110,11 @@ const setPropertySheetScript = async (property, rawUrl) => {
     await property.save();
     return { unlinked: true };
   }
+  if (/script\.google\.com\/.*\/projects\//.test(raw)) {
+    const err = new Error('That is the script editor link. In Apps Script click Deploy -> Manage deployments (or New deployment -> Web app) and copy the "Web app" URL ending in /exec.');
+    err.status = 400;
+    throw err;
+  }
   if (!SCRIPT_URL_RE.test(url)) {
     const err = new Error('That is not an Apps Script web app URL. It looks like https://script.google.com/macros/s/.../exec');
     err.status = 400;
