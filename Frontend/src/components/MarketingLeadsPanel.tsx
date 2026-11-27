@@ -8,8 +8,8 @@ const CRM_STAGES: { value: string; label: string }[] = [
   { value: 'contacted', label: 'Contacted' },
   { value: 'site_visit', label: 'Site Visit' },
   { value: 'negotiation', label: 'Negotiation' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' }
+  { value: 'won', label: 'Deal Closed' },
+  { value: 'lost', label: 'Not Interested' }
 ];
 
 const CRM_STAGE_STYLES: Record<string, string> = {
@@ -313,7 +313,7 @@ const MarketingLeadsPanel: React.FC<Props> = ({
         <div className="mt-3 grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
           {[
             ['Total', stats.total], ['Today', stats.today], ['Last 7 days', stats.week],
-            ['Repeated', stats.repeated], ['Follow-ups due', stats.due], ['Won', stats.won]
+            ['Repeated', stats.repeated], ['Follow-ups due', stats.due], ['Deal Closed', stats.won]
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg bg-slate-50 px-2 py-2">
               <p className="text-xl font-black text-slate-900">{value}</p>
@@ -438,8 +438,10 @@ const MarketingLeadsPanel: React.FC<Props> = ({
                       {lead.sheetSyncStatus === 'ok' && (
                         <span title={lead.sheetSyncMessage} className="ml-auto text-xs font-semibold text-green-700">✓ Saved to sheet</span>
                       )}
-                      {lead.sheetSyncStatus === 'failed' && (
-                        <span title={lead.sheetSyncMessage} className="ml-auto text-xs font-semibold text-red-600">Not saved to sheet</span>
+                      {(lead.sheetSyncStatus === 'failed' || lead.sheetSyncStatus === 'not_shared') && (
+                        <span title={lead.sheetSyncMessage} className="ml-auto max-w-md text-right text-xs font-semibold text-red-600">
+                          Not saved to sheet{lead.sheetSyncMessage ? `: ${lead.sheetSyncMessage}` : ''}
+                        </span>
                       )}
                       <button
                         type="button"

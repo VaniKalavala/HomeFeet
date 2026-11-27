@@ -31,8 +31,8 @@ const CRM_STAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'contacted', label: 'Contacted' },
   { value: 'site_visit', label: 'Site Visit' },
   { value: 'negotiation', label: 'Negotiation' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' }
+  { value: 'won', label: 'Deal Closed' },
+  { value: 'lost', label: 'Not Interested' }
 ];
 
 const CRM_STAGE_STYLES: Record<string, string> = {
