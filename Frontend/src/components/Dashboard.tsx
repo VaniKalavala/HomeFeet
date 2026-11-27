@@ -99,7 +99,7 @@ const Dashboard: React.FC = () => {
   const paymentInProgressRef = useRef(false);
   const isAdmin = isAdminUser(localStorage.getItem('phone'), localStorage.getItem('accountType'), localStorage.getItem('email'));
 
-  const [activeTab, setActiveTab] = useState<'posted' | 'subscription' | 'shortlisted' | 'contacted' | 'prospectBuyers' | 'myLeads'>('posted');
+  const [activeTab, setActiveTab] = useState<'posted' | 'subscription' | 'shortlisted' | 'contacted' | 'prospectBuyers' | 'myLeads' | 'marketingLeads'>('posted');
   const [defaultTabApplied, setDefaultTabApplied] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [accountType, setAccountType] = useState('owner');
@@ -138,7 +138,6 @@ const Dashboard: React.FC = () => {
   const [marketingProjects, setMarketingProjects] = useState<MarketingProject[]>([]);
   const [marketingLeads, setMarketingLeads] = useState<MarketingLead[]>([]);
   const [loadingMarketingLeads, setLoadingMarketingLeads] = useState(true);
-  const [showMarketingLeads, setShowMarketingLeads] = useState(false);
   const [marketingProjectFilter, setMarketingProjectFilter] = useState('all');
 
   useEffect(() => {
@@ -374,10 +373,9 @@ const Dashboard: React.FC = () => {
     }
   };
 
-
   const openMarketingLeads = (propertyId = 'all') => {
     setMarketingProjectFilter(propertyId);
-    setShowMarketingLeads(true);
+    setActiveTab('marketingLeads');
   };
 
   useEffect(() => {
@@ -765,6 +763,17 @@ const Dashboard: React.FC = () => {
                 My Leads
               </button>
             )}
+            {accountType !== 'buyer' && (
+              <button
+                type="button"
+                onClick={() => openMarketingLeads('all')}
+                className={`px-4 py-2 text-sm font-bold transition ${
+                  activeTab === 'marketingLeads' ? 'border-b-2 border-[#0AA6A6] text-[#0AA6A6]' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Marketing Leads{marketingLeads.length > 0 && ` (${marketingLeads.length})`}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setActiveTab('subscription')}
@@ -833,9 +842,9 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-1.5 text-sm">
                       <button
                         type="button"
-                        onClick={() => { setSubCategoryFilter('all'); setShowMarketingLeads(false); }}
+                        onClick={() => setSubCategoryFilter('all')}
                         className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
-                          subCategoryFilter === 'all' && !showMarketingLeads ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
+                          subCategoryFilter === 'all' ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                         }`}
                       >
                         All <span>({subCategoryCounts.all || 0})</span>
@@ -844,9 +853,9 @@ const Dashboard: React.FC = () => {
                         <button
                           key={value}
                           type="button"
-                          onClick={() => { setSubCategoryFilter(value); setShowMarketingLeads(false); }}
+                          onClick={() => setSubCategoryFilter(value)}
                           className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
-                            subCategoryFilter === value && !showMarketingLeads ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
+                            subCategoryFilter === value ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                           }`}
                         >
                           {label} <span>({subCategoryCounts[value] || 0})</span>
@@ -854,24 +863,11 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
 
-                    <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Marketing</p>
-                    <div className="space-y-1.5 text-sm">
-                      <button
-                        type="button"
-                        onClick={() => openMarketingLeads('all')}
-                        className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
-                          showMarketingLeads ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        Marketing Leads <span>({marketingLeads.length})</span>
-                      </button>
-                    </div>
-
                     <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Status</p>
                     <div className="space-y-1.5 text-sm">
                       <button
                         type="button"
-                        onClick={() => { setStatusFilter('all'); setShowMarketingLeads(false); }}
+                        onClick={() => setStatusFilter('all')}
                         className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
                           statusFilter === 'all' ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                         }`}
@@ -882,7 +878,7 @@ const Dashboard: React.FC = () => {
                         <button
                           key={value}
                           type="button"
-                          onClick={() => { setStatusFilter(value as StatusBucket); setShowMarketingLeads(false); }}
+                          onClick={() => setStatusFilter(value as StatusBucket)}
                           className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-semibold ${
                             statusFilter === value ? 'bg-teal-50 text-[#0AA6A6]' : 'text-slate-600 hover:bg-slate-50'
                           }`}
@@ -894,18 +890,6 @@ const Dashboard: React.FC = () => {
                   </aside>
 
                   <div className="min-w-0 flex-1">
-                    {showMarketingLeads ? (
-                      <MarketingLeadsPanel
-                        projects={marketingProjects}
-                        leads={marketingLeads}
-                        loading={loadingMarketingLeads}
-                        projectFilter={marketingProjectFilter}
-                        onProjectFilterChange={setMarketingProjectFilter}
-                        onLeadUpdated={(updated) =>
-                          setMarketingLeads((prev) => prev.map((l) => (l._id === updated._id ? updated : l)))
-                        }
-                      />
-                    ) : (<>
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <select
@@ -1052,7 +1036,6 @@ const Dashboard: React.FC = () => {
                         })}
                       </div>
                     )}
-                    </>)}
                   </div>
                 </div>
               )}
@@ -1279,6 +1262,19 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'marketingLeads' && (
+            <MarketingLeadsPanel
+              projects={marketingProjects}
+              leads={marketingLeads}
+              loading={loadingMarketingLeads}
+              projectFilter={marketingProjectFilter}
+              onProjectFilterChange={setMarketingProjectFilter}
+              onLeadUpdated={(updated) =>
+                setMarketingLeads((prev) => prev.map((l) => (l._id === updated._id ? updated : l)))
+              }
+            />
           )}
 
           {activeTab === 'myLeads' && accountType === 'builder' && (
