@@ -157,7 +157,41 @@ const buildTemplateParams = (property, owner, lead) => {
   ];
 };
 
-const sendLeadWelcome = async (to, params) => {
+// The template's header is an image: the project's display image (WhatsApp
+// takes JPG/PNG only, from a public https link), else the HomeFeet logo.
+const FALLBACK_IMAGE = 'https://www.homefeet.in/HomeFeet_logo.png';
+const headerImageUrl = async (property) => {
+  const candidates = [
+    property.imageUrl,
+    ...(property.images || []),
+    property.plotDiagramUrl,
+    ...(property.floorPlanUnits || []).flatMap((u) => [u.imageUrl, ...(u.imageUrls || [])])
+  ];
+  for (const raw of candidates) {
+    const url = absoluteFileUrl(typeof raw === 'string' ? raw : raw?.url);
+    if (!url || !/^https:\/\//i.test(url) || /\.(webp|gif|svg|heic|avif|pdf)(\?|#|$)/i.test(url)) continue;
+    // Uploaded files (/api/files/<id>) have no extension: ask the server.
+    if (await isJpegOrPng(url)) return url;
+  }
+  return FALLBACK_IMAGE;
+};
+
+const isJpegOrPng = async (url) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
+    const type = String(res.headers.get('content-type') || '');
+    const size = Number(res.headers.get('content-length') || 0);
+    return res.ok && /image\/(jpe?g|png)/i.test(type) && (!size || size <= 5 * 1024 * 1024);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const sendLeadWelcome = async (to, params, imageUrl = FALLBACK_IMAGE) => {
   const res = await fetch(`https://graph.facebook.com/${API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
@@ -168,7 +202,10 @@ const sendLeadWelcome = async (to, params) => {
       template: {
         name: process.env.WHATSAPP_LEAD_WELCOME_TEMPLATE,
         language: { code: process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en' },
-        components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }]
+        components: [
+          { type: 'header', parameters: [{ type: 'image', image: { link: imageUrl } }] },
+          { type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }
+        ]
       }
     })
   });
@@ -207,7 +244,7 @@ const sendForProperty = async (property) => {
       );
       if (!claimed.modifiedCount) continue;
       try {
-        lead.whatsappMessageId = await sendLeadWelcome(to, buildTemplateParams(property, owner, lead));
+        lead.whatsappMessageId = await sendLeadWelcome(to, buildTemplateParams(property, owner, lead), await headerImageUrl(property));
         lead.whatsappStatus = 'sent';
         lead.whatsappError = '';
         counts.sent += 1;
@@ -273,6 +310,7 @@ module.exports = {
   LEAD_TEMPLATE_BODY,
   getMissingConfig,
   buildTemplateParams,
+  headerImageUrl,
   runAutoWhatsAppCycle,
   startAutoWhatsAppScheduler
 };
