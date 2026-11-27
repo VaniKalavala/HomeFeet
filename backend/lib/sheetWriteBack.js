@@ -31,11 +31,6 @@ const OWN_COLUMN_RE = /^homefeet\s*(status|notes)$/i;
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
 const TIMEOUT_MS = 10000;
 
-const STAGE_LABELS = {
-  new: 'New', contacted: 'Contacted', site_visit: 'Site Visit',
-  negotiation: 'Negotiation', won: 'Won', lost: 'Lost'
-};
-
 let credentials;
 const getCredentials = () => {
   if (credentials !== undefined) return credentials;
@@ -240,15 +235,26 @@ const quoteTab = (title) => `'${String(title).replace(/'/g, "''")}'`;
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' });
 
+// Lead_Status as a plain sentence, with the follow-up date when there is one,
+// e.g. "Contacted customer, need follow-up on 28 Nov".
+const STATUS_SENTENCES = {
+  new: ['New lead, not contacted yet', 'New lead, call on {date}'],
+  contacted: ['Contacted customer', 'Contacted customer, need follow-up on {date}'],
+  site_visit: ['Customer going to site visit', 'Customer going to site visit on {date}'],
+  negotiation: ['In negotiation with customer', 'In negotiation, follow-up on {date}'],
+  won: ['Deal closed with customer', 'Deal closed, follow-up on {date}'],
+  lost: ['Customer not interested', 'Customer not interested, follow-up on {date}']
+};
 const statusText = (lead) => {
-  const parts = [STAGE_LABELS[lead.crmStage] || 'New'];
-  if (lead.nextFollowUpAt) parts.push(`follow-up ${formatDate(lead.nextFollowUpAt)}`);
-  return parts.join(' · ');
+  const [plain, dated] = STATUS_SENTENCES[lead.crmStage] || STATUS_SENTENCES.new;
+  return lead.nextFollowUpAt ? dated.replace('{date}', formatDate(lead.nextFollowUpAt)) : plain;
 };
 
+// FeedBack: the notes, latest first, without dates or names.
 const notesText = (lead) => [...(lead.notes || [])]
   .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  .map((n) => `${formatDate(n.createdAt)}: ${String(n.text || '').replace(/\s*\n\s*/g, ' ')}`)
+  .map((n) => String(n.text || '').replace(/\s*\n\s*/g, ' ').trim())
+  .filter(Boolean)
   .join(' | ')
   .slice(0, 2000);
 
