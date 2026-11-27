@@ -50,63 +50,195 @@ interface Property {
   marketingSheetWriteBackMessage?: string;
 }
 
-// Sheet write-back setup (service account email to share sheets with),
-// fetched once for all project cards.
-type WriteBackConfig = { configured: boolean; email: string; scriptCode?: string };
+// Google Sheets write-back setup, shared by every project card: one Apps
+// Script for all projects (or a server service account, if one is set).
+type WriteBackConfig = {
+  configured: boolean;
+  email: string;
+  scriptCode?: string;
+  shared?: { linked: boolean; account: string };
+};
+const NO_WRITE_BACK: WriteBackConfig = { configured: false, email: '' };
 let writeBackConfigPromise: Promise<WriteBackConfig> | null = null;
+const writeBackListeners = new Set<(c: WriteBackConfig) => void>();
 const loadWriteBackConfig = () => {
   if (!writeBackConfigPromise) {
     const token = localStorage.getItem('token');
     writeBackConfigPromise = fetch(`${API_BASE}/admin/marketing-sheet-writeback`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : { configured: false, email: '' }))
-      .catch(() => ({ configured: false, email: '' }));
+      .then((r) => (r.ok ? r.json() : NO_WRITE_BACK))
+      .catch(() => NO_WRITE_BACK);
   }
   return writeBackConfigPromise;
+};
+const publishWriteBackConfig = (config: WriteBackConfig) => {
+  writeBackConfigPromise = Promise.resolve(config);
+  writeBackListeners.forEach((fn) => fn(config));
+};
+const useWriteBackConfig = () => {
+  const [config, setConfig] = useState<WriteBackConfig | null>(null);
+  useEffect(() => {
+    loadWriteBackConfig().then(setConfig);
+    writeBackListeners.add(setConfig);
+    return () => { writeBackListeners.delete(setConfig); };
+  }, []);
+  return config;
 };
 
 const WRITE_BACK_LABELS: Record<string, { text: string; cls: string }> = {
   ok: { text: 'Notes are syncing to the sheet', cls: 'text-green-700' },
-  not_shared: { text: 'Sheet write-back: not shared', cls: 'text-amber-700' },
+  not_shared: { text: 'Sheet not editable', cls: 'text-amber-700' },
   failed: { text: 'Last sheet write-back failed', cls: 'text-red-600' },
   not_configured: { text: 'Sheet write-back is not connected', cls: 'text-slate-500' }
 };
 
+// One-time setup at the top of the projects list.
+const SheetsWriteBackSetup: React.FC = () => {
+  const config = useWriteBackConfig();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [copied, setCopied] = useState(false);
+  if (!config) return null;
+  const shared = config.shared;
+
+  const save = async (value: string) => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/admin/marketing-sheet-writeback-script`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url: value })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage(data.error || (res.status === 404 ? 'Server does not have this feature yet (HTTP 404).' : `Failed (HTTP ${res.status})`));
+        return;
+      }
+      if (data.config) publishWriteBackConfig(data.config);
+      setUrl('');
+      setOpen(false);
+      setMessage(data.unlinked
+        ? 'Disconnected. Owner notes stay in HomeFeet only.'
+        : `Connected. ${data.backfill ? `Writing ${data.backfill} already-updated lead${data.backfill === 1 ? '' : 's'} into the sheets now.` : ''}`);
+    } catch (err: any) {
+      setMessage(err.message || 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border-b bg-slate-50 px-6 py-4 text-sm text-slate-600">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <FileText className="h-4 w-4 text-teal-700" />
+        <span className="font-bold text-slate-800">Google Sheets write-back</span>
+        {shared?.linked ? (
+          <span className="font-semibold text-green-700">
+            Connected{shared.account ? ` as ${shared.account}` : ''}. Owner stages &amp; notes go into every project's leads sheet.
+          </span>
+        ) : config.configured ? (
+          <span>Using the server service account ({config.email}).</span>
+        ) : (
+          <span>Not connected. Owner stages &amp; notes stay in HomeFeet only.</span>
+        )}
+        <button type="button" onClick={() => setOpen((v) => !v)} className="font-semibold text-teal-700 hover:underline">
+          {shared?.linked ? 'Change' : 'Set up (once, for all projects)'}
+        </button>
+        {shared?.linked && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => { if (window.confirm('Stop writing owner notes to the Google Sheets?')) save(''); }}
+            className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+          >
+            Disconnect
+          </button>
+        )}
+      </div>
+      {shared?.linked && shared.account && (
+        <p className="mt-1 text-xs text-slate-500">
+          Works for every leads sheet <b>{shared.account}</b> can edit. A sheet owned by someone else: share it with that account as Editor.
+        </p>
+      )}
+
+      {open && (
+        <div className="mt-3 space-y-2 rounded-lg bg-white p-3 text-xs ring-1 ring-slate-200">
+          <ol className="list-decimal space-y-1 pl-4">
+            <li>
+              Sign in to Google with the account that owns the leads sheets and open <b>script.google.com</b> → <b>New project</b>.
+              Delete the sample code, paste the HomeFeet script and click Save.{' '}
+              <button
+                type="button"
+                disabled={!config.scriptCode}
+                onClick={() => {
+                  navigator.clipboard?.writeText(config.scriptCode || '').then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+                }}
+                className="font-semibold text-teal-700 hover:underline disabled:opacity-50"
+              >
+                {copied ? 'Script copied' : 'Copy script'}
+              </button>
+            </li>
+            <li>
+              <b>Deploy → New deployment</b> → ⚙ <b>Web app</b>. Execute as <b>Me</b>, Who has access <b>Anyone</b> → Deploy → <b>Authorize access</b>
+              {' '}(if Google says the app isn't verified: Advanced → Go to project → Allow).
+            </li>
+            <li>Copy the <b>Web app URL</b> (ends in /exec) and paste it here. This is the only setup; new projects need nothing.</li>
+          </ol>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && url.trim()) save(url); }}
+              placeholder="https://script.google.com/macros/s/.../exec"
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-slate-800"
+            />
+            <button
+              type="button"
+              disabled={busy || !url.trim()}
+              onClick={() => save(url)}
+              className="rounded-lg bg-teal-600 px-3 py-1.5 font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+            >
+              {busy ? 'Checking...' : 'Connect'}
+            </button>
+          </div>
+          <p className="text-slate-500">
+            The stage goes in each tab's <b>Lead_Status</b> column and the notes in <b>FeedBack</b> (or Leads Feedback). The team's text in
+            those cells is kept; HomeFeet adds its own line starting with <b>[HomeFeet]</b>.
+          </p>
+        </div>
+      )}
+      {message && <p className="mt-2 text-xs font-semibold text-slate-700">{message}</p>}
+    </div>
+  );
+};
+
 type AdminCall = (key: string, method: 'PUT' | 'POST' | 'PATCH', path: string, body?: object) => Promise<boolean>;
 
-// Write the owner's lead stages & notes back into the leads sheet, through a
-// small Google Apps Script the admin adds to that sheet (no keys needed).
-// A server service account (GOOGLE_SERVICE_ACCOUNT_JSON), if set, is the fallback.
+// Per-project write-back status, plus a button to push every lead's stage
+// and notes into this project's sheet now.
 const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; busy: string; call: AdminCall }> = ({ property, config, busy, call }) => {
-  const linked = Boolean(property.marketingSheetScriptLinked);
-  const [open, setOpen] = useState(false);
-  const [scriptUrl, setScriptUrl] = useState('');
-  const [copied, setCopied] = useState('');
+  const ownScript = Boolean(property.marketingSheetScriptLinked);
+  const connected = ownScript || Boolean(config.shared?.linked) || config.configured;
   const status = property.marketingSheetWriteBackStatus;
   const label = status ? WRITE_BACK_LABELS[status] : undefined;
-
-  const copy = (key: string, text: string) => {
-    navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500); });
-  };
-  const connect = async () => {
-    if (await call('script', 'PUT', 'marketing-sheet-script', { url: scriptUrl })) { setOpen(false); setScriptUrl(''); }
-  };
 
   return (
     <div className="mt-2 border-t border-slate-200 pt-2 text-xs">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-bold text-slate-700">Sheet write-back:</span>
-        {linked || config.configured ? (
-          label && (
-            <span title={property.marketingSheetWriteBackMessage} className={`font-bold ${label.cls}`}>
-              {status === 'ok' ? property.marketingSheetWriteBackMessage || label.text : label.text}
-              {status === 'failed' && `: ${property.marketingSheetWriteBackMessage}`}
-            </span>
-          )
+        {!connected ? (
+          <span>Not connected. Set up Google Sheets write-back at the top of this list.</span>
+        ) : label && status !== 'not_configured' ? (
+          <span title={property.marketingSheetWriteBackMessage} className={`font-bold ${label.cls}`}>
+            {status === 'ok' ? label.text : `${label.text}: ${property.marketingSheetWriteBackMessage}`}
+          </span>
         ) : (
-          <span>Not connected. Owner notes stay in HomeFeet only.</span>
+          <span className="font-semibold text-green-700">Connected</span>
         )}
-        {linked && !label && <span className="font-bold text-green-700">Connected</span>}
-        {(linked || config.configured) && (
+        {connected && (
           <button
             type="button"
             disabled={Boolean(busy)}
@@ -117,81 +249,25 @@ const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; bu
             {busy === 'writeback' ? 'Writing to sheet...' : 'Write all to sheet'}
           </button>
         )}
-        <button type="button" onClick={() => setOpen((v) => !v)} className="font-semibold text-slate-600 hover:underline">
-          {linked ? 'Change script' : config.configured ? 'Or use Apps Script' : 'Connect with Apps Script'}
-        </button>
-        {linked && (
+        {ownScript && (
           <button
             type="button"
             disabled={Boolean(busy)}
-            onClick={() => { if (window.confirm('Stop writing owner notes to this sheet?')) call('script', 'PUT', 'marketing-sheet-script', { url: '' }); }}
-            className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+            onClick={() => {
+              if (window.confirm('Remove this project\'s own Apps Script? The shared write-back (if set up) is used instead.')) {
+                call('script', 'PUT', 'marketing-sheet-script', { url: '' });
+              }
+            }}
+            className="font-semibold text-slate-500 hover:underline disabled:opacity-50"
           >
-            Disconnect
+            Remove project script
           </button>
         )}
       </div>
-      {config.configured && !linked && (
+      {config.configured && !ownScript && !config.shared?.linked && (
         <p className="mt-1 text-slate-500">
-          Share the sheet as <b>Editor</b> with{' '}
-          <code className="rounded bg-white px-1.5 py-0.5 text-slate-800 ring-1 ring-slate-200">{config.email}</code>{' '}
-          <button type="button" onClick={() => copy('email', config.email)} className="font-semibold text-teal-700 hover:underline">
-            {copied === 'email' ? 'Copied' : 'Copy'}
-          </button>
-          , then click Write all to sheet. Stages go in Lead_Status and notes in FeedBack; the team's text there is kept.
+          Share the sheet as <b>Editor</b> with <code className="rounded bg-white px-1.5 py-0.5 text-slate-800 ring-1 ring-slate-200">{config.email}</code>.
         </p>
-      )}
-
-      {open && (
-        <div className="mt-2 space-y-2 rounded-lg bg-white p-3 ring-1 ring-slate-200">
-          <ol className="list-decimal space-y-1 pl-4 text-slate-600">
-            <li>
-              Open the sheet → <b>Extensions → Apps Script</b>. Delete the sample code, paste the HomeFeet script and click Save.{' '}
-              <button
-                type="button"
-                disabled={!config.scriptCode}
-                onClick={() => copy('code', config.scriptCode || '')}
-                className="font-semibold text-teal-700 hover:underline disabled:opacity-50"
-              >
-                {copied === 'code' ? 'Script copied' : 'Copy script'}
-              </button>
-            </li>
-            <li>
-              <b>Deploy → New deployment</b> → type <b>Web app</b>. Execute as <b>Me</b>, Who has access <b>Anyone</b> → Deploy, and allow access.
-            </li>
-            <li>Copy the <b>Web app URL</b> (ends in /exec) and paste it here.</li>
-          </ol>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              value={scriptUrl}
-              onChange={(e) => setScriptUrl(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && scriptUrl.trim()) connect(); }}
-              placeholder="https://script.google.com/macros/s/.../exec"
-              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-slate-800"
-            />
-            <button
-              type="button"
-              disabled={Boolean(busy) || !scriptUrl.trim()}
-              onClick={connect}
-              className="rounded-lg bg-teal-600 px-3 py-1.5 font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
-            >
-              {busy === 'script' ? 'Checking...' : 'Connect'}
-            </button>
-          </div>
-          <p className="text-slate-500">
-            The stage goes in each tab's <b>Lead_Status</b> column and the notes in <b>FeedBack</b> (or Leads Feedback). The team's
-            text in those cells is kept; HomeFeet adds its own line starting with <b>[HomeFeet]</b>. Already connected the old script?
-            Copy the script again, paste it over the old one, then Deploy → Manage deployments → edit → Version: New version → Deploy.
-          </p>
-          {config.configured && !linked && (
-            <p className="text-slate-500">
-              Or share the sheet as Editor with <code className="rounded bg-slate-100 px-1">{config.email}</code>{' '}
-              <button type="button" onClick={() => copy('email', config.email)} className="font-semibold text-teal-700 hover:underline">
-                {copied === 'email' ? 'Copied' : 'Copy'}
-              </button>
-            </p>
-          )}
-        </div>
       )}
     </div>
   );
@@ -215,8 +291,7 @@ const MarketingSheetControl: React.FC<{ property: Property; onUpdated: (p: Prope
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   const [missingConfig, setMissingConfig] = useState<string[]>([]);
-  const [writeBack, setWriteBack] = useState<WriteBackConfig | null>(null);
-  useEffect(() => { if (linked) loadWriteBackConfig().then(setWriteBack); }, [linked]);
+  const writeBack = useWriteBackConfig();
 
   const call = async (key: string, method: 'PUT' | 'POST' | 'PATCH', path: string, body?: object) => {
     setBusy(key);
@@ -3711,6 +3786,7 @@ const AdminPanel: React.FC = () => {
               {filteredProperties.length} Properties
             </h2>
           </div>
+          <SheetsWriteBackSetup />
 
           <div className="divide-y">
             {filteredProperties.length === 0 ? (

@@ -1,50 +1,77 @@
 /**
- * HomeFeet -> Google Sheet write-back.
+ * HomeFeet -> Google Sheets write-back (one script for all projects).
  *
  * Writes the owner/builder's lead stage and notes from HomeFeet into the
- * existing "Lead_Status" and "FeedBack" (or "Leads Feedback") columns of
- * each tab. What your team typed in those cells is kept: HomeFeet adds or
- * replaces only its own line, which starts with "[HomeFeet]".
+ * existing "Lead_Status" and "FeedBack" (or "Leads Feedback") columns of each
+ * project's leads sheet. What your team typed in those cells is kept: HomeFeet
+ * adds or replaces only its own line, which starts with "[HomeFeet]".
  *
- * Setup (once per sheet):
- *   1. In this sheet: Extensions -> Apps Script. Delete what is there,
- *      paste this whole file, click Save.
+ * Setup (once, for every project):
+ *   1. Go to script.google.com -> New project, signed in with the Google
+ *      account that owns (or can edit) the leads sheets. Delete the sample
+ *      code, paste this whole file, click Save.
  *   2. Deploy -> New deployment -> type "Web app".
  *        Execute as: Me
  *        Who has access: Anyone
  *      Click Deploy and allow access when Google asks.
- *      (Updating an existing script: Deploy -> Manage deployments -> edit
- *      -> Version: New version -> Deploy. The URL stays the same.)
  *   3. Copy the Web app URL (ends in /exec) and paste it in HomeFeet
- *      Admin Panel -> the project -> Marketing Leads -> Apps Script URL.
+ *      Admin Panel -> Google Sheets write-back.
+ * Any leads sheet that account can edit then updates automatically. A sheet
+ * owned by someone else: share it with that account as Editor.
+ *
+ * HOMEFEET_KEY below is unique to your HomeFeet server, so only HomeFeet can
+ * write through this script. Copy the script again from HomeFeet rather than
+ * from somewhere else.
  */
+var HOMEFEET_KEY = '__HOMEFEET_KEY__';
+var VERSION = 3;
 
-// HomeFeet calls this to check the link points at the right sheet.
+// HomeFeet calls this to check the link, and shows which Google account the
+// sheets must be editable by.
 function doGet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return json_({ ok: true, app: 'homefeet-writeback', version: 2, sheetId: ss.getId(), sheetName: ss.getName() });
+  var email = '';
+  try { email = Session.getEffectiveUser().getEmail(); } catch (err) { /* not available */ }
+  return json_({ ok: true, app: 'homefeet-writeback', version: VERSION, account: email });
 }
 
-// Body: { phone, tabs: [tab names], status, notes }
+// Body: { key, sheetId, phone, tabs: [tab names], status, notes }
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.key !== HOMEFEET_KEY) return json_({ ok: false, error: 'Wrong HomeFeet key - copy the script again from HomeFeet' });
+
+    var ss;
+    try {
+      ss = body.sheetId ? SpreadsheetApp.openById(body.sheetId) : SpreadsheetApp.getActiveSpreadsheet();
+    } catch (err) {
+      return json_({ ok: false, code: 'no_access', error: 'This Google account cannot open the sheet' });
+    }
+    if (!ss) return json_({ ok: false, code: 'no_access', error: 'No sheet given' });
+    if (body.ping) return json_({ ok: true, version: VERSION, sheetName: ss.getName() });
+
     var last10 = String(body.phone || '').replace(/\D/g, '').slice(-10);
     if (last10.length < 10) return json_({ ok: false, error: 'No phone number' });
 
-    var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+    var sheets = ss.getSheets();
     var wanted = body.tabs || [];
     if (wanted.length) {
       var picked = sheets.filter(function (s) { return wanted.indexOf(s.getName()) >= 0; });
       if (picked.length) sheets = picked;
     }
     var written = 0;
-    sheets.forEach(function (sh) {
-      written += writeSheet_(sh, last10, String(body.status || ''), String(body.notes || ''));
-    });
-    return json_({ ok: true, version: 2, written: written });
+    try {
+      sheets.forEach(function (sh) {
+        written += writeSheet_(sh, last10, String(body.status || ''), String(body.notes || ''));
+      });
+    } catch (err) {
+      if (/permission|access/i.test(String(err && err.message))) {
+        return json_({ ok: false, code: 'no_access', error: 'This Google account can view but not edit the sheet' });
+      }
+      throw err;
+    }
+    return json_({ ok: true, version: VERSION, written: written });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   } finally {
@@ -56,8 +83,7 @@ function writeSheet_(sh, last10, status, notes) {
   var lastRow = sh.getLastRow();
   var lastCol = sh.getLastColumn();
   if (lastRow < 2 || lastCol < 1) return 0;
-  var range = sh.getRange(1, 1, lastRow, lastCol);
-  var values = range.getDisplayValues();
+  var values = sh.getRange(1, 1, lastRow, lastCol).getDisplayValues();
 
   var rows = [];
   for (var i = 1; i < values.length; i++) {
@@ -72,16 +98,17 @@ function writeSheet_(sh, last10, status, notes) {
   var feedbackCol = findCol_(header, function (h) { return /feed\s*back/i.test(h); });
   if (!feedbackCol) feedbackCol = findCol_(header, function (h) { return /^(remarks?|comments?|notes?)$/i.test(h); });
 
+  var both = [status, notes].filter(String).join(' — ');
   var statusText = status;
   var feedbackText = notes;
-  if (!statusCol) feedbackText = [status, notes].filter(String).join(' — ');
-  if (!feedbackCol && statusCol) statusText = [status, notes].filter(String).join(' — ');
+  if (!statusCol) feedbackText = both;
+  if (!feedbackCol && statusCol) statusText = both;
   if (!feedbackCol && !statusCol) {
     // No usable column in this tab: add one at the end.
     feedbackCol = lastCol + 1;
     if (feedbackCol > sh.getMaxColumns()) sh.insertColumnsAfter(sh.getMaxColumns(), 1);
     sh.getRange(1, feedbackCol).setValue('Lead_Status');
-    feedbackText = [status, notes].filter(String).join(' — ');
+    feedbackText = both;
   }
 
   rows.forEach(function (r) {

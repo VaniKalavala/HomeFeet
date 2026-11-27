@@ -21,7 +21,9 @@
 // (stripOwnText) so it never comes back in as "sheet feedback".
 // OWN_COLUMN_RE: the separate "HomeFeet Status/Notes" columns written by the
 // first version - still skipped on import.
+const crypto = require('crypto');
 const fs = require('fs');
+const AppSetting = require('../models/AppSetting');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
@@ -52,11 +54,20 @@ const getCredentials = () => {
   return credentials;
 };
 
+// Key that only this server and its copy of the script know, so nobody else
+// can write through the shared script's public URL.
+const scriptKey = () => crypto
+  .createHmac('sha256', String(process.env.JWT_SECRET || 'secret'))
+  .update('homefeet-sheets-writeback')
+  .digest('hex')
+  .slice(0, 32);
+
 let scriptCode;
 const getScriptCode = () => {
   if (scriptCode === undefined) {
     try {
-      scriptCode = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'homefeet-sheet-writeback.gs'), 'utf8');
+      scriptCode = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'homefeet-sheet-writeback.gs'), 'utf8')
+        .replace('__HOMEFEET_KEY__', scriptKey());
     } catch {
       scriptCode = '';
     }
@@ -64,9 +75,26 @@ const getScriptCode = () => {
   return scriptCode;
 };
 
-const getWriteBackConfig = () => {
+// The one shared Apps Script (all projects), saved from the Admin Panel.
+const SHARED_SCRIPT_KEY = 'sheetsWriteBackScript';
+let sharedScript;
+const getSharedScript = async () => {
+  if (sharedScript === undefined) {
+    const doc = await AppSetting.findOne({ key: SHARED_SCRIPT_KEY }).lean().catch(() => null);
+    sharedScript = (doc && doc.value && doc.value.url) ? doc.value : null;
+  }
+  return sharedScript;
+};
+
+const getWriteBackConfig = async () => {
   const c = getCredentials();
-  return { configured: Boolean(c), email: c ? c.email : '', scriptCode: getScriptCode() };
+  const shared = await getSharedScript();
+  return {
+    configured: Boolean(c),
+    email: c ? c.email : '',
+    scriptCode: getScriptCode(),
+    shared: { linked: Boolean(shared), account: shared?.account || '' }
+  };
 };
 
 const SCRIPT_URL_RE = /^https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
@@ -74,6 +102,8 @@ const SCRIPT_TIMEOUT_MS = 30000;
 // v1 wrote separate "HomeFeet Status/Notes" columns; v2 uses the tab's own
 // Lead_Status / FeedBack columns.
 const SCRIPT_VERSION = 2;
+// v3 can open any sheet by id (one shared script) and checks HOMEFEET_KEY.
+const SHARED_SCRIPT_VERSION = 3;
 const OLD_SCRIPT_MESSAGE = 'The sheet has an old HomeFeet script. Copy the script again, paste it over the old one, then Deploy -> Manage deployments -> edit -> Version: New version -> Deploy.';
 
 class ScriptError extends Error {}
@@ -93,18 +123,53 @@ const callScript = async (url, body) => {
       ? 'Apps Script URL not found - copy the Web app URL from Deploy -> Manage deployments'
       : 'Apps Script did not answer - deploy it as a Web app with "Who has access: Anyone"');
   }
-  if (!data.ok) throw new ScriptError(`Apps Script error: ${data.error || 'unknown'}`);
+  if (!data.ok) throw Object.assign(new ScriptError(`Apps Script error: ${data.error || 'unknown'}`), { code: data.code });
   return data;
 };
 
 const sheetIdOf = (url) => (String(url || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/) || [])[1];
 
-// Link (or unlink with an empty url) a project's write-back Apps Script.
-// Checks the script is ours and sits in the project's leads sheet.
-const setPropertySheetScript = async (property, rawUrl) => {
+const httpError = (message, status) => Object.assign(new Error(message), { status });
+
+// Clean up a pasted web app URL and check it is a HomeFeet script.
+// Returns { url, info } or { url: '' } for an empty paste.
+const checkScriptUrl = async (rawUrl, minVersion) => {
   // Accept the URL with /exec or /dev, a query string or a trailing slash.
   const raw = String(rawUrl || '').trim();
-  const url = raw && `${raw.replace(/\?.*$/, '').replace(/\/+$/, '').replace(/\/(dev|exec)$/, '')}/exec`;
+  if (!raw) return { url: '' };
+  const url = `${raw.replace(/\?.*$/, '').replace(/\/+$/, '').replace(/\/(dev|exec)$/, '')}/exec`;
+  if (/script\.google\.com\/.*\/projects\//.test(raw)) {
+    throw httpError('That is the script editor link. In Apps Script click Deploy -> New deployment -> Web app, then copy the "Web app" URL ending in /exec.', 400);
+  }
+  if (!SCRIPT_URL_RE.test(url)) {
+    throw httpError('That is not an Apps Script web app URL. It looks like https://script.google.com/macros/s/.../exec', 400);
+  }
+  let info;
+  try {
+    info = await callScript(url);
+  } catch (e) {
+    throw httpError(e.message, 422);
+  }
+  if (info.app !== 'homefeet-writeback') {
+    throw httpError('This web app is not the HomeFeet write-back script. Paste the HomeFeet script and deploy again.', 422);
+  }
+  if ((info.version || 1) < minVersion) throw httpError(OLD_SCRIPT_MESSAGE, 422);
+  return { url, info };
+};
+
+// Save (or remove with an empty url) the one shared script for all projects.
+const setSharedSheetScript = async (rawUrl) => {
+  const { url, info } = await checkScriptUrl(rawUrl, SHARED_SCRIPT_VERSION);
+  const value = url ? { url, account: info.account || '' } : null;
+  await AppSetting.findOneAndUpdate({ key: SHARED_SCRIPT_KEY }, { value }, { upsert: true });
+  sharedScript = value;
+  return url ? { account: value.account } : { unlinked: true };
+};
+
+// Link (or unlink with an empty url) a write-back Apps Script for one
+// project only (older setup; the shared script covers every project).
+const setPropertySheetScript = async (property, rawUrl) => {
+  const { url, info } = await checkScriptUrl(rawUrl, SCRIPT_VERSION);
   if (!url) {
     property.marketingSheetScriptUrl = '';
     property.marketingSheetScriptLinked = false;
@@ -112,34 +177,6 @@ const setPropertySheetScript = async (property, rawUrl) => {
     property.marketingSheetWriteBackMessage = '';
     await property.save();
     return { unlinked: true };
-  }
-  if (/script\.google\.com\/.*\/projects\//.test(raw)) {
-    const err = new Error('That is the script editor link. In Apps Script click Deploy -> Manage deployments (or New deployment -> Web app) and copy the "Web app" URL ending in /exec.');
-    err.status = 400;
-    throw err;
-  }
-  if (!SCRIPT_URL_RE.test(url)) {
-    const err = new Error('That is not an Apps Script web app URL. It looks like https://script.google.com/macros/s/.../exec');
-    err.status = 400;
-    throw err;
-  }
-  let info;
-  try {
-    info = await callScript(url);
-  } catch (e) {
-    const err = new Error(e.message);
-    err.status = 422;
-    throw err;
-  }
-  if (info.app !== 'homefeet-writeback') {
-    const err = new Error('This web app is not the HomeFeet write-back script. Paste the HomeFeet script and deploy again.');
-    err.status = 422;
-    throw err;
-  }
-  if ((info.version || 1) < SCRIPT_VERSION) {
-    const err = new Error(OLD_SCRIPT_MESSAGE);
-    err.status = 422;
-    throw err;
   }
   const projectSheet = sheetIdOf(property.marketingSheetUrl);
   if (projectSheet && info.sheetId && info.sheetId !== projectSheet) {
@@ -315,18 +352,32 @@ const writeBackLead = async (lead, property) => {
   try {
     const sheetId = sheetIdOf(property?.marketingSheetUrl);
     const last10 = String(lead.phone || '').replace(/\D/g, '').slice(-10);
-    const scriptUrl = property?.marketingSheetScriptUrl;
-    if (scriptUrl && last10.length >= 10) {
-      const { written = 0, version = 1 } = await callScript(scriptUrl, {
-        phone: last10, tabs: lead.campaigns || [], status: statusText(lead), notes: notesText(lead)
-      });
-      result = version < SCRIPT_VERSION
+    // Order: this project's own script, the shared script, the service account.
+    const shared = property?.marketingSheetScriptUrl ? null : await getSharedScript();
+    const scriptUrl = property?.marketingSheetScriptUrl || shared?.url;
+    if (scriptUrl && !sheetId && shared) result = { status: 'failed', message: 'Project has no leads sheet linked' };
+    else if (scriptUrl && last10.length >= 10) {
+      let data;
+      try {
+        data = await callScript(scriptUrl, {
+          key: scriptKey(), sheetId, phone: last10, tabs: lead.campaigns || [], status: statusText(lead), notes: notesText(lead)
+        });
+      } catch (err) {
+        if (err.code === 'no_access') {
+          throw new NotSharedError(shared?.account
+            ? `Share the sheet with ${shared.account} as Editor`
+            : 'The Google account running the script cannot edit this sheet');
+        }
+        throw err;
+      }
+      const { written = 0, version = 1 } = data;
+      result = version < (shared ? SHARED_SCRIPT_VERSION : SCRIPT_VERSION)
         ? { status: 'failed', message: OLD_SCRIPT_MESSAGE }
         : written
         ? { status: 'ok', message: `Updated ${written} row${written === 1 ? '' : 's'}` }
         : { status: 'failed', message: 'Could not find this phone number in the sheet' };
     } else if (scriptUrl) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
-    else if (!getCredentials()) result = { status: 'not_configured', message: 'Connect the write-back Apps Script for this project' };
+    else if (!getCredentials()) result = { status: 'not_configured', message: 'Google Sheets write-back is not connected (Admin Panel)' };
     else if (!sheetId) result = { status: 'failed', message: 'Project has no leads sheet linked' };
     else if (last10.length < 10) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
     else {
@@ -362,4 +413,4 @@ const writeBackLead = async (lead, property) => {
   return result;
 };
 
-module.exports = { OWN_COLUMN_RE, stripOwnText, mergeOwnText, pickColumns, getWriteBackConfig, setPropertySheetScript, writeBackLead, statusText, notesText, columnLetter };
+module.exports = { OWN_COLUMN_RE, stripOwnText, mergeOwnText, pickColumns, getWriteBackConfig, setPropertySheetScript, setSharedSheetScript, writeBackLead, statusText, notesText, columnLetter };
