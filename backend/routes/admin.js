@@ -13,7 +13,7 @@ const Testimonial = require('../models/Testimonial');
 const LoginHistory = require('../models/LoginHistory');
 const { syncPropertyMarketingLeads, setPropertyMarketingSheet } = require('../lib/marketingLeads');
 const { getMissingConfig: getMissingLeadWhatsAppConfig } = require('../lib/marketingLeadWhatsApp');
-const { getWriteBackConfig, setPropertySheetScript, setSharedSheetScript, writeBackLead } = require('../lib/sheetWriteBack');
+const { getWriteBackConfig, setPropertySheetScript, writeBackLead } = require('../lib/sheetWriteBack');
 const MarketingLead = require('../models/MarketingLead');
 
 // Write every lead that already has a stage, follow-up or notes into the
@@ -171,27 +171,8 @@ router.put('/properties/:id/marketing-sheet', isAdmin, async (req, res) => {
 
 // GET whether sheet write-back is set up, and the service account email
 // admins must share each leads sheet with (as Editor).
-router.get('/marketing-sheet-writeback', isAdmin, async (_req, res) => {
-  res.json(await getWriteBackConfig());
-});
-
-// PUT the one shared write-back Apps Script for every project { url };
-// empty removes it. Once saved, every linked project's existing stages and
-// notes are written into its sheet in the background.
-router.put('/marketing-sheet-writeback-script', isAdmin, async (req, res) => {
-  try {
-    const result = await setSharedSheetScript(req.body?.url);
-    let backfill = 0;
-    if (!result.unlinked) {
-      const properties = await Property.find({ marketingSheetUrl: { $ne: '' } }).select('+marketingSheetScriptUrl');
-      for (const p of properties) if (!p.marketingSheetScriptUrl) backfill += await backfillSheetWriteBack(p);
-    }
-    res.json({ success: true, ...result, backfill, config: await getWriteBackConfig() });
-  } catch (error) {
-    if (error.status) return res.status(error.status).json({ error: error.message });
-    console.error('Error saving shared sheet script:', error);
-    res.status(500).json({ error: 'Failed to save the Apps Script URL' });
-  }
+router.get('/marketing-sheet-writeback', isAdmin, (_req, res) => {
+  res.json(getWriteBackConfig());
 });
 
 // POST write every lead's stage/notes into the project's sheet now, and say

@@ -1,37 +1,34 @@
 /**
- * HomeFeet -> Google Sheets write-back (one script for all projects).
+ * HomeFeet -> Google Sheet write-back (one per project's leads sheet).
  *
- * Writes the owner/builder's lead stage and notes from HomeFeet into the
- * existing "Lead_Status" and "FeedBack" (or "Leads Feedback") columns of each
- * project's leads sheet. What your team typed in those cells is kept: HomeFeet
- * adds or replaces only its own line, which starts with "[HomeFeet]".
+ * Writes the owner/builder's lead stage and notes from HomeFeet into this
+ * sheet's existing "Lead_Status" and "FeedBack" (or "Leads Feedback") columns.
+ * What your team typed in those cells is kept: HomeFeet adds or replaces only
+ * its own line, which starts with "[HomeFeet]".
  *
- * Setup (once, for every project):
- *   1. Go to script.google.com -> New project, signed in with the Google
- *      account that owns (or can edit) the leads sheets. Delete the sample
- *      code, paste this whole file, click Save.
+ * Setup (in each project's leads sheet):
+ *   1. Open the project's leads sheet -> Extensions -> Apps Script.
+ *      Delete the sample code, paste this whole file, click Save.
  *   2. Deploy -> New deployment -> type "Web app".
  *        Execute as: Me
  *        Who has access: Anyone
  *      Click Deploy and allow access when Google asks.
  *   3. Copy the Web app URL (ends in /exec) and paste it in HomeFeet
- *      Admin Panel -> Google Sheets write-back.
- * Any leads sheet that account can edit then updates automatically. A sheet
- * owned by someone else: share it with that account as Editor.
+ *      Admin Panel -> that project -> Marketing Leads -> Sheet write-back.
  *
  * HOMEFEET_KEY below is unique to your HomeFeet server, so only HomeFeet can
- * write through this script. Copy the script again from HomeFeet rather than
- * from somewhere else.
+ * write through this script. Copy the script from HomeFeet's Admin Panel.
  */
 var HOMEFEET_KEY = '__HOMEFEET_KEY__';
 var VERSION = 3;
 
-// HomeFeet calls this to check the link, and shows which Google account the
-// sheets must be editable by.
+// HomeFeet calls this to check the link points at the right sheet.
 function doGet() {
-  var email = '';
-  try { email = Session.getEffectiveUser().getEmail(); } catch (err) { /* not available */ }
-  return json_({ ok: true, app: 'homefeet-writeback', version: VERSION, account: email });
+  var info = { ok: true, app: 'homefeet-writeback', version: VERSION, account: '' };
+  try { info.account = Session.getEffectiveUser().getEmail(); } catch (err) { /* not available */ }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) { info.sheetId = ss.getId(); info.sheetName = ss.getName(); }
+  return json_(info);
 }
 
 // Body: { key, sheetId, phone, tabs: [tab names], status, notes }

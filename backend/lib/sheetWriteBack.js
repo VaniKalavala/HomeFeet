@@ -3,10 +3,11 @@
 // The import reads sheets through their public CSV export, which is
 // read-only. Writing goes one of two ways:
 //
-// 1. Google Apps Script (preferred, no keys): admin pastes
-//    backend/scripts/homefeet-sheet-writeback.gs into the sheet, deploys it as
-//    a web app (Execute as: Me, Access: Anyone) and saves its /exec URL on the
-//    project (property.marketingSheetScriptUrl). We POST each update to it.
+// 1. Google Apps Script, one per project (preferred, no keys): admin pastes
+//    backend/scripts/homefeet-sheet-writeback.gs into that project's leads
+//    sheet, deploys it as a web app (Execute as: Me, Access: Anyone) and saves
+//    its /exec URL on the project (property.marketingSheetScriptUrl). We POST
+//    each update to it with a server key, so only HomeFeet can use the URL.
 //
 // 2. Fallback - a Google service account that the sheet is shared with as
 //    Editor:
@@ -23,7 +24,6 @@
 // first version - still skipped on import.
 const crypto = require('crypto');
 const fs = require('fs');
-const AppSetting = require('../models/AppSetting');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
@@ -55,7 +55,7 @@ const getCredentials = () => {
 };
 
 // Key that only this server and its copy of the script know, so nobody else
-// can write through the shared script's public URL.
+// can write through a script's public URL.
 const scriptKey = () => crypto
   .createHmac('sha256', String(process.env.JWT_SECRET || 'secret'))
   .update('homefeet-sheets-writeback')
@@ -75,36 +75,18 @@ const getScriptCode = () => {
   return scriptCode;
 };
 
-// The one shared Apps Script (all projects), saved from the Admin Panel.
-const SHARED_SCRIPT_KEY = 'sheetsWriteBackScript';
-let sharedScript;
-const getSharedScript = async () => {
-  if (sharedScript === undefined) {
-    const doc = await AppSetting.findOne({ key: SHARED_SCRIPT_KEY }).lean().catch(() => null);
-    sharedScript = (doc && doc.value && doc.value.url) ? doc.value : null;
-  }
-  return sharedScript;
-};
-
-const getWriteBackConfig = async () => {
+const getWriteBackConfig = () => {
   const c = getCredentials();
-  const shared = await getSharedScript();
-  return {
-    configured: Boolean(c),
-    email: c ? c.email : '',
-    scriptCode: getScriptCode(),
-    shared: { linked: Boolean(shared), account: shared?.account || '' }
-  };
+  return { configured: Boolean(c), email: c ? c.email : '', scriptCode: getScriptCode() };
 };
 
 const SCRIPT_URL_RE = /^https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
 const SCRIPT_TIMEOUT_MS = 30000;
 // v1 wrote separate "HomeFeet Status/Notes" columns; v2 uses the tab's own
 // Lead_Status / FeedBack columns.
-const SCRIPT_VERSION = 2;
-// v3 can open any sheet by id (one shared script) and checks HOMEFEET_KEY.
-const SHARED_SCRIPT_VERSION = 3;
-const OLD_SCRIPT_MESSAGE = 'The sheet has an old HomeFeet script. Copy the script again, paste it over the old one, then Deploy -> Manage deployments -> edit -> Version: New version -> Deploy.';
+// v3 checks HOMEFEET_KEY and can confirm it can edit the project's sheet.
+const SCRIPT_VERSION = 3;
+const OLD_SCRIPT_MESSAGE = 'This is an old HomeFeet script. Copy the script again, paste it over the old one, then Deploy -> Manage deployments -> edit -> Version: New version -> Deploy.';
 
 class ScriptError extends Error {}
 
@@ -157,19 +139,12 @@ const checkScriptUrl = async (rawUrl, minVersion) => {
   return { url, info };
 };
 
-// Save (or remove with an empty url) the one shared script for all projects.
-const setSharedSheetScript = async (rawUrl) => {
-  const { url, info } = await checkScriptUrl(rawUrl, SHARED_SCRIPT_VERSION);
-  const value = url ? { url, account: info.account || '' } : null;
-  await AppSetting.findOneAndUpdate({ key: SHARED_SCRIPT_KEY }, { value }, { upsert: true });
-  sharedScript = value;
-  return url ? { account: value.account } : { unlinked: true };
-};
-
-// Link (or unlink with an empty url) a write-back Apps Script for one
-// project only (older setup; the shared script covers every project).
+// Link (or unlink with an empty url) a project's write-back Apps Script.
+// Checks it is ours, and that it can open and edit this project's sheet.
 const setPropertySheetScript = async (property, rawUrl) => {
-  const { url, info } = await checkScriptUrl(rawUrl, SCRIPT_VERSION);
+  const checked = await checkScriptUrl(rawUrl, SCRIPT_VERSION);
+  const { url } = checked;
+  let { info } = checked;
   if (!url) {
     property.marketingSheetScriptUrl = '';
     property.marketingSheetScriptLinked = false;
@@ -179,10 +154,16 @@ const setPropertySheetScript = async (property, rawUrl) => {
     return { unlinked: true };
   }
   const projectSheet = sheetIdOf(property.marketingSheetUrl);
-  if (projectSheet && info.sheetId && info.sheetId !== projectSheet) {
-    const err = new Error(`This script is in a different sheet ("${info.sheetName}"). Add it to this project's leads sheet.`);
-    err.status = 422;
-    throw err;
+  if (!projectSheet) throw httpError('Link this project\'s leads sheet first.', 400);
+  if (info.sheetId && info.sheetId !== projectSheet) {
+    throw httpError(`This script is in a different sheet ("${info.sheetName}"). Add it to this project's leads sheet.`, 422);
+  }
+  try {
+    info = await callScript(url, { key: scriptKey(), sheetId: projectSheet, ping: true });
+  } catch (e) {
+    throw httpError(e.code === 'no_access'
+      ? `The Google account that deployed the script (${info.account || 'yours'}) cannot open this project's sheet. Share the sheet with it as Editor, or add the script inside this sheet.`
+      : e.message, 422);
   }
   property.marketingSheetScriptUrl = url;
   property.marketingSheetScriptLinked = true;
@@ -352,11 +333,9 @@ const writeBackLead = async (lead, property) => {
   try {
     const sheetId = sheetIdOf(property?.marketingSheetUrl);
     const last10 = String(lead.phone || '').replace(/\D/g, '').slice(-10);
-    // Order: this project's own script, the shared script, the service account.
-    const shared = property?.marketingSheetScriptUrl ? null : await getSharedScript();
-    const scriptUrl = property?.marketingSheetScriptUrl || shared?.url;
-    if (scriptUrl && !sheetId && shared) result = { status: 'failed', message: 'Project has no leads sheet linked' };
-    else if (scriptUrl && last10.length >= 10) {
+    // This project's own script first, else the service account (if set).
+    const scriptUrl = property?.marketingSheetScriptUrl;
+    if (scriptUrl && last10.length >= 10) {
       let data;
       try {
         data = await callScript(scriptUrl, {
@@ -364,20 +343,18 @@ const writeBackLead = async (lead, property) => {
         });
       } catch (err) {
         if (err.code === 'no_access') {
-          throw new NotSharedError(shared?.account
-            ? `Share the sheet with ${shared.account} as Editor`
-            : 'The Google account running the script cannot edit this sheet');
+          throw new NotSharedError('The Google account that deployed the script cannot edit this sheet - share it as Editor');
         }
         throw err;
       }
       const { written = 0, version = 1 } = data;
-      result = version < (shared ? SHARED_SCRIPT_VERSION : SCRIPT_VERSION)
+      result = version < SCRIPT_VERSION
         ? { status: 'failed', message: OLD_SCRIPT_MESSAGE }
         : written
         ? { status: 'ok', message: `Updated ${written} row${written === 1 ? '' : 's'}` }
         : { status: 'failed', message: 'Could not find this phone number in the sheet' };
     } else if (scriptUrl) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
-    else if (!getCredentials()) result = { status: 'not_configured', message: 'Google Sheets write-back is not connected (Admin Panel)' };
+    else if (!getCredentials()) result = { status: 'not_configured', message: 'Connect Google Sheet write-back for this project (Admin Panel)' };
     else if (!sheetId) result = { status: 'failed', message: 'Project has no leads sheet linked' };
     else if (last10.length < 10) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
     else {
@@ -413,4 +390,4 @@ const writeBackLead = async (lead, property) => {
   return result;
 };
 
-module.exports = { OWN_COLUMN_RE, stripOwnText, mergeOwnText, pickColumns, getWriteBackConfig, setPropertySheetScript, setSharedSheetScript, writeBackLead, statusText, notesText, columnLetter };
+module.exports = { OWN_COLUMN_RE, stripOwnText, mergeOwnText, pickColumns, getWriteBackConfig, setPropertySheetScript, writeBackLead, statusText, notesText, columnLetter };
