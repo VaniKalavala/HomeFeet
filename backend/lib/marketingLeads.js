@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 // "HomeFeet Status" / "HomeFeet Notes" are written by us (sheetWriteBack.js)
 // and must never be read back as lead data or feedback.
-const { OWN_COLUMN_RE } = require('./sheetWriteBack');
+const { OWN_COLUMN_RE, stripOwnText } = require('./sheetWriteBack');
 const Property = require('../models/Property');
 const MarketingLead = require('../models/MarketingLead');
 
@@ -390,7 +390,8 @@ const extractTabRows = (headers, dataRows, map, campaign) => {
     return [idx.name, idx.phone, idx.email].some((i) => cell(row, i)); // skips "Oct - 16" dividers
   };
 
-  return dataRows.map(realignRow).filter(isLeadRow).map((row) => {
+  // HomeFeet's own "[HomeFeet] ..." lines (sheet write-back) are not sheet data.
+  return dataRows.map((row) => row.map(stripOwnText)).map(realignRow).filter(isLeadRow).map((row) => {
     const dateRaw = cell(row, idx.date);
     return {
       campaign,

@@ -14,18 +14,17 @@
 //   (raw JSON or base64 of it). Its client_email is what admins share the
 //   sheet with.
 //
-// We never touch the team's own columns. Two columns are added at the end
-// of each tab the first time a lead there is updated:
-//   HomeFeet Status - e.g. "Site Visit · follow-up 30 Nov"
-//   HomeFeet Notes  - latest note first, with date and author
-// The importer skips these columns (OWN_COLUMN_RE), so they never come back
-// in as "sheet feedback".
+// The status (e.g. "Site Visit · follow-up 30 Nov") goes in the tab's own
+// "Lead_Status" column and the notes (latest first, with date and author) in
+// its "FeedBack" column. The team's text in those cells is kept: HomeFeet
+// owns only a trailing "[HomeFeet] ..." line, which the importer strips
+// (stripOwnText) so it never comes back in as "sheet feedback".
+// OWN_COLUMN_RE: the separate "HomeFeet Status/Notes" columns written by the
+// first version - still skipped on import.
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
-const STATUS_HEADER = 'HomeFeet Status';
-const NOTES_HEADER = 'HomeFeet Notes';
 const OWN_COLUMN_RE = /^homefeet\s*(status|notes)$/i;
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
 const TIMEOUT_MS = 10000;
@@ -72,6 +71,10 @@ const getWriteBackConfig = () => {
 
 const SCRIPT_URL_RE = /^https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
 const SCRIPT_TIMEOUT_MS = 30000;
+// v1 wrote separate "HomeFeet Status/Notes" columns; v2 uses the tab's own
+// Lead_Status / FeedBack columns.
+const SCRIPT_VERSION = 2;
+const OLD_SCRIPT_MESSAGE = 'The sheet has an old HomeFeet script. Copy the script again, paste it over the old one, then Deploy -> Manage deployments -> edit -> Version: New version -> Deploy.';
 
 class ScriptError extends Error {}
 
@@ -130,6 +133,11 @@ const setPropertySheetScript = async (property, rawUrl) => {
   }
   if (info.app !== 'homefeet-writeback') {
     const err = new Error('This web app is not the HomeFeet write-back script. Paste the HomeFeet script and deploy again.');
+    err.status = 422;
+    throw err;
+  }
+  if ((info.version || 1) < SCRIPT_VERSION) {
+    const err = new Error(OLD_SCRIPT_MESSAGE);
     err.status = 422;
     throw err;
   }
@@ -231,6 +239,25 @@ const rowMatchesPhone = (row, last10) => row.some((cell) => {
   return v.replace(/\D/g, '').slice(-10) === last10;
 });
 
+// HomeFeet's line inside a team cell ("<team text>\n[HomeFeet] ...").
+const OWN_TEXT_RE = /\n?\[HomeFeet\][\s\S]*$/;
+const stripOwnText = (v) => (typeof v === 'string' && v.includes('[HomeFeet]') ? v.replace(OWN_TEXT_RE, '').trimEnd() : v);
+const mergeOwnText = (current, text) => {
+  const team = String(current || '').replace(OWN_TEXT_RE, '').trimEnd();
+  const mine = text ? `[HomeFeet] ${text}` : '';
+  return team && mine ? `${team}\n${mine}` : team || mine;
+};
+
+// Which existing columns get the status and the notes. Same rules as the
+// Apps Script: the team's "Lead_Status" (not Meta's lowercase "lead_status")
+// and "FeedBack" / "Leads Feedback" (else remarks/comments/notes).
+const pickColumns = (header) => {
+  const statusCol = header.findIndex((h) => h !== 'lead_status' && /^lead[\s_-]*status$/i.test(h));
+  let feedbackCol = header.findIndex((h) => /feed\s*back/i.test(h));
+  if (feedbackCol < 0) feedbackCol = header.findIndex((h) => /^(remarks?|comments?|notes?)$/i.test(h));
+  return { statusCol, feedbackCol };
+};
+
 // Update one tab. Returns the number of rows written.
 const writeTab = async (sheetId, tab, lead, last10) => {
   const range = encodeURIComponent(`${quoteTab(tab.title)}!A1:ZZ5000`);
@@ -244,29 +271,35 @@ const writeTab = async (sheetId, tab, lead, last10) => {
   });
   if (!rows.length) return 0;
 
-  // Find our two columns, or add them after the last used column.
-  const width = Math.max(...values.map((r) => r.length));
-  let statusCol = header.findIndex((h) => /^homefeet\s*status$/i.test(h));
-  let notesCol = header.findIndex((h) => /^homefeet\s*notes$/i.test(h));
-  const data = [];
-  let next = width;
-  if (statusCol < 0) { statusCol = next++; data.push({ range: `${quoteTab(tab.title)}!${columnLetter(statusCol)}1`, values: [[STATUS_HEADER]] }); }
-  if (notesCol < 0) { notesCol = next++; data.push({ range: `${quoteTab(tab.title)}!${columnLetter(notesCol)}1`, values: [[NOTES_HEADER]] }); }
-
-  // The grid may be narrower than the new columns need.
-  const needed = Math.max(statusCol, notesCol) + 1;
-  if (needed > tab.columnCount) {
-    await sheetsCall(`${sheetId}:batchUpdate`, {
-      method: 'POST',
-      body: JSON.stringify({ requests: [{ appendDimension: { sheetId: tab.sheetId, dimension: 'COLUMNS', length: needed - tab.columnCount } }] })
-    });
-  }
-
   const status = statusText(lead);
   const notes = notesText(lead);
+  const both = [status, notes].filter(Boolean).join(' — ');
+  let { statusCol, feedbackCol } = pickColumns(header);
+  const data = [];
+  let statusValue = status;
+  let feedbackValue = notes;
+  if (statusCol < 0) feedbackValue = both;
+  if (feedbackCol < 0 && statusCol >= 0) statusValue = both;
+  if (feedbackCol < 0 && statusCol < 0) {
+    // No usable column in this tab: add one at the end.
+    feedbackCol = Math.max(...values.map((r) => r.length));
+    feedbackValue = both;
+    if (feedbackCol + 1 > tab.columnCount) {
+      await sheetsCall(`${sheetId}:batchUpdate`, {
+        method: 'POST',
+        body: JSON.stringify({ requests: [{ appendDimension: { sheetId: tab.sheetId, dimension: 'COLUMNS', length: feedbackCol + 1 - tab.columnCount } }] })
+      });
+    }
+    data.push({ range: `${quoteTab(tab.title)}!${columnLetter(feedbackCol)}1`, values: [['Lead_Status']] });
+  }
+
+  const put = (r, c, text) => data.push({
+    range: `${quoteTab(tab.title)}!${columnLetter(c)}${r + 1}`,
+    values: [[mergeOwnText(values[r][c], text)]]
+  });
   rows.forEach((r) => {
-    data.push({ range: `${quoteTab(tab.title)}!${columnLetter(statusCol)}${r + 1}`, values: [[status]] });
-    data.push({ range: `${quoteTab(tab.title)}!${columnLetter(notesCol)}${r + 1}`, values: [[notes]] });
+    if (statusCol >= 0) put(r, statusCol, statusValue);
+    if (feedbackCol >= 0) put(r, feedbackCol, feedbackValue);
   });
   await sheetsCall(`${sheetId}/values:batchUpdate`, {
     method: 'POST',
@@ -284,10 +317,12 @@ const writeBackLead = async (lead, property) => {
     const last10 = String(lead.phone || '').replace(/\D/g, '').slice(-10);
     const scriptUrl = property?.marketingSheetScriptUrl;
     if (scriptUrl && last10.length >= 10) {
-      const { written = 0 } = await callScript(scriptUrl, {
+      const { written = 0, version = 1 } = await callScript(scriptUrl, {
         phone: last10, tabs: lead.campaigns || [], status: statusText(lead), notes: notesText(lead)
       });
-      result = written
+      result = version < SCRIPT_VERSION
+        ? { status: 'failed', message: OLD_SCRIPT_MESSAGE }
+        : written
         ? { status: 'ok', message: `Updated ${written} row${written === 1 ? '' : 's'}` }
         : { status: 'failed', message: 'Could not find this phone number in the sheet' };
     } else if (scriptUrl) result = { status: 'skipped', message: 'Lead has no phone number to find its row' };
@@ -327,4 +362,4 @@ const writeBackLead = async (lead, property) => {
   return result;
 };
 
-module.exports = { OWN_COLUMN_RE, getWriteBackConfig, setPropertySheetScript, writeBackLead, statusText, notesText, columnLetter };
+module.exports = { OWN_COLUMN_RE, stripOwnText, mergeOwnText, pickColumns, getWriteBackConfig, setPropertySheetScript, writeBackLead, statusText, notesText, columnLetter };

@@ -1,10 +1,10 @@
 /**
  * HomeFeet -> Google Sheet write-back.
  *
- * Writes the owner/builder's lead stage and notes from HomeFeet into this
- * sheet, in two columns added at the end of each tab:
- *   HomeFeet Status | HomeFeet Notes
- * Your own columns are never changed.
+ * Writes the owner/builder's lead stage and notes from HomeFeet into the
+ * existing "Lead_Status" and "FeedBack" (or "Leads Feedback") columns of
+ * each tab. What your team typed in those cells is kept: HomeFeet adds or
+ * replaces only its own line, which starts with "[HomeFeet]".
  *
  * Setup (once per sheet):
  *   1. In this sheet: Extensions -> Apps Script. Delete what is there,
@@ -13,16 +13,16 @@
  *        Execute as: Me
  *        Who has access: Anyone
  *      Click Deploy and allow access when Google asks.
+ *      (Updating an existing script: Deploy -> Manage deployments -> edit
+ *      -> Version: New version -> Deploy. The URL stays the same.)
  *   3. Copy the Web app URL (ends in /exec) and paste it in HomeFeet
  *      Admin Panel -> the project -> Marketing Leads -> Apps Script URL.
  */
-var STATUS_HEADER = 'HomeFeet Status';
-var NOTES_HEADER = 'HomeFeet Notes';
 
 // HomeFeet calls this to check the link points at the right sheet.
 function doGet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return json_({ ok: true, app: 'homefeet-writeback', version: 1, sheetId: ss.getId(), sheetName: ss.getName() });
+  return json_({ ok: true, app: 'homefeet-writeback', version: 2, sheetId: ss.getId(), sheetName: ss.getName() });
 }
 
 // Body: { phone, tabs: [tab names], status, notes }
@@ -44,7 +44,7 @@ function doPost(e) {
     sheets.forEach(function (sh) {
       written += writeSheet_(sh, last10, String(body.status || ''), String(body.notes || ''));
     });
-    return json_({ ok: true, written: written });
+    return json_({ ok: true, version: 2, written: written });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   } finally {
@@ -56,7 +56,8 @@ function writeSheet_(sh, last10, status, notes) {
   var lastRow = sh.getLastRow();
   var lastCol = sh.getLastColumn();
   if (lastRow < 2 || lastCol < 1) return 0;
-  var values = sh.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  var range = sh.getRange(1, 1, lastRow, lastCol);
+  var values = range.getDisplayValues();
 
   var rows = [];
   for (var i = 1; i < values.length; i++) {
@@ -64,23 +65,45 @@ function writeSheet_(sh, last10, status, notes) {
   }
   if (!rows.length) return 0;
 
-  var header = values[0].map(function (h) { return String(h).trim().replace(/\s+/g, ' ').toLowerCase(); });
-  var statusCol = header.indexOf(STATUS_HEADER.toLowerCase()) + 1;
-  var notesCol = header.indexOf(NOTES_HEADER.toLowerCase()) + 1;
-  var next = lastCol + 1;
-  if (!statusCol) statusCol = next++;
-  if (!notesCol) notesCol = next++;
-  var needed = Math.max(statusCol, notesCol);
-  if (needed > sh.getMaxColumns()) sh.insertColumnsAfter(sh.getMaxColumns(), needed - sh.getMaxColumns());
-  if (statusCol > lastCol) sh.getRange(1, statusCol).setValue(STATUS_HEADER);
-  if (notesCol > lastCol) sh.getRange(1, notesCol).setValue(NOTES_HEADER);
+  // The team's own columns: "Lead_Status" (not Meta's lowercase
+  // "lead_status") and "FeedBack" / "Leads Feedback" / remarks / notes.
+  var header = values[0].map(function (h) { return String(h).trim(); });
+  var statusCol = findCol_(header, function (h) { return h !== 'lead_status' && /^lead[\s_-]*status$/i.test(h); });
+  var feedbackCol = findCol_(header, function (h) { return /feed\s*back/i.test(h); });
+  if (!feedbackCol) feedbackCol = findCol_(header, function (h) { return /^(remarks?|comments?|notes?)$/i.test(h); });
+
+  var statusText = status;
+  var feedbackText = notes;
+  if (!statusCol) feedbackText = [status, notes].filter(String).join(' — ');
+  if (!feedbackCol && statusCol) statusText = [status, notes].filter(String).join(' — ');
+  if (!feedbackCol && !statusCol) {
+    // No usable column in this tab: add one at the end.
+    feedbackCol = lastCol + 1;
+    if (feedbackCol > sh.getMaxColumns()) sh.insertColumnsAfter(sh.getMaxColumns(), 1);
+    sh.getRange(1, feedbackCol).setValue('Lead_Status');
+    feedbackText = [status, notes].filter(String).join(' — ');
+  }
 
   rows.forEach(function (r) {
-    // Leading apostrophe keeps text like "+91..." or "=..." as plain text.
-    sh.getRange(r, statusCol).setValue(status ? "'" + status : '');
-    sh.getRange(r, notesCol).setValue(notes ? "'" + notes : '');
+    if (statusCol) setOwn_(sh, r, statusCol, statusText);
+    if (feedbackCol) setOwn_(sh, r, feedbackCol, feedbackText);
   });
   return rows.length;
+}
+
+function findCol_(header, test) {
+  for (var c = 0; c < header.length; c++) if (test(header[c])) return c + 1;
+  return 0;
+}
+
+// Keep whatever the team typed; HomeFeet owns only its "[HomeFeet] ..." line.
+function setOwn_(sh, row, col, text) {
+  var cell = sh.getRange(row, col);
+  var team = String(cell.getDisplayValue() || '').replace(/\n?\[HomeFeet\][\s\S]*$/, '').replace(/\s+$/, '');
+  var mine = text ? '[HomeFeet] ' + text : '';
+  var value = team && mine ? team + '\n' + mine : (team || mine);
+  // Leading apostrophe keeps text that starts with "=" or "+" as plain text.
+  cell.setValue(/^[=+\-@]/.test(value) ? "'" + value : value);
 }
 
 // Any cell holding the same phone (last 10 digits), e.g. "p:+919876543210".

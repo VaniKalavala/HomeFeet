@@ -158,7 +158,9 @@ const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; bu
             </button>
           </div>
           <p className="text-slate-500">
-            Adds two columns at the end of each tab, <b>HomeFeet Status</b> and <b>HomeFeet Notes</b>. The team's own columns are never changed.
+            The stage goes in each tab's <b>Lead_Status</b> column and the notes in <b>FeedBack</b> (or Leads Feedback). The team's
+            text in those cells is kept; HomeFeet adds its own line starting with <b>[HomeFeet]</b>. Already connected the old script?
+            Copy the script again, paste it over the old one, then Deploy → Manage deployments → edit → Version: New version → Deploy.
           </p>
           {config.configured && !linked && (
             <p className="text-slate-500">
