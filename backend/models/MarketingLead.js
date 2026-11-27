@@ -36,6 +36,9 @@ const marketingLeadSchema = new mongoose.Schema({
   }],
   // Last write of stage/notes back into the Google Sheet (sheetWriteBack.js):
   // ok | failed | not_shared | not_configured | skipped.
+  // Exactly what was last written into the sheet (status, notes, combined),
+  // so the next write replaces it and the importer skips it.
+  sheetWritten: { type: [String], default: [] },
   sheetSyncStatus: { type: String, default: '' },
   sheetSyncMessage: { type: String, default: '' },
   sheetSyncedAt: { type: Date, default: null },

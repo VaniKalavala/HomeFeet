@@ -3,8 +3,8 @@
  *
  * Writes the owner/builder's lead stage and notes from HomeFeet into this
  * sheet's existing "Lead_Status" and "FeedBack" (or "Leads Feedback") columns.
- * What your team typed in those cells is kept: HomeFeet adds or replaces only
- * its own line, which starts with "[HomeFeet]".
+ * What your team typed in those cells is kept: HomeFeet writes its text on
+ * its own line below, and next time replaces only what it wrote before.
  *
  * Setup (in each project's leads sheet):
  *   1. Open the project's leads sheet -> Extensions -> Apps Script.
@@ -20,7 +20,7 @@
  * write through this script. Copy the script from HomeFeet's Admin Panel.
  */
 var HOMEFEET_KEY = '__HOMEFEET_KEY__';
-var VERSION = 3;
+var VERSION = 4;
 
 // HomeFeet calls this to check the link points at the right sheet.
 function doGet() {
@@ -31,7 +31,7 @@ function doGet() {
   return json_(info);
 }
 
-// Body: { key, sheetId, phone, tabs: [tab names], status, notes }
+// Body: { key, sheetId, phone, tabs: [tab names], status, notes, prev: [text HomeFeet wrote last time] }
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -60,7 +60,7 @@ function doPost(e) {
     var written = 0;
     try {
       sheets.forEach(function (sh) {
-        written += writeSheet_(sh, last10, String(body.status || ''), String(body.notes || ''));
+        written += writeSheet_(sh, last10, String(body.status || ''), String(body.notes || ''), body.prev || []);
       });
     } catch (err) {
       if (/permission|access/i.test(String(err && err.message))) {
@@ -76,7 +76,7 @@ function doPost(e) {
   }
 }
 
-function writeSheet_(sh, last10, status, notes) {
+function writeSheet_(sh, last10, status, notes, prev) {
   var lastRow = sh.getLastRow();
   var lastCol = sh.getLastColumn();
   if (lastRow < 2 || lastCol < 1) return 0;
@@ -109,8 +109,8 @@ function writeSheet_(sh, last10, status, notes) {
   }
 
   rows.forEach(function (r) {
-    if (statusCol) setOwn_(sh, r, statusCol, statusText);
-    if (feedbackCol) setOwn_(sh, r, feedbackCol, feedbackText);
+    if (statusCol) setOwn_(sh, r, statusCol, statusText, prev);
+    if (feedbackCol) setOwn_(sh, r, feedbackCol, feedbackText, prev);
   });
   return rows.length;
 }
@@ -120,12 +120,18 @@ function findCol_(header, test) {
   return 0;
 }
 
-// Keep whatever the team typed; HomeFeet owns only its "[HomeFeet] ..." line.
-function setOwn_(sh, row, col, text) {
+// Keep whatever the team typed. HomeFeet's text goes on its own line below;
+// the lines it wrote last time (prev, or old "[HomeFeet] ..." lines) are
+// replaced.
+function setOwn_(sh, row, col, text, prev) {
   var cell = sh.getRange(row, col);
-  var team = String(cell.getDisplayValue() || '').replace(/\n?\[HomeFeet\][\s\S]*$/, '').replace(/\s+$/, '');
-  var mine = text ? '[HomeFeet] ' + text : '';
-  var value = team && mine ? team + '\n' + mine : (team || mine);
+  var mine = {};
+  (prev || []).forEach(function (t) { t = String(t || '').trim(); if (t) mine[t] = true; });
+  var team = String(cell.getDisplayValue() || '').split('\n').filter(function (line) {
+    var t = line.trim();
+    return !/^\[HomeFeet\]/.test(t) && !mine[t];
+  }).join('\n').replace(/\s+$/, '');
+  var value = team && text ? team + '\n' + text : (team || text || '');
   // Leading apostrophe keeps text that starts with "=" or "+" as plain text.
   cell.setValue(/^[=+\-@]/.test(value) ? "'" + value : value);
 }

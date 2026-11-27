@@ -176,7 +176,9 @@ const SheetWriteBack: React.FC<{ property: Property; config: WriteBackConfig; bu
           </div>
           <p className="text-slate-500">
             Only this project's sheet is updated. The stage goes in its <b>Lead_Status</b> column and the notes in <b>FeedBack</b> (or Leads
-            Feedback). The team's text in those cells is kept; HomeFeet adds its own line starting with <b>[HomeFeet]</b>.
+            Feedback). The team's text in those cells is kept; HomeFeet writes on its own line below it (e.g. "28 Nov: visited site").
+            Already connected? After an update here, paste the new script over the old one and use Deploy → Manage deployments →
+            edit → Version: New version → Deploy (the URL stays the same).
           </p>
         </div>
       )}

@@ -330,7 +330,8 @@ const uniqueNotes = (notes) => {
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const PHONE_CELL = /^p:\s*\+?\d|^\+?\d[\d\s-]{9,14}$/i;
 
-const extractTabRows = (headers, dataRows, map, campaign) => {
+// ownTexts: what HomeFeet wrote into this sheet (lead.sheetWritten), left out.
+const extractTabRows = (headers, dataRows, map, campaign, ownTexts) => {
   const col = (name) => (name ? headers.indexOf(name) : -1);
   const idx = {
     date: col(map.dateColumn),
@@ -390,8 +391,8 @@ const extractTabRows = (headers, dataRows, map, campaign) => {
     return [idx.name, idx.phone, idx.email].some((i) => cell(row, i)); // skips "Oct - 16" dividers
   };
 
-  // HomeFeet's own "[HomeFeet] ..." lines (sheet write-back) are not sheet data.
-  return dataRows.map((row) => row.map(stripOwnText)).map(realignRow).filter(isLeadRow).map((row) => {
+  // Lines HomeFeet wrote back into the sheet are not sheet data.
+  return dataRows.map((row) => row.map((v) => stripOwnText(v, ownTexts))).map(realignRow).filter(isLeadRow).map((row) => {
     const dateRaw = cell(row, idx.date);
     return {
       campaign,
@@ -425,6 +426,9 @@ const syncPropertyMarketingLeads = async (propertyOrId) => {
     const cached = stored && typeof stored === 'object' && !('dateColumn' in stored) ? stored : {};
     const usedMaps = {};
     const tabs = await listTabs(sheetId, property.marketingSheetUrl);
+    // Text HomeFeet wrote back into this sheet, so it is not read in as feedback.
+    const ownTexts = new Set((await MarketingLead.find({ propertyId: String(property._id), 'sheetWritten.0': { $exists: true } })
+      .select('sheetWritten').lean()).flatMap((l) => l.sheetWritten.map((t) => String(t).trim())));
     const tabReport = [];
     let rowDocs = [];
 
@@ -441,7 +445,7 @@ const syncPropertyMarketingLeads = async (propertyOrId) => {
         continue;
       }
       usedMaps[sig] = map;
-      const rows = extractTabRows(data.headers, data.dataRows, map, tab.name);
+      const rows = extractTabRows(data.headers, data.dataRows, map, tab.name, ownTexts);
       tabReport.push({ ...tab, leadCount: rows.length });
       rowDocs = rowDocs.concat(rows);
     }

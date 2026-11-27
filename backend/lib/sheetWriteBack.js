@@ -85,8 +85,9 @@ const SCRIPT_TIMEOUT_MS = 30000;
 // v1 wrote separate "HomeFeet Status/Notes" columns; v2 uses the tab's own
 // Lead_Status / FeedBack columns.
 // v3 checks HOMEFEET_KEY and can confirm it can edit the project's sheet.
-const SCRIPT_VERSION = 3;
-const OLD_SCRIPT_MESSAGE = 'This is an old HomeFeet script. Copy the script again, paste it over the old one, then Deploy -> Manage deployments -> edit -> Version: New version -> Deploy.';
+// v4 writes without the "[HomeFeet]" marker, replacing the lines it wrote last.
+const SCRIPT_VERSION = 4;
+const OLD_SCRIPT_MESSAGE = 'The sheet has an old HomeFeet script. In the sheet: Extensions -> Apps Script, paste the new script from HomeFeet over the old one, Save, then Deploy -> Manage deployments -> edit (pencil) -> Version: New version -> Deploy. The URL stays the same.';
 
 class ScriptError extends Error {}
 
@@ -245,7 +246,7 @@ const statusText = (lead) => {
 
 const notesText = (lead) => [...(lead.notes || [])]
   .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  .map((n) => `${formatDate(n.createdAt)}: ${n.text}${n.createdBy ? ` (${n.createdBy})` : ''}`)
+  .map((n) => `${formatDate(n.createdAt)}: ${String(n.text || '').replace(/\s*\n\s*/g, ' ')}`)
   .join(' | ')
   .slice(0, 2000);
 
@@ -257,13 +258,28 @@ const rowMatchesPhone = (row, last10) => row.some((cell) => {
   return v.replace(/\D/g, '').slice(-10) === last10;
 });
 
-// HomeFeet's line inside a team cell ("<team text>\n[HomeFeet] ...").
-const OWN_TEXT_RE = /\n?\[HomeFeet\][\s\S]*$/;
-const stripOwnText = (v) => (typeof v === 'string' && v.includes('[HomeFeet]') ? v.replace(OWN_TEXT_RE, '').trimEnd() : v);
-const mergeOwnText = (current, text) => {
-  const team = String(current || '').replace(OWN_TEXT_RE, '').trimEnd();
-  const mine = text ? `[HomeFeet] ${text}` : '';
-  return team && mine ? `${team}\n${mine}` : team || mine;
+// What HomeFeet wrote into a cell sits on its own line(s) below the team's
+// text, with no marker. Each lead remembers what it wrote last
+// (lead.sheetWritten), so the next write replaces exactly those lines and the
+// importer can leave them out. Lines starting "[HomeFeet]" are from the
+// earlier marked format and are removed too.
+const OWN_MARK_RE = /^\[HomeFeet\]/;
+const removeOwnLines = (value, own) => {
+  const mine = own instanceof Set ? own : new Set((own || []).map((t) => String(t || '').trim()).filter(Boolean));
+  return String(value || '').split('\n').filter((line) => {
+    const t = line.trim();
+    return !OWN_MARK_RE.test(t) && !mine.has(t);
+  }).join('\n').trimEnd();
+};
+const stripOwnText = (v, own) => (typeof v === 'string' && v ? removeOwnLines(v, own) : v);
+const mergeOwnText = (current, text, prev) => {
+  const team = removeOwnLines(current, prev);
+  return team && text ? `${team}\n${text}` : team || text || '';
+};
+const writtenTexts = (lead) => {
+  const status = statusText(lead);
+  const notes = notesText(lead);
+  return { status, notes, both: [status, notes].filter(Boolean).join(' — ') };
 };
 
 // Which existing columns get the status and the notes. Same rules as the
@@ -289,9 +305,8 @@ const writeTab = async (sheetId, tab, lead, last10) => {
   });
   if (!rows.length) return 0;
 
-  const status = statusText(lead);
-  const notes = notesText(lead);
-  const both = [status, notes].filter(Boolean).join(' — ');
+  const { status, notes, both } = writtenTexts(lead);
+  const prev = lead.sheetWritten || [];
   let { statusCol, feedbackCol } = pickColumns(header);
   const data = [];
   let statusValue = status;
@@ -313,7 +328,7 @@ const writeTab = async (sheetId, tab, lead, last10) => {
 
   const put = (r, c, text) => data.push({
     range: `${quoteTab(tab.title)}!${columnLetter(c)}${r + 1}`,
-    values: [[mergeOwnText(values[r][c], text)]]
+    values: [[mergeOwnText(values[r][c], text, prev)]]
   });
   rows.forEach((r) => {
     if (statusCol >= 0) put(r, statusCol, statusValue);
@@ -338,8 +353,9 @@ const writeBackLead = async (lead, property) => {
     if (scriptUrl && last10.length >= 10) {
       let data;
       try {
+        const { status, notes } = writtenTexts(lead);
         data = await callScript(scriptUrl, {
-          key: scriptKey(), sheetId, phone: last10, tabs: lead.campaigns || [], status: statusText(lead), notes: notesText(lead)
+          key: scriptKey(), sheetId, phone: last10, tabs: lead.campaigns || [], status, notes, prev: lead.sheetWritten || []
         });
       } catch (err) {
         if (err.code === 'no_access') {
@@ -378,6 +394,10 @@ const writeBackLead = async (lead, property) => {
       : { status: 'failed', message: String(err.message || err).slice(0, 300) };
   }
 
+  if (result.status === 'ok') {
+    const { status, notes, both } = writtenTexts(lead);
+    lead.sheetWritten = [status, notes, both].filter(Boolean);
+  }
   lead.sheetSyncStatus = result.status;
   lead.sheetSyncMessage = result.message;
   lead.sheetSyncedAt = new Date();
